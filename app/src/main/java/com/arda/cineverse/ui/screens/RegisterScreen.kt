@@ -60,103 +60,108 @@ fun RegisterScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-         //   .background(Background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp),
-    ) {
-        Spacer(Modifier.height(24.dp))
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
-        }
-        Spacer(Modifier.height(12.dp))
+    CineVerseAuthBackground {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp),
+        ) {
+            Spacer(Modifier.height(24.dp))
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+            }
+            Spacer(Modifier.height(12.dp))
 
-        Text("Create Account", color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Join CineVerse and explore thousands of movies",
-            color = TextSecondary,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-
-        Spacer(Modifier.height(28.dp))
-
-        CVTextField(
-            value = fullName,
-            onValueChange = { fullName = it; nameError = null },
-            placeholder = "Full name",
-            leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary) },
-            isError = nameError != null,
-            errorText = nameError,
-        )
-        Spacer(Modifier.height(14.dp))
-        CVTextField(
-            value = email,
-            onValueChange = { email = it; emailError = null },
-            placeholder = "Email address",
-            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
-            isError = emailError != null,
-            errorText = emailError,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-        )
-        Spacer(Modifier.height(14.dp))
-        CVTextField(
-            value = password,
-            onValueChange = { password = it },
-            placeholder = "Password",
-            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
-            isPassword = true,
-            passwordVisible = passwordVisible,
-            onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
-        )
-        Spacer(Modifier.height(14.dp))
-        CVTextField(
-            value = confirmPassword,
-            onValueChange = { confirmPassword = it; confirmError = null },
-            placeholder = "Confirm password",
-            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
-            isPassword = true,
-            passwordVisible = confirmPasswordVisible,
-            onTogglePasswordVisibility = { confirmPasswordVisible = !confirmPasswordVisible },
-            isError = confirmError != null,
-            errorText = confirmError,
-        )
-
-        Spacer(Modifier.height(14.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            CVValidationRow("At least 8 characters", lengthOk)
-            CVValidationRow("Contains number or symbol", numberOrSymbolOk)
-            CVValidationRow("Mix of uppercase and lowercase", caseOk)
-        }
-
-        Spacer(Modifier.height(14.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = agreedToTerms,
-                onCheckedChange = { agreedToTerms = it },
-                colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
+            Text("Create Account", color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Join CineVerse and explore thousands of movies",
+                color = TextSecondary,
+                style = MaterialTheme.typography.bodyMedium,
             )
-            Text("I agree to the Terms & Conditions", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-        }
 
-        Spacer(Modifier.height(16.dp))
-        CVGradientButton("Sign Up", onClick = ::validateAndSubmit, enabled = agreedToTerms)
+            Spacer(Modifier.height(28.dp))
 
-        Spacer(Modifier.height(24.dp))
-        CVDividerWithLabel("or continue with")
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
-            CVSocialButton("Apple", "", onClick = {}, modifier = Modifier.weight(1f))
-        }
+            CVTextField(
+                value = fullName,
+                onValueChange = { fullName = it; nameError = null },
+                placeholder = "Full name",
+                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary) },
+                isError = nameError != null,
+                errorText = nameError,
+            )
+            Spacer(Modifier.height(14.dp))
+            CVTextField(
+                value = email,
+                onValueChange = { email = it; emailError = null },
+                placeholder = "Email address",
+                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
+                isError = emailError != null,
+                errorText = emailError,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            )
+            Spacer(Modifier.height(14.dp))
+            CVTextField(
+                value = password,
+                onValueChange = { password = it },
+                placeholder = "Password",
+                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
+                isPassword = true,
+                passwordVisible = passwordVisible,
+                onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
+            )
+            Spacer(Modifier.height(14.dp))
+            CVTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it; confirmError = null },
+                placeholder = "Confirm password",
+                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
+                isPassword = true,
+                passwordVisible = confirmPasswordVisible,
+                onTogglePasswordVisibility = { confirmPasswordVisible = !confirmPasswordVisible },
+                isError = confirmError != null,
+                errorText = confirmError,
+            )
 
-        Spacer(Modifier.height(20.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            Text("Already have an account? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-            CVTextButton("Sign In", onClick = onNavigateToLogin)
+            Spacer(Modifier.height(14.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CVValidationRow("At least 8 characters", lengthOk)
+                CVValidationRow("Contains number or symbol", numberOrSymbolOk)
+                CVValidationRow("Mix of uppercase and lowercase", caseOk)
+            }
+
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = agreedToTerms,
+                    onCheckedChange = { agreedToTerms = it },
+                    colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
+                )
+                Text("I agree to the Terms & Conditions", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+            }
+
+            Spacer(Modifier.height(16.dp))
+            CVGradientButton("Sign Up", onClick = ::validateAndSubmit, enabled = agreedToTerms)
+
+            Spacer(Modifier.height(24.dp))
+            CVDividerWithLabel("or continue with")
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
+                CVSocialButton("Apple", "", onClick = {}, modifier = Modifier.weight(1f))
+            }
+
+            Spacer(Modifier.height(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Already have an account? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                CVTextButton("Sign In", onClick = onNavigateToLogin)
+            }
+            Spacer(Modifier.height(24.dp))
         }
-        Spacer(Modifier.height(24.dp))
     }
 }

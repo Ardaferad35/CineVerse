@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.arda.cineverse.ui.theme.*
 
 @Composable
@@ -40,7 +41,13 @@ fun CVGradientButton(
             .clickable(enabled = enabled) { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = OnPrimary, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Text(
+            text = text,
+            color = OnPrimary,
+            fontSize = 18.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
@@ -56,15 +63,31 @@ fun CVOutlineButton(
         shape = RoundedCornerShape(14.dp),
         border = BorderStroke(1.dp, Primary),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary),
+        contentPadding = PaddingValues(0.dp),
     ) {
-        Text(text, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Text(
+            text = text,
+            fontSize = 18.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
 @Composable
 fun CVTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    TextButton(onClick = onClick, modifier = modifier) {
-        Text(text, color = Primary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+    ) {
+        Text(
+            text = text,
+            color = Primary,
+            fontSize = 14.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 

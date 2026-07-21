@@ -40,70 +40,75 @@ fun ForgotPasswordScreen(
         if (emailError == null) linkSent = true
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            // .background(Background)
-            .padding(horizontal = 24.dp),
-    ) {
-        Spacer(Modifier.height(24.dp))
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
-        }
-        Spacer(Modifier.height(24.dp))
-
-        if (!linkSent) {
-            Text("Forgot Password?", color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Enter your email and we'll send you a link to reset your password",
-                color = TextSecondary,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Spacer(Modifier.height(28.dp))
-            CVTextField(
-                value = email,
-                onValueChange = { email = it; emailError = null },
-                placeholder = "Email address",
-                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
-                isError = emailError != null,
-                errorText = emailError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            )
-            Spacer(Modifier.height(20.dp))
-            CVGradientButton("Send Reset Link", onClick = ::submit)
-            Spacer(Modifier.height(20.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Text("Remember your password? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-                CVTextButton("Sign In", onClick = onNavigateToLogin)
+    CineVerseAuthBackground {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+        ) {
+            Spacer(Modifier.height(24.dp))
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
             }
-        } else {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Filled.MarkEmailRead, contentDescription = null, tint = Accent, modifier = Modifier.size(36.dp))
-                }
-                Spacer(Modifier.height(20.dp))
-                Text("Check your email", color = OnSurface, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(24.dp))
+
+            if (!linkSent) {
+                Text("Forgot Password?", color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "We've sent a password reset link to\n$email",
+                    "Enter your email and we'll send you a link to reset your password",
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(28.dp))
-                CVGradientButton("Back to Sign In", onClick = onNavigateToLogin)
-                Spacer(Modifier.height(16.dp))
-                CVTextButton("Didn't get the email? Resend", onClick = { linkSent = true })
+                CVTextField(
+                    value = email,
+                    onValueChange = { email = it; emailError = null },
+                    placeholder = "Email address",
+                    leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
+                    isError = emailError != null,
+                    errorText = emailError,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                )
+                Spacer(Modifier.height(20.dp))
+                CVGradientButton("Send Reset Link", onClick = ::submit)
+                Spacer(Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Remember your password? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                    CVTextButton("Sign In", onClick = onNavigateToLogin)
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.MarkEmailRead, contentDescription = null, tint = Accent, modifier = Modifier.size(36.dp))
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    Text("Check your email", color = OnSurface, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "We've sent a password reset link to\n$email",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(28.dp))
+                    CVGradientButton("Back to Sign In", onClick = onNavigateToLogin)
+                    Spacer(Modifier.height(16.dp))
+                    CVTextButton("Didn't get the email? Resend", onClick = { linkSent = true })
+                }
             }
         }
     }
