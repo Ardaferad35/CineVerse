@@ -342,7 +342,7 @@ fun MovieDetailScreen(
                                     initialSpoiler = comment.isSpoiler,
                                     submitLabel = "Güncelle",
                                     onSubmit = { text, rating, spoiler ->
-                                        commentViewModel.editComment(comment.id, text, rating, spoiler)
+                                        commentViewModel.editComment(comment.id, text, rating, spoiler, movie.title, movie.posterUrl, movie.year, movie.genreIds)
                                         editingComment = null
                                     },
                                     onCancel = { editingComment = null },
@@ -368,7 +368,9 @@ fun MovieDetailScreen(
                                 Text("Yorum Yaz", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(10.dp))
                                 CommentInputBox(
-                                    onSubmit = { text, rating, spoiler -> commentViewModel.submitComment(text, rating, spoiler) },
+                                    onSubmit = { text, rating, spoiler ->
+                                        commentViewModel.submitComment(text, rating, spoiler, movie.title, movie.posterUrl, movie.year, movie.genreIds)
+                                    },
                                 )
                             }
                         }
@@ -418,13 +420,16 @@ fun MovieDetailScreen(
     }
 
     commentPendingDelete?.let { comment ->
+        val currentMovie = detailState.movie
         AlertDialog(
             onDismissRequest = { commentPendingDelete = null },
             title = { Text("Yorumu sil") },
             text = { Text("Bu yorumu silmek istediğinize emin misiniz?") },
             confirmButton = {
                 TextButton(onClick = {
-                    commentViewModel.deleteComment(comment.id)
+                    if (currentMovie != null) {
+                        commentViewModel.deleteComment(comment.id, currentMovie.title, currentMovie.posterUrl, currentMovie.year, currentMovie.genreIds)
+                    }
                     commentPendingDelete = null
                 }) { Text("Sil", color = ErrorColor) }
             },

@@ -16,6 +16,7 @@ data class MovieDetail(
     val year: Int?,
     val durationLabel: String,
     val genres: List<String>,
+    val genreIds: List<Int> = emptyList(),
     val overview: String,
     val director: String?,
     val cast: List<CastMember>,

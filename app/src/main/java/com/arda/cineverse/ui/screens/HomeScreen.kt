@@ -8,15 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.SentimentSatisfied
-import androidx.compose.material.icons.filled.TheaterComedy
-import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,9 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.mockCategories
 import com.arda.cineverse.ui.components.CVBottomNavBar
 import com.arda.cineverse.ui.components.CVGradientButton
@@ -44,6 +37,8 @@ import com.arda.cineverse.ui.components.HomeTopBar
 import com.arda.cineverse.ui.components.PopularMovieCard
 import com.arda.cineverse.ui.components.SearchSuggestionsList
 import com.arda.cineverse.ui.components.UpcomingMovieCard
+import com.arda.cineverse.ui.components.categoryColor
+import com.arda.cineverse.ui.components.categoryIcon
 import com.arda.cineverse.ui.theme.Accent
 import com.arda.cineverse.ui.theme.Background
 import com.arda.cineverse.ui.theme.ErrorColor
@@ -58,6 +53,7 @@ fun HomeScreen(
     onSeeAllClick: (section: String) -> Unit = {},
     onAiSearchClick: () -> Unit = {},
     onNavigateTab: (Int) -> Unit = {},
+    onCategoryClick: (Category) -> Unit = {},
     modifier: Modifier = Modifier,
     homeViewModel: HomeViewModel = viewModel(),
 ) {
@@ -221,10 +217,13 @@ fun HomeScreen(
                                     items(mockCategories, key = { it.id }) { category ->
                                         CategoryChip(
                                             category = category,
-                                            icon = categoryIcon(category.id),
-                                            iconTint = categoryColor(category.id),
+                                            icon = categoryIcon(category.genreId),
+                                            iconTint = categoryColor(category.genreId),
                                             selected = category.id == selectedCategoryId,
-                                            onClick = { selectedCategoryId = category.id },
+                                            onClick = {
+                                                selectedCategoryId = category.id
+                                                onCategoryClick(category)
+                                            },
                                         )
                                     }
                                 }
@@ -246,24 +245,4 @@ fun HomeScreen(
             )
         }
     }
-}
-
-private fun categoryIcon(id: String): ImageVector = when (id) {
-    "action" -> Icons.Filled.Theaters
-    "scifi" -> Icons.Filled.Public
-    "drama" -> Icons.Filled.TheaterComedy
-    "comedy" -> Icons.Filled.SentimentSatisfied
-    "horror" -> Icons.Filled.DarkMode
-    "animation" -> Icons.Filled.EmojiEvents
-    else -> Icons.Filled.Movie
-}
-
-private fun categoryColor(id: String): Color = when (id) {
-    "action" -> Primary
-    "scifi" -> Accent
-    "drama" -> Color(0xFFE0679A)
-    "comedy" -> Color(0xFFFFC857)
-    "horror" -> ErrorColor
-    "animation" -> Color(0xFF5B9BD5)
-    else -> TextSecondary
 }

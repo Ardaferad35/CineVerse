@@ -1,6 +1,7 @@
 package com.arda.cineverse.data.remote
 
 import com.arda.cineverse.data.remote.dto.CreditsResponseDto
+import com.arda.cineverse.data.remote.dto.GenreListResponseDto
 import com.arda.cineverse.data.remote.dto.MovieDetailDto
 import com.arda.cineverse.data.remote.dto.MoviesResponseDto
 import com.arda.cineverse.data.remote.dto.MultiSearchResponseDto
@@ -66,8 +67,14 @@ interface TmdbApiService {
     suspend fun discoverMovies(
         @Query("language") language: String = "tr-TR",
         @Query("sort_by") sortBy: String = "popularity.desc",
-        @Query("vote_average.gte") minVoteAverage: Double = 7.0,
-        @Query("vote_count.gte") minVoteCount: Int = 500,
+        @Query("vote_average.gte") minVoteAverage: Double? = null,
+        @Query("vote_count.gte") minVoteCount: Int? = null,
+        @Query("with_genres") withGenres: String? = null,
         @Query("page") page: Int = 1,
     ): MoviesResponseDto
+
+    @GET("genre/movie/list")
+    suspend fun getMovieGenres(
+        @Query("language") language: String = "tr-TR",
+    ): GenreListResponseDto
 }

@@ -51,12 +51,14 @@ private fun formatRuntime(minutes: Int?): String {
 }
 
 fun MovieDto.toUiMovie(): Movie {
-    val genreName = genre_ids.firstOrNull()?.let { genreIdToTurkishName[it] } ?: "Film"
+    val genreNames = genre_ids.mapNotNull { genreIdToTurkishName[it] }
     return Movie(
         id = id,
         title = title,
         year = release_date.extractYear(),
-        genre = genreName,
+        genre = genreNames.firstOrNull() ?: "Film",
+        genres = genreNames,
+        overview = overview,
         rating = round(vote_average * 10) / 10.0,
         posterUrl = TmdbNetworkModule.posterUrl(poster_path),
     )
@@ -153,6 +155,7 @@ fun buildMovieDetail(
         year = detail.release_date.extractYear(),
         durationLabel = formatRuntime(detail.runtime),
         genres = detail.genres.map { it.name },
+        genreIds = detail.genres.map { it.id },
         overview = detail.overview,
         director = director,
         cast = cast,

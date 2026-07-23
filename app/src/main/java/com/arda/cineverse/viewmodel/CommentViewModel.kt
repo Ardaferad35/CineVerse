@@ -54,23 +54,46 @@ class CommentViewModel(
         }
     }
 
-    fun submitComment(text: String, rating: Int, isSpoiler: Boolean) {
+    fun submitComment(
+        text: String,
+        rating: Int,
+        isSpoiler: Boolean,
+        movieTitle: String,
+        moviePosterUrl: String?,
+        movieYear: Int?,
+        movieGenreIds: List<Int> = emptyList(),
+    ) {
         viewModelScope.launch {
-            repository.addComment(movieId, text, rating, isSpoiler)
+            repository.addComment(movieId, text, rating, isSpoiler, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
             loadComments()
         }
     }
 
-    fun editComment(commentId: String, text: String, rating: Int, isSpoiler: Boolean) {
+    fun editComment(
+        commentId: String,
+        text: String,
+        rating: Int,
+        isSpoiler: Boolean,
+        movieTitle: String,
+        moviePosterUrl: String?,
+        movieYear: Int?,
+        movieGenreIds: List<Int> = emptyList(),
+    ) {
         viewModelScope.launch {
-            repository.updateComment(movieId, commentId, text, rating, isSpoiler)
+            repository.updateComment(movieId, commentId, text, rating, isSpoiler, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
             loadComments()
         }
     }
 
-    fun deleteComment(commentId: String) {
+    fun deleteComment(
+        commentId: String,
+        movieTitle: String,
+        moviePosterUrl: String?,
+        movieYear: Int?,
+        movieGenreIds: List<Int> = emptyList(),
+    ) {
         viewModelScope.launch {
-            repository.deleteComment(movieId, commentId)
+            repository.deleteComment(movieId, commentId, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
             loadComments()
         }
     }

@@ -1,5 +1,6 @@
 package com.arda.cineverse.data.repository
 
+import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.MovieDetail
@@ -38,10 +39,31 @@ class MovieRepository(
     suspend fun getFeaturedMovie(): Result<FeaturedMovie> = runCatching {
         val seed = todaySeed()
         val page = (seed % 5) + 1
-        val pool = api.discoverMovies(page = page).results
+        val pool = api.discoverMovies(page = page, minVoteAverage = 7.0, minVoteCount = 500).results
         check(pool.isNotEmpty()) { "Uygun film bulunamadı" }
         val chosen = pool[seed % pool.size]
         api.getMovieDetail(chosen.id).toFeaturedMovie()
+    }
+
+    suspend fun getMoviesByGenre(genreId: Int, page: Int = 1): Result<List<Movie>> = runCatching {
+        api.discoverMovies(page = page, withGenres = genreId.toString(), sortBy = "popularity.desc")
+            .results.map { it.toUiMovie() }
+    }
+
+    suspend fun getMoviesByGenreTopRated(genreId: Int, page: Int = 1): Result<List<Movie>> = runCatching {
+        api.discoverMovies(page = page, withGenres = genreId.toString(), sortBy = "vote_average.desc", minVoteCount = 300)
+            .results.map { it.toUiMovie() }
+    }
+
+    suspend fun getTopRatedMovies(page: Int = 1): Result<List<Movie>> = runCatching {
+        api.discoverMovies(page = page, sortBy = "vote_average.desc", minVoteCount = 300)
+            .results.map { it.toUiMovie() }
+    }
+
+    suspend fun getAllGenres(): Result<List<Category>> = runCatching {
+        api.getMovieGenres().genres.map { genre ->
+            Category(id = genre.id.toString(), label = genre.name, genreId = genre.id)
+        }
     }
 
     /**

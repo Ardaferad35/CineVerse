@@ -35,6 +35,10 @@ data class GenreDto(
     val name: String,
 )
 
+data class GenreListResponseDto(
+    val genres: List<GenreDto> = emptyList(),
+)
+
 data class CreditsResponseDto(
     val cast: List<CastMemberDto>,
     val crew: List<CrewMemberDto> = emptyList(),

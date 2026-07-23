@@ -8,16 +8,19 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.arda.cineverse.ui.screens.AllCategoriesScreen
 import com.arda.cineverse.ui.screens.ForgotPasswordScreen
 import com.arda.cineverse.ui.screens.HomeScreen
 import com.arda.cineverse.ui.screens.LoginScreen
 import com.arda.cineverse.ui.screens.MovieDetailScreen
 import com.arda.cineverse.ui.screens.MovieListScreen
-import com.arda.cineverse.ui.screens.MovieListSection
+import com.arda.cineverse.ui.screens.MovieListSource
 import com.arda.cineverse.ui.screens.MyListScreen
 import com.arda.cineverse.ui.screens.RegisterScreen
 import com.arda.cineverse.ui.screens.SearchScreen
 import com.google.firebase.auth.FirebaseAuth
+import java.net.URLDecoder
+import java.net.URLEncoder
 
 object CVRoutes {
     const val LOGIN = "login"
@@ -28,10 +31,14 @@ object CVRoutes {
     const val SEARCH = "search/{aiMode}"
     const val MOVIE_DETAIL = "movie_detail/{movieId}"
     const val MOVIE_LIST = "movie_list/{section}"
+    const val MOVIE_LIST_GENRE = "movie_list_genre/{genreId}/{label}"
+    const val ALL_CATEGORIES = "all_categories"
 
     fun movieDetail(movieId: Int) = "movie_detail/$movieId"
     fun search(aiMode: Boolean) = "search/$aiMode"
     fun movieList(section: String) = "movie_list/$section"
+    fun movieListGenre(genreId: Int, label: String) =
+        "movie_list_genre/$genreId/${URLEncoder.encode(label, "UTF-8")}"
 }
 
 @Composable
@@ -78,10 +85,10 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
             HomeScreen(
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
                 onSeeAllClick = { section ->
-                    if (section == "popular" || section == "upcoming") {
-                        navController.navigate(CVRoutes.movieList(section))
+                    when (section) {
+                        "popular", "upcoming" -> navController.navigate(CVRoutes.movieList(section))
+                        "categories" -> navController.navigate(CVRoutes.ALL_CATEGORIES)
                     }
-                    // "categories" için henüz ayrı bir ekran yok
                 },
                 onAiSearchClick = { navController.navigate(CVRoutes.search(aiMode = true)) },
                 onNavigateTab = { index ->
@@ -89,6 +96,9 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                         1 -> navController.navigate(CVRoutes.search(aiMode = false))
                         2 -> navController.navigate(CVRoutes.LISTEM) { launchSingleTop = true }
                     }
+                },
+                onCategoryClick = { category ->
+                    navController.navigate(CVRoutes.movieListGenre(category.genreId, category.label))
                 },
             )
         }
@@ -127,9 +137,33 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
         ) { backStackEntry ->
             val section = backStackEntry.arguments?.getString("section") ?: "popular"
             MovieListScreen(
-                section = if (section == "upcoming") MovieListSection.UPCOMING else MovieListSection.POPULAR,
+                source = if (section == "upcoming") MovieListSource.Upcoming else MovieListSource.Popular,
                 onBack = { navController.popBackStack() },
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+            )
+        }
+        composable(
+            route = CVRoutes.MOVIE_LIST_GENRE,
+            arguments = listOf(
+                navArgument("genreId") { type = NavType.IntType },
+                navArgument("label") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val genreId = backStackEntry.arguments?.getInt("genreId") ?: 0
+            val rawLabel = backStackEntry.arguments?.getString("label") ?: "Kategori"
+            val label = URLDecoder.decode(rawLabel, "UTF-8")
+            MovieListScreen(
+                source = MovieListSource.Genre(genreId = genreId, label = label),
+                onBack = { navController.popBackStack() },
+                onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+            )
+        }
+        composable(CVRoutes.ALL_CATEGORIES) {
+            AllCategoriesScreen(
+                onBack = { navController.popBackStack() },
+                onCategoryClick = { category ->
+                    navController.navigate(CVRoutes.movieListGenre(category.genreId, category.label))
+                },
             )
         }
         composable(

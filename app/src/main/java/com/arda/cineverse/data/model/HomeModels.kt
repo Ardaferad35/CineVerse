@@ -5,9 +5,11 @@ data class Movie(
     val title: String,
     val year: Int?,
     val genre: String,
+    val genres: List<String> = emptyList(),
     val rating: Double,
     val posterUrl: String? = null,
     val isFavorite: Boolean = false,
+    val overview: String = "",
 )
 
 data class UpcomingMovie(
@@ -21,6 +23,7 @@ data class UpcomingMovie(
 data class Category(
     val id: String,
     val label: String,
+    val genreId: Int,
 )
 
 data class FeaturedMovie(
@@ -36,10 +39,10 @@ data class FeaturedMovie(
 )
 
 val mockCategories = listOf(
-    Category("action", "Aksiyon"),
-    Category("scifi", "Bilim Kurgu"),
-    Category("drama", "Dram"),
-    Category("comedy", "Komedi"),
-    Category("horror", "Korku"),
-    Category("animation", "Animasyon"),
+    Category("action", "Aksiyon", 28),
+    Category("scifi", "Bilim Kurgu", 878),
+    Category("drama", "Dram", 18),
+    Category("comedy", "Komedi", 35),
+    Category("horror", "Korku", 27),
+    Category("animation", "Animasyon", 16),
 )
