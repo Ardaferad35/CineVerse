@@ -38,6 +38,12 @@ android {
             "TMDB_READ_ACCESS_TOKEN",
             "\"${localProperties.getProperty("TMDB_READ_ACCESS_TOKEN", "")}\""
         )
+        buildConfigField(
+                "String",
+                "GEMINI_API_KEY",
+                "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\""
+        )
+
     }
 
     buildFeatures {

@@ -66,3 +66,18 @@ data class VideoDto(
     val official: Boolean = false,
     val name: String = "",
 )
+
+data class MultiSearchResponseDto(
+    val results: List<MultiSearchResultDto> = emptyList(),
+)
+
+data class MultiSearchResultDto(
+    val id: Int,
+    val media_type: String? = null,
+    val title: String? = null,
+    val name: String? = null,
+    val poster_path: String? = null,
+    val profile_path: String? = null,
+    val release_date: String? = null,
+    val first_air_date: String? = null,
+)

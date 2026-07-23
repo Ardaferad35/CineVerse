@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DarkMode
@@ -27,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -40,11 +42,13 @@ import com.arda.cineverse.ui.components.HomeSearchBar
 import com.arda.cineverse.ui.components.HomeSectionHeader
 import com.arda.cineverse.ui.components.HomeTopBar
 import com.arda.cineverse.ui.components.PopularMovieCard
+import com.arda.cineverse.ui.components.SearchSuggestionsList
 import com.arda.cineverse.ui.components.UpcomingMovieCard
 import com.arda.cineverse.ui.theme.Accent
 import com.arda.cineverse.ui.theme.Background
 import com.arda.cineverse.ui.theme.ErrorColor
 import com.arda.cineverse.ui.theme.Primary
+import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.HomeViewModel
 
@@ -57,7 +61,6 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     homeViewModel: HomeViewModel = viewModel(),
 ) {
-    var searchQuery by remember { mutableStateOf("") }
     var selectedCategoryId by remember { mutableStateOf(mockCategories.first().id) }
 
     val uiState by homeViewModel.uiState.collectAsState()
@@ -76,9 +79,10 @@ fun HomeScreen(
             HomeTopBar()
             Spacer(Modifier.height(12.dp))
             HomeSearchBar(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+                value = uiState.searchQuery,
+                onValueChange = { homeViewModel.onSearchQueryChange(it) },
                 onAiClick = onAiSearchClick,
+                onClear = { homeViewModel.clearSearch() },
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
             Spacer(Modifier.height(16.dp))
@@ -98,6 +102,45 @@ fun HomeScreen(
                         Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(16.dp))
                         CVGradientButton(text = "Tekrar Dene", onClick = { homeViewModel.loadMovies() })
+                    }
+                }
+                uiState.searchQuery.isNotBlank() -> {
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp),
+                    ) {
+                        when {
+                            uiState.isSearching -> {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(Surface)
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    CircularProgressIndicator(color = Primary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(10.dp))
+                                    Text("Aranıyor...", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                            uiState.searchSuggestions.isNotEmpty() -> {
+                                SearchSuggestionsList(
+                                    suggestions = uiState.searchSuggestions,
+                                    onMovieClick = onMovieClick,
+                                )
+                            }
+                            else -> {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(Surface)
+                                        .padding(16.dp),
+                                ) {
+                                    Text("Sonuç bulunamadı", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
                     }
                 }
                 else -> {

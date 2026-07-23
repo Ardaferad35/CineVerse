@@ -4,10 +4,13 @@ import com.arda.cineverse.data.model.CastMember
 import com.arda.cineverse.data.model.FeaturedMovie
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.MovieDetail
+import com.arda.cineverse.data.model.SearchSuggestion
+import com.arda.cineverse.data.model.SuggestionType
 import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.remote.dto.CreditsResponseDto
 import com.arda.cineverse.data.remote.dto.MovieDetailDto
 import com.arda.cineverse.data.remote.dto.MovieDto
+import com.arda.cineverse.data.remote.dto.MultiSearchResultDto
 import com.arda.cineverse.data.remote.dto.VideosResponseDto
 import kotlin.math.round
 
@@ -93,6 +96,29 @@ fun MovieDetailDto.toFeaturedMovie(): FeaturedMovie {
  * Film detayı + oyuncu kadrosu + fragmanlar + benzer filmler verisini
  * tek bir ekran modelinde birleştirir.
  */
+fun MultiSearchResultDto.toSearchSuggestion(): SearchSuggestion? {
+    val type = when (media_type) {
+        "movie" -> SuggestionType.MOVIE
+        "tv" -> SuggestionType.TV
+        "person" -> SuggestionType.PERSON
+        else -> return null
+    }
+    val displayTitle = title ?: name ?: return null
+    val subtitle = when (type) {
+        SuggestionType.MOVIE -> release_date?.take(4)?.takeIf { it.isNotBlank() } ?: "Film"
+        SuggestionType.TV -> "Dizi" + (first_air_date?.take(4)?.takeIf { it.isNotBlank() }?.let { " • $it" } ?: "")
+        SuggestionType.PERSON -> "Oyuncu"
+    }
+    val imagePath = poster_path ?: profile_path
+    return SearchSuggestion(
+        id = id,
+        type = type,
+        title = displayTitle,
+        subtitle = subtitle,
+        imageUrl = TmdbNetworkModule.posterUrl(imagePath, size = "w185"),
+    )
+}
+
 fun buildMovieDetail(
     detail: MovieDetailDto,
     credits: CreditsResponseDto,

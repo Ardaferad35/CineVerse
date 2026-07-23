@@ -3,6 +3,7 @@ package com.arda.cineverse.data.remote
 import com.arda.cineverse.data.remote.dto.CreditsResponseDto
 import com.arda.cineverse.data.remote.dto.MovieDetailDto
 import com.arda.cineverse.data.remote.dto.MoviesResponseDto
+import com.arda.cineverse.data.remote.dto.MultiSearchResponseDto
 import com.arda.cineverse.data.remote.dto.VideosResponseDto
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -53,6 +54,13 @@ interface TmdbApiService {
         @Query("language") language: String = "tr-TR",
         @Query("page") page: Int = 1,
     ): MoviesResponseDto
+
+    @GET("search/multi")
+    suspend fun searchMulti(
+        @Query("query") query: String,
+        @Query("language") language: String = "tr-TR",
+        @Query("page") page: Int = 1,
+    ): MultiSearchResponseDto
 
     @GET("discover/movie")
     suspend fun discoverMovies(

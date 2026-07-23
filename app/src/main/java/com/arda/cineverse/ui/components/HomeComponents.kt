@@ -17,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +35,8 @@ import coil.compose.AsyncImage
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
 import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.model.SearchSuggestion
+import com.arda.cineverse.data.model.SuggestionType
 import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.ui.theme.*
 
@@ -95,6 +98,7 @@ fun HomeSearchBar(
     onValueChange: (String) -> Unit,
     onAiClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onClear: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -119,6 +123,15 @@ fun HomeSearchBar(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        if (value.isNotEmpty() && onClear != null) {
+            Icon(
+                Icons.Filled.Close,
+                contentDescription = "Temizle",
+                tint = TextSecondary,
+                modifier = Modifier.size(18.dp).clickable { onClear() },
+            )
+            Spacer(Modifier.width(8.dp))
         }
         Row(
             modifier = Modifier
@@ -487,6 +500,77 @@ fun CVBottomNavBar(
                     Spacer(Modifier.width(6.dp))
                     Text(item.label, color = Primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchSuggestionsList(
+    suggestions: List<SearchSuggestion>,
+    onMovieClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Surface),
+    ) {
+        suggestions.forEachIndexed { index, suggestion ->
+            val clickable = suggestion.type == SuggestionType.MOVIE
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (clickable) Modifier.clickable { onMovieClick(suggestion.id) } else Modifier)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val isPerson = suggestion.type == SuggestionType.PERSON
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(if (isPerson) CircleShape else RoundedCornerShape(8.dp))
+                        .background(SurfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (suggestion.imageUrl != null) {
+                        AsyncImage(
+                            model = suggestion.imageUrl,
+                            contentDescription = suggestion.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(if (isPerson) CircleShape else RoundedCornerShape(8.dp)),
+                        )
+                    } else {
+                        Icon(
+                            when (suggestion.type) {
+                                SuggestionType.MOVIE -> Icons.Filled.Movie
+                                SuggestionType.TV -> Icons.Filled.Tv
+                                SuggestionType.PERSON -> Icons.Filled.Person
+                            },
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        suggestion.title,
+                        color = if (clickable) OnSurface else TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                    )
+                    Text(suggestion.subtitle, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                }
+                if (!clickable) {
+                    Text("Yakında", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            if (index != suggestions.lastIndex) {
+                HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
             }
         }
     }

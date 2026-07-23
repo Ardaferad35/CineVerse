@@ -12,8 +12,11 @@ import com.arda.cineverse.ui.screens.ForgotPasswordScreen
 import com.arda.cineverse.ui.screens.HomeScreen
 import com.arda.cineverse.ui.screens.LoginScreen
 import com.arda.cineverse.ui.screens.MovieDetailScreen
+import com.arda.cineverse.ui.screens.MovieListScreen
+import com.arda.cineverse.ui.screens.MovieListSection
 import com.arda.cineverse.ui.screens.MyListScreen
 import com.arda.cineverse.ui.screens.RegisterScreen
+import com.arda.cineverse.ui.screens.SearchScreen
 import com.google.firebase.auth.FirebaseAuth
 
 object CVRoutes {
@@ -22,9 +25,13 @@ object CVRoutes {
     const val FORGOT_PASSWORD = "forgot_password"
     const val HOME = "home"
     const val LISTEM = "my_list"
+    const val SEARCH = "search/{aiMode}"
     const val MOVIE_DETAIL = "movie_detail/{movieId}"
+    const val MOVIE_LIST = "movie_list/{section}"
 
     fun movieDetail(movieId: Int) = "movie_detail/$movieId"
+    fun search(aiMode: Boolean) = "search/$aiMode"
+    fun movieList(section: String) = "movie_list/$section"
 }
 
 @Composable
@@ -70,13 +77,18 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
         composable(CVRoutes.HOME) {
             HomeScreen(
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
-                onSeeAllClick = { /* ilgili liste ekranına yönlendirilecek */ },
-                onAiSearchClick = { /* AI arama ekranına yönlendirilecek */ },
-                onNavigateTab = { index ->
-                    if (index == 2) {
-                        navController.navigate(CVRoutes.LISTEM) { launchSingleTop = true }
+                onSeeAllClick = { section ->
+                    if (section == "popular" || section == "upcoming") {
+                        navController.navigate(CVRoutes.movieList(section))
                     }
-                    // 1 (Arama) ve 3 (Profil) ekranları henüz hazır değil
+                    // "categories" için henüz ayrı bir ekran yok
+                },
+                onAiSearchClick = { navController.navigate(CVRoutes.search(aiMode = true)) },
+                onNavigateTab = { index ->
+                    when (index) {
+                        1 -> navController.navigate(CVRoutes.search(aiMode = false))
+                        2 -> navController.navigate(CVRoutes.LISTEM) { launchSingleTop = true }
+                    }
                 },
             )
         }
@@ -85,11 +97,39 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
                 onStartExploring = { navController.popBackStack(CVRoutes.HOME, inclusive = false) },
                 onNavigateTab = { index ->
+                    when (index) {
+                        0 -> navController.popBackStack(CVRoutes.HOME, inclusive = false)
+                        1 -> navController.navigate(CVRoutes.search(aiMode = false))
+                    }
+                },
+            )
+        }
+        composable(
+            route = CVRoutes.SEARCH,
+            arguments = listOf(navArgument("aiMode") { type = NavType.BoolType }),
+        ) { backStackEntry ->
+            val aiMode = backStackEntry.arguments?.getBoolean("aiMode") ?: false
+            SearchScreen(
+                startInAiMode = aiMode,
+                onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+                onNavigateTab = { index ->
                     if (index == 0) {
                         navController.popBackStack(CVRoutes.HOME, inclusive = false)
+                    } else if (index == 2) {
+                        navController.navigate(CVRoutes.LISTEM) { launchSingleTop = true }
                     }
-                    // 1 (Arama) ve 3 (Profil) ekranları henüz hazır değil
                 },
+            )
+        }
+        composable(
+            route = CVRoutes.MOVIE_LIST,
+            arguments = listOf(navArgument("section") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val section = backStackEntry.arguments?.getString("section") ?: "popular"
+            MovieListScreen(
+                section = if (section == "upcoming") MovieListSection.UPCOMING else MovieListSection.POPULAR,
+                onBack = { navController.popBackStack() },
+                onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
             )
         }
         composable(
