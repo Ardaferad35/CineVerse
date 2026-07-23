@@ -1,0 +1,4 @@
+- [x] Firestore bağımlılığını `libs.versions.toml` dosyasına ekle
+- [x] `app/build.gradle.kts` dosyasını `libs.versions.toml` kullanacak şekilde güncelle
+- [x] Gradle senkronizasyonunu çalıştır
+- [x] `AuthViewModel.kt` dosyasındaki hataların giderildiğini doğrula

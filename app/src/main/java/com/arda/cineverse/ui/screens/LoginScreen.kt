@@ -25,11 +25,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arda.cineverse.R
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
-import com.arda.cineverse.ui.theme.CineVerseLoginBackground
-import com.arda.cineverse.ui.theme.CineVerseAuthBackground
+import com.arda.cineverse.viewmodel.AuthState
+import com.arda.cineverse.viewmodel.AuthViewModel
 
 private fun isValidEmail(email: String) = android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
 
@@ -39,6 +40,7 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit = {},
     onNavigateToForgotPassword: () -> Unit = {},
     onLoginSuccess: (email: String) -> Unit = {},
+    authViewModel: AuthViewModel = viewModel(),
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -47,6 +49,17 @@ fun LoginScreen(
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
 
+    val authState by authViewModel.authState.collectAsState()
+    val isLoading = authState is AuthState.Loading
+
+    LaunchedEffect(authState) {
+        val state = authState
+        if (state is AuthState.Success) {
+            onLoginSuccess(state.email)
+            authViewModel.resetState()
+        }
+    }
+
     fun validateAndSubmit() {
         emailError = when {
             email.isBlank() -> "E-posta gerekli"
@@ -54,7 +67,9 @@ fun LoginScreen(
             else -> null
         }
         passwordError = if (password.isBlank()) "Şifre gerekli" else null
-        if (emailError == null && passwordError == null) onLoginSuccess(email)
+        if (emailError == null && passwordError == null) {
+            authViewModel.login(email, password)
+        }
     }
 
     CineVerseAuthBackground {
@@ -143,8 +158,21 @@ fun LoginScreen(
                 CVTextButton("Forgot Password?", onClick = onNavigateToForgotPassword)
             }
 
+            if (authState is AuthState.Error) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    (authState as AuthState.Error).message,
+                    color = ErrorColor,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
             Spacer(Modifier.height(16.dp))
-            CVGradientButton("Sign In", onClick = ::validateAndSubmit)
+            CVGradientButton(
+                text = if (isLoading) "Signing in..." else "Sign In",
+                onClick = ::validateAndSubmit,
+                enabled = !isLoading,
+            )
 
             Spacer(Modifier.height(24.dp))
             CVDividerWithLabel("or continue with")

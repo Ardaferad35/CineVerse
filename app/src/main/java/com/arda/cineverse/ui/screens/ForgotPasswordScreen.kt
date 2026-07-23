@@ -17,8 +17,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
+import com.arda.cineverse.viewmodel.AuthViewModel
 
 private fun isValidEmail(email: String) = android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
 
@@ -26,9 +28,12 @@ private fun isValidEmail(email: String) = android.util.Patterns.EMAIL_ADDRESS.ma
 fun ForgotPasswordScreen(
     onBack: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
+    authViewModel: AuthViewModel = viewModel(),
 ) {
     var email by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf<String?>(null) }
+    var sendError by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
     var linkSent by remember { mutableStateOf(false) }
 
     fun submit() {
@@ -37,7 +42,18 @@ fun ForgotPasswordScreen(
             !isValidEmail(email) -> "Geçerli bir e-posta girin"
             else -> null
         }
-        if (emailError == null) linkSent = true
+        if (emailError != null) return
+
+        sendError = null
+        isLoading = true
+        authViewModel.sendPasswordResetEmail(email) { success, error ->
+            isLoading = false
+            if (success) {
+                linkSent = true
+            } else {
+                sendError = error ?: "Bir hata oluştu, tekrar deneyin"
+            }
+        }
     }
 
     CineVerseAuthBackground {
@@ -63,15 +79,23 @@ fun ForgotPasswordScreen(
                 Spacer(Modifier.height(28.dp))
                 CVTextField(
                     value = email,
-                    onValueChange = { email = it; emailError = null },
+                    onValueChange = { email = it; emailError = null; sendError = null },
                     placeholder = "Email address",
                     leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
                     isError = emailError != null,
                     errorText = emailError,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 )
+                if (sendError != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(sendError!!, color = ErrorColor, style = MaterialTheme.typography.bodySmall)
+                }
                 Spacer(Modifier.height(20.dp))
-                CVGradientButton("Send Reset Link", onClick = ::submit)
+                CVGradientButton(
+                    text = if (isLoading) "Sending..." else "Send Reset Link",
+                    onClick = ::submit,
+                    enabled = !isLoading,
+                )
                 Spacer(Modifier.height(20.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -107,7 +131,10 @@ fun ForgotPasswordScreen(
                     Spacer(Modifier.height(28.dp))
                     CVGradientButton("Back to Sign In", onClick = onNavigateToLogin)
                     Spacer(Modifier.height(16.dp))
-                    CVTextButton("Didn't get the email? Resend", onClick = { linkSent = true })
+                    CVTextButton(
+                        text = if (isLoading) "Resending..." else "Didn't get the email? Resend",
+                        onClick = ::submit,
+                    )
                 }
             }
         }

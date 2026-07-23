@@ -1,0 +1,68 @@
+package com.arda.cineverse.data.remote.dto
+
+data class MoviesResponseDto(
+    val page: Int,
+    val results: List<MovieDto>,
+    val total_pages: Int,
+    val total_results: Int,
+)
+
+data class MovieDto(
+    val id: Int,
+    val title: String,
+    val overview: String,
+    val poster_path: String?,
+    val backdrop_path: String?,
+    val release_date: String?,
+    val vote_average: Double,
+    val genre_ids: List<Int> = emptyList(),
+)
+
+data class MovieDetailDto(
+    val id: Int,
+    val title: String,
+    val overview: String,
+    val poster_path: String?,
+    val backdrop_path: String?,
+    val release_date: String?,
+    val vote_average: Double,
+    val runtime: Int?,
+    val genres: List<GenreDto> = emptyList(),
+)
+
+data class GenreDto(
+    val id: Int,
+    val name: String,
+)
+
+data class CreditsResponseDto(
+    val cast: List<CastMemberDto>,
+    val crew: List<CrewMemberDto> = emptyList(),
+)
+
+data class CastMemberDto(
+    val id: Int,
+    val name: String,
+    val character: String,
+    val profile_path: String?,
+)
+
+data class CrewMemberDto(
+    val id: Int,
+    val name: String,
+    val job: String,
+    val department: String,
+)
+
+data class VideosResponseDto(
+    val results: List<VideoDto>,
+)
+
+data class VideoDto(
+    val id: String,
+    val key: String,
+    val site: String,
+    val type: String,
+    val official: Boolean = false,
+    val name: String = "",
+)

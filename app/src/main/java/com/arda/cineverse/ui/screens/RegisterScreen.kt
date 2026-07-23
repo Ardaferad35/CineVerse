@@ -16,8 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
+import com.arda.cineverse.viewmodel.AuthState
+import com.arda.cineverse.viewmodel.AuthViewModel
 
 private fun isValidEmail(email: String) = android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
 private fun hasNumberOrSymbol(s: String) = s.any { it.isDigit() || !it.isLetterOrDigit() }
@@ -28,6 +31,7 @@ fun RegisterScreen(
     onBack: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
     onRegisterSuccess: (email: String) -> Unit = {},
+    authViewModel: AuthViewModel = viewModel(),
 ) {
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -46,6 +50,17 @@ fun RegisterScreen(
     val caseOk = hasUpperAndLower(password)
     val passwordStrongEnough = lengthOk && numberOrSymbolOk && caseOk
 
+    val authState by authViewModel.authState.collectAsState()
+    val isLoading = authState is AuthState.Loading
+
+    LaunchedEffect(authState) {
+        val state = authState
+        if (state is AuthState.Success) {
+            onRegisterSuccess(state.email)
+            authViewModel.resetState()
+        }
+    }
+
     fun validateAndSubmit() {
         nameError = if (fullName.isBlank()) "İsim gerekli" else null
         emailError = when {
@@ -56,7 +71,7 @@ fun RegisterScreen(
         confirmError = if (confirmPassword != password) "Şifreler eşleşmiyor" else null
 
         if (nameError == null && emailError == null && confirmError == null && passwordStrongEnough && agreedToTerms) {
-            onRegisterSuccess(email)
+            authViewModel.register(fullName, email, password)
         }
     }
 
@@ -141,8 +156,21 @@ fun RegisterScreen(
                 Text("I agree to the Terms & Conditions", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             }
 
+            if (authState is AuthState.Error) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    (authState as AuthState.Error).message,
+                    color = ErrorColor,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
             Spacer(Modifier.height(16.dp))
-            CVGradientButton("Sign Up", onClick = ::validateAndSubmit, enabled = agreedToTerms)
+            CVGradientButton(
+                text = if (isLoading) "Creating account..." else "Sign Up",
+                onClick = ::validateAndSubmit,
+                enabled = agreedToTerms && !isLoading,
+            )
 
             Spacer(Modifier.height(24.dp))
             CVDividerWithLabel("or continue with")
