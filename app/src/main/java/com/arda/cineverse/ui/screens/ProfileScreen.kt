@@ -14,19 +14,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -54,7 +49,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.arda.cineverse.ui.theme.Accent
+import com.arda.cineverse.ui.components.avatarPresetById
+import com.arda.cineverse.ui.components.avatarPresets
 import com.arda.cineverse.ui.theme.Background
 import com.arda.cineverse.ui.theme.DividerColor
 import com.arda.cineverse.ui.theme.ErrorColor
@@ -65,19 +61,6 @@ import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.SurfaceVariant
 import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.ProfileViewModel
-
-private data class AvatarPreset(val id: String, val icon: ImageVector, val color: Color)
-
-private val avatarPresets = listOf(
-    AvatarPreset("default", Icons.Filled.Person, Primary),
-    AvatarPreset("robot", Icons.Filled.SmartToy, Accent),
-    AvatarPreset("star", Icons.Filled.Star, Color(0xFFFFC857)),
-    AvatarPreset("movie", Icons.Filled.Theaters, Color(0xFFE0679A)),
-    AvatarPreset("party", Icons.Filled.Celebration, ErrorColor),
-    AvatarPreset("night", Icons.Filled.DarkMode, Color(0xFF5B9BD5)),
-)
-
-private fun avatarPresetById(id: String) = avatarPresets.firstOrNull { it.id == id } ?: avatarPresets.first()
 
 @Composable
 fun ProfileScreen(

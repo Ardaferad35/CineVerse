@@ -21,12 +21,24 @@ class CommentRepository(
     fun currentUserId(): String? = auth.currentUser?.uid
 
     suspend fun getComments(movieId: Int): Result<List<Comment>> = runCatching {
-        commentsCollection(movieId)
+        val comments = commentsCollection(movieId)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .get()
             .await()
             .documents
             .mapNotNull { doc -> doc.toObject(Comment::class.java)?.copy(id = doc.id) }
+
+        // Her yorum sahibinin O ANKİ güncel avatarını canlı olarak çekiyoruz
+        // (yorumun içine gömmüyoruz) — böylece kullanıcı avatarını
+        // değiştirdiğinde geçmiş yorumlarında da otomatik yansır. Aynı
+        // kullanıcının birden fazla yorumu varsa tek bir okuma yeterli.
+        val avatarByUserId = comments.map { it.userId }.distinct().associateWith { userId ->
+            runCatching {
+                firestore.collection("users").document(userId).get().await().getString("avatarId")
+            }.getOrNull() ?: "default"
+        }
+
+        comments.map { comment -> comment.copy(avatarId = avatarByUserId[comment.userId] ?: "default") }
     }
 
     suspend fun addComment(

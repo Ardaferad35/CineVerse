@@ -131,11 +131,12 @@ fun CommentItem(
 ) {
     var spoilerRevealed by remember { mutableStateOf(false) }
     Row(modifier = modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.Top) {
+        val preset = avatarPresetById(comment.avatarId)
         Box(
-            modifier = Modifier.size(36.dp).clip(CircleShape).background(SurfaceVariant),
+            modifier = Modifier.size(36.dp).clip(CircleShape).background(preset.color.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+            Icon(preset.icon, contentDescription = null, tint = preset.color, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {

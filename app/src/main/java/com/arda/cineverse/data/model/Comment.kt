@@ -15,4 +15,9 @@ data class Comment(
     val isSpoiler: Boolean = false,
     val createdAt: Long = 0L,
     val editedAt: Long? = null,
+    // Firestore'da SAKLANMIYOR — CommentRepository.getComments() tarafından,
+    // yorum sahibinin O ANKİ güncel avatarına bakılarak gösterim anında
+    // dolduruluyor. Böylece kullanıcı avatarını değiştirdiğinde geçmiş
+    // yorumlarındaki avatar da otomatik güncellenmiş olur.
+    val avatarId: String = "default",
 )
