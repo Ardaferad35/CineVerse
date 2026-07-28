@@ -47,6 +47,7 @@ import com.arda.cineverse.ui.theme.Primary
 import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.HomeViewModel
+import com.arda.cineverse.viewmodel.NotificationViewModel
 
 @Composable
 fun HomeScreen(
@@ -56,12 +57,15 @@ fun HomeScreen(
     onNavigateTab: (Int) -> Unit = {},
     onCategoryClick: (Category) -> Unit = {},
     onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     homeViewModel: HomeViewModel = viewModel(),
+    notificationViewModel: NotificationViewModel = viewModel(),
 ) {
     var selectedCategoryId by remember { mutableStateOf(mockCategories.first().id) }
 
     val uiState by homeViewModel.uiState.collectAsState()
+    val unreadCount by notificationViewModel.unreadCount.collectAsState()
 
     Box(
         modifier = modifier
@@ -74,7 +78,11 @@ fun HomeScreen(
                 .statusBarsPadding(),
         ) {
             Spacer(Modifier.height(12.dp))
-            HomeTopBar(onProfileClick = onProfileClick)
+            HomeTopBar(
+                onProfileClick = onProfileClick,
+                onNotificationsClick = onNotificationsClick,
+                unreadNotificationCount = unreadCount,
+            )
             Spacer(Modifier.height(12.dp))
             HomeSearchBar(
                 value = uiState.searchQuery,

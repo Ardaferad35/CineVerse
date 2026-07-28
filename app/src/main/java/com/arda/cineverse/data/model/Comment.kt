@@ -20,4 +20,7 @@ data class Comment(
     // dolduruluyor. Böylece kullanıcı avatarını değiştirdiğinde geçmiş
     // yorumlarındaki avatar da otomatik güncellenmiş olur.
     val avatarId: String = "default",
+    // Bu yorum başka bir yoruma yanıtsa, o yorumun ID'sini taşır. Ana
+    // yorumlarda null'dır.
+    val replyToCommentId: String? = null,
 )

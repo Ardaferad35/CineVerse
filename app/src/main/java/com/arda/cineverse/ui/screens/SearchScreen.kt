@@ -40,6 +40,7 @@ fun SearchScreen(
     onMovieClick: (movieId: Int) -> Unit = {},
     onNavigateTab: (Int) -> Unit = {},
     onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
     viewModel: SearchViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -51,7 +52,7 @@ fun SearchScreen(
     Box(modifier = modifier.fillMaxSize().background(Background)) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             Spacer(Modifier.height(12.dp))
-            HomeTopBar(onProfileClick = onProfileClick)
+            HomeTopBar(onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick)
             Spacer(Modifier.height(16.dp))
 
             SearchModeBar(
@@ -60,16 +61,12 @@ fun SearchScreen(
                 mode = uiState.mode,
                 isLoading = uiState.isLoading,
                 onToggleMode = {
-                    viewModel.setMode(
-                        if (uiState.mode == SearchMode.AI)
-                            SearchMode.NORMAL
-                        else
-                            SearchMode.AI
-                    )
+                    viewModel.setMode(if (uiState.mode == SearchMode.AI) SearchMode.NORMAL else SearchMode.AI)
                 },
                 onSearch = { viewModel.search() },
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
+
             Spacer(Modifier.height(20.dp))
 
             when {

@@ -16,6 +16,7 @@ import com.arda.cineverse.ui.screens.MovieDetailScreen
 import com.arda.cineverse.ui.screens.MovieListScreen
 import com.arda.cineverse.ui.screens.MovieListSource
 import com.arda.cineverse.ui.screens.MyListScreen
+import com.arda.cineverse.ui.screens.NotificationsScreen
 import com.arda.cineverse.ui.screens.ProfileScreen
 import com.arda.cineverse.ui.screens.RegisterScreen
 import com.arda.cineverse.ui.screens.SearchScreen
@@ -31,6 +32,7 @@ object CVRoutes {
     const val LISTEM = "my_list"
     const val SEARCH = "search/{aiMode}"
     const val PROFILE = "profile"
+    const val NOTIFICATIONS = "notifications"
     const val MOVIE_DETAIL = "movie_detail/{movieId}"
     const val MOVIE_LIST = "movie_list/{section}"
     const val MOVIE_LIST_GENRE = "movie_list_genre/{genreId}/{label}"
@@ -103,6 +105,7 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                     navController.navigate(CVRoutes.movieListGenre(category.genreId, category.label))
                 },
                 onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
+                onNotificationsClick = { navController.navigate(CVRoutes.NOTIFICATIONS) },
             )
         }
         composable(CVRoutes.LISTEM) {
@@ -116,6 +119,7 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                     }
                 },
                 onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
+                onNotificationsClick = { navController.navigate(CVRoutes.NOTIFICATIONS) },
             )
         }
         composable(
@@ -134,6 +138,7 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                     }
                 },
                 onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
+                onNotificationsClick = { navController.navigate(CVRoutes.NOTIFICATIONS) },
             )
         }
         composable(CVRoutes.PROFILE) {
@@ -143,6 +148,14 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                     navController.navigate(CVRoutes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+            )
+        }
+        composable(CVRoutes.NOTIFICATIONS) {
+            NotificationsScreen(
+                onBack = { navController.popBackStack() },
+                onNotificationClick = { notification ->
+                    notification.movieId?.let { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) }
                 },
             )
         }

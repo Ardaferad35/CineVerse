@@ -41,6 +41,53 @@ class CommentRepository(
         comments.map { comment -> comment.copy(avatarId = avatarByUserId[comment.userId] ?: "default") }
     }
 
+    /**
+     * Bir yoruma yanıt yazar. Asıl yorumlardan farklı olarak film puanını
+     * ETKİLEMEZ (movie_ratings'e dahil edilmez, kullanıcının kendi puan
+     * istatistiğini de değiştirmez) — sadece bir sohbet cevabıdır.
+     * Yanıt, o yorumun sahibine (kendi yorumunuza yanıt vermiyorsanız)
+     * bir bildirim gönderir.
+     */
+    suspend fun addReply(
+        movieId: Int,
+        parentCommentId: String,
+        parentCommentUserId: String,
+        text: String,
+        movieTitle: String,
+    ): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: error("Yanıt yazmak için giriş yapmalısınız")
+
+        val userDoc = firestore.collection("users").document(user.uid).get().await()
+        val displayName = userDoc.getString("fullName")
+            ?: user.email?.substringBefore("@")
+            ?: "Kullanıcı"
+
+        val reply = hashMapOf(
+            "movieId" to movieId,
+            "userId" to user.uid,
+            "userName" to displayName,
+            "text" to text,
+            "rating" to 0,
+            "isSpoiler" to false,
+            "createdAt" to System.currentTimeMillis(),
+            "editedAt" to null,
+            "replyToCommentId" to parentCommentId,
+        )
+        commentsCollection(movieId).add(reply).await()
+
+        // Kendi yorumunuza yanıt veriyorsanız kendinize bildirim gitmesin
+        if (parentCommentUserId != user.uid) {
+            val notificationRepository = NotificationRepository(firestore, auth)
+            notificationRepository.createNotification(
+                targetUserId = parentCommentUserId,
+                type = "comment_reply",
+                title = "$displayName yorumunuza yanıt verdi",
+                body = "\"$movieTitle\" filmindeki yorumunuza: ${text.take(80)}",
+                movieId = movieId,
+            )
+        }
+    }
+
     suspend fun addComment(
         movieId: Int,
         text: String,
@@ -115,10 +162,14 @@ class CommentRepository(
         val existing = docRef.get().await()
         val oldRating = existing.getLong("rating")?.toInt()
         val userId = existing.getString("userId")
+        val isReply = existing.getString("replyToCommentId") != null
 
         docRef.delete().await()
 
-        if (userId != null && oldRating != null) {
+        // Yanıtların hiçbir zaman kullanıcı puan istatistiğine dahil edilmediği
+        // için (addReply bunu güncellemiyor), silinirken de dokunmuyoruz —
+        // aksi halde sayaç gerçek dışı şekilde eksiye düşerdi.
+        if (!isReply && userId != null && oldRating != null) {
             adjustUserRatingStats(userId, sumDelta = -oldRating, countDelta = -1)
         }
         recalculateAggregate(movieId, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
@@ -156,6 +207,7 @@ class CommentRepository(
     ) {
         val comments = commentsCollection(movieId).get().await()
             .documents.mapNotNull { it.toObject(Comment::class.java) }
+            .filter { it.replyToCommentId == null } // yanıtlar film puanını etkilemez
 
         val ratingDoc = ratingsCollection().document(movieId.toString())
         if (comments.isEmpty()) {

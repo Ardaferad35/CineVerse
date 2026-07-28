@@ -38,8 +38,11 @@ class CommentViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             repository.getComments(movieId).fold(
                 onSuccess = { comments ->
-                    val counts = (1..5).associateWith { star -> comments.count { it.rating == star } }
-                    val average = if (comments.isNotEmpty()) comments.map { it.rating }.average() else 0.0
+                    // Puan istatistikleri sadece ASIL yorumlardan hesaplanır —
+                    // yanıtların kendi puanı olmadığı için (0) ortalamayı bozmasın.
+                    val topLevelComments = comments.filter { it.replyToCommentId == null }
+                    val counts = (1..5).associateWith { star -> topLevelComments.count { it.rating == star } }
+                    val average = if (topLevelComments.isNotEmpty()) topLevelComments.map { it.rating }.average() else 0.0
                     _uiState.value = CommentUiState(
                         isLoading = false,
                         comments = comments,
@@ -51,6 +54,13 @@ class CommentViewModel(
                     _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "Yorumlar yüklenemedi")
                 },
             )
+        }
+    }
+
+    fun submitReply(parentCommentId: String, parentCommentUserId: String, text: String, movieTitle: String) {
+        viewModelScope.launch {
+            repository.addReply(movieId, parentCommentId, parentCommentUserId, text, movieTitle)
+            loadComments()
         }
     }
 

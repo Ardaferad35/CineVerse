@@ -46,6 +46,8 @@ private val StarColor = Color(0xFFFFC857)
 fun HomeTopBar(
     onMenuClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
+    unreadNotificationCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -71,23 +73,54 @@ fun HomeTopBar(
             )
         }
 
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(SurfaceVariant)
-                .clickable { onProfileClick() },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Filled.Person, contentDescription = "Profil", tint = TextSecondary, modifier = Modifier.size(20.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(10.dp)
+                    .size(38.dp)
                     .clip(CircleShape)
-                    .background(Accent)
-                    .border(2.dp, Background, CircleShape),
-            )
+                    .background(SurfaceVariant)
+                    .clickable { onNotificationsClick() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Notifications, contentDescription = "Bildirimler", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                if (unreadNotificationCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(ErrorColor)
+                            .border(2.dp, Background, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            if (unreadNotificationCount > 9) "9+" else "$unreadNotificationCount",
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceVariant)
+                    .clickable { onProfileClick() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Person, contentDescription = "Profil", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(Accent)
+                        .border(2.dp, Background, CircleShape),
+                )
+            }
         }
     }
 }

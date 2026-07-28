@@ -101,4 +101,5 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     // youtube api
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.2")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
 }

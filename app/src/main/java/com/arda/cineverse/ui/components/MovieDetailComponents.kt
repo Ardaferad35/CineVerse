@@ -107,7 +107,7 @@ fun RatingDistributionBar(star: Int, count: Int, total: Int, modifier: Modifier 
     }
 }
 
-private fun timeAgo(millis: Long): String {
+fun timeAgo(millis: Long): String {
     val diff = System.currentTimeMillis() - millis
     val minutes = diff / 60000
     val hours = diff / 3600000
@@ -128,15 +128,18 @@ fun CommentItem(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isReply: Boolean = false,
+    onReplyClick: (() -> Unit)? = null,
 ) {
     var spoilerRevealed by remember { mutableStateOf(false) }
     Row(modifier = modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.Top) {
         val preset = avatarPresetById(comment.avatarId)
+        val avatarSize = if (isReply) 28.dp else 36.dp
         Box(
-            modifier = Modifier.size(36.dp).clip(CircleShape).background(preset.color.copy(alpha = 0.18f)),
+            modifier = Modifier.size(avatarSize).clip(CircleShape).background(preset.color.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(preset.icon, contentDescription = null, tint = preset.color, modifier = Modifier.size(18.dp))
+            Icon(preset.icon, contentDescription = null, tint = preset.color, modifier = Modifier.size(if (isReply) 14.dp else 18.dp))
         }
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -149,15 +152,17 @@ fun CommentItem(
                     Text("(düzenlendi)", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
                 }
             }
-            Spacer(Modifier.height(2.dp))
-            Row {
-                repeat(5) { i ->
-                    Icon(
-                        if (i < comment.rating) Icons.Filled.Star else Icons.Filled.StarBorder,
-                        contentDescription = null,
-                        tint = StarColor,
-                        modifier = Modifier.size(14.dp),
-                    )
+            if (!isReply) {
+                Spacer(Modifier.height(2.dp))
+                Row {
+                    repeat(5) { i ->
+                        Icon(
+                            if (i < comment.rating) Icons.Filled.Star else Icons.Filled.StarBorder,
+                            contentDescription = null,
+                            tint = StarColor,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(6.dp))
@@ -184,24 +189,38 @@ fun CommentItem(
             } else {
                 Text(comment.text, color = OnSurface, style = MaterialTheme.typography.bodyMedium)
             }
-            if (isOwner) {
+            if (isOwner || onReplyClick != null) {
                 Spacer(Modifier.height(6.dp))
                 Row {
-                    Text(
-                        "Düzenle",
-                        color = Primary,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable { onEditClick() },
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Text(
-                        "Sil",
-                        color = ErrorColor,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable { onDeleteClick() },
-                    )
+                    if (isOwner) {
+                        if (!isReply) {
+                            Text(
+                                "Düzenle",
+                                color = Primary,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.clickable { onEditClick() },
+                            )
+                            Spacer(Modifier.width(16.dp))
+                        }
+                        Text(
+                            "Sil",
+                            color = ErrorColor,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable { onDeleteClick() },
+                        )
+                        if (onReplyClick != null) Spacer(Modifier.width(16.dp))
+                    }
+                    if (onReplyClick != null) {
+                        Text(
+                            "Yanıtla",
+                            color = TextSecondary,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable { onReplyClick() },
+                        )
+                    }
                 }
             }
         }
@@ -304,6 +323,72 @@ fun CommentInputBox(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
                 Text(submitLabel, color = OnPrimary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/**
+ * Yorumlara yanıt yazmak için basitleştirilmiş kutu — yıldız puanı ve
+ * spoiler seçeneği yok, sadece metin. Yanıtlar film puanını etkilemez.
+ */
+@Composable
+fun ReplyInputBox(
+    onSubmit: (text: String) -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var text by remember { mutableStateOf("") }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Surface)
+            .padding(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 44.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Background)
+                .padding(10.dp),
+        ) {
+            if (text.isEmpty()) {
+                Text("Yanıt yaz...", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
+            BasicTextField(
+                value = text,
+                onValueChange = { text = it },
+                textStyle = MaterialTheme.typography.bodySmall.copy(color = OnSurface),
+                cursorBrush = SolidColor(Primary),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Spacer(Modifier.weight(1f))
+            Text(
+                "Vazgeç",
+                color = TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.clickable { onCancel() }.padding(end = 14.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        brush = if (text.isNotBlank()) {
+                            Brush.horizontalGradient(PrimaryGradient)
+                        } else {
+                            Brush.horizontalGradient(listOf(SurfaceVariant, SurfaceVariant))
+                        },
+                    )
+                    .clickable(enabled = text.isNotBlank()) { onSubmit(text.trim()) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text("Yanıtla", color = OnPrimary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
             }
         }
     }

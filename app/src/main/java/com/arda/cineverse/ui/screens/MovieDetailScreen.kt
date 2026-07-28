@@ -2,13 +2,17 @@ package com.arda.cineverse.ui.screens
 
 import android.content.Intent
 import android.util.Log
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -36,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.arda.cineverse.data.model.Comment
@@ -66,7 +71,9 @@ import com.arda.cineverse.viewmodel.CommentViewModelFactory
 import com.arda.cineverse.viewmodel.MovieDetailViewModel
 import com.arda.cineverse.viewmodel.MovieDetailViewModelFactory
 import kotlinx.coroutines.launch
+
 private val StarColorDetail = Color(0xFFFFC857)
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MovieDetailScreen(
@@ -84,6 +91,7 @@ fun MovieDetailScreen(
 
     var editingComment by remember { mutableStateOf<Comment?>(null) }
     var commentPendingDelete by remember { mutableStateOf<Comment?>(null) }
+    var replyingToComment by remember { mutableStateOf<Comment?>(null) }
     var showTrailerPlayer by remember { mutableStateOf(false) }
     val commentBoxRequester = remember { BringIntoViewRequester() }
 
@@ -184,9 +192,7 @@ fun MovieDetailScreen(
                                             .size(64.dp)
                                             .clip(CircleShape)
                                             .background(Color.Black.copy(alpha = 0.5f))
-                                            .clickable {
-                                                showTrailerPlayer = true
-                                            },
+                                            .clickable { playTrailer(movie.trailerKey) },
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Icon(Icons.Filled.PlayArrow, contentDescription = "Fragmanı oynat", tint = Color.White, modifier = Modifier.size(32.dp))
@@ -223,7 +229,7 @@ fun MovieDetailScreen(
                             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                                 CVGradientButton(
                                     text = "Fragmanı İzle",
-                                    onClick = { showTrailerPlayer = true },
+                                    onClick = { playTrailer(movie.trailerKey) },
                                     enabled = movie.trailerKey != null,
                                 )
                                 Spacer(Modifier.height(10.dp))
@@ -324,7 +330,7 @@ fun MovieDetailScreen(
 
                         item {
                             Text(
-                                "Yorumlar (${commentState.comments.size})",
+                                "Yorumlar (${commentState.comments.count { it.replyToCommentId == null }})",
                                 color = OnSurface,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
@@ -332,29 +338,61 @@ fun MovieDetailScreen(
                             )
                         }
 
-                        items(commentState.comments, key = { it.id }) { comment ->
+                        val topLevelComments = commentState.comments.filter { it.replyToCommentId == null }
+                        val repliesByParent = commentState.comments
+                            .filter { it.replyToCommentId != null }
+                            .groupBy { it.replyToCommentId }
+
+                        items(topLevelComments, key = { it.id }) { comment ->
                             val isOwner = comment.userId == commentViewModel.currentUserId
-                            if (editingComment?.id == comment.id) {
-                                CommentInputBox(
-                                    initialText = comment.text,
-                                    initialRating = comment.rating,
-                                    initialSpoiler = comment.isSpoiler,
-                                    submitLabel = "Güncelle",
-                                    onSubmit = { text, rating, spoiler ->
-                                        commentViewModel.editComment(comment.id, text, rating, spoiler, movie.title, movie.posterUrl, movie.year, movie.genreIds)
-                                        editingComment = null
-                                    },
-                                    onCancel = { editingComment = null },
-                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                                )
-                            } else {
-                                CommentItem(
-                                    comment = comment,
-                                    isOwner = isOwner,
-                                    onEditClick = { editingComment = comment },
-                                    onDeleteClick = { commentPendingDelete = comment },
-                                    modifier = Modifier.padding(horizontal = 20.dp),
-                                )
+                            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                                if (editingComment?.id == comment.id) {
+                                    CommentInputBox(
+                                        initialText = comment.text,
+                                        initialRating = comment.rating,
+                                        initialSpoiler = comment.isSpoiler,
+                                        submitLabel = "Güncelle",
+                                        onSubmit = { text, rating, spoiler ->
+                                            commentViewModel.editComment(comment.id, text, rating, spoiler, movie.title, movie.posterUrl, movie.year, movie.genreIds)
+                                            editingComment = null
+                                        },
+                                        onCancel = { editingComment = null },
+                                    )
+                                } else {
+                                    CommentItem(
+                                        comment = comment,
+                                        isOwner = isOwner,
+                                        onEditClick = { editingComment = comment },
+                                        onDeleteClick = { commentPendingDelete = comment },
+                                        onReplyClick = { replyingToComment = comment },
+                                    )
+                                }
+
+                                val replies = repliesByParent[comment.id].orEmpty()
+                                if (replies.isNotEmpty()) {
+                                    Column(modifier = Modifier.padding(start = 30.dp)) {
+                                        replies.forEach { reply ->
+                                            CommentItem(
+                                                comment = reply,
+                                                isOwner = reply.userId == commentViewModel.currentUserId,
+                                                isReply = true,
+                                                onEditClick = {},
+                                                onDeleteClick = { commentPendingDelete = reply },
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (replyingToComment?.id == comment.id) {
+                                    ReplyInputBox(
+                                        onSubmit = { text ->
+                                            commentViewModel.submitReply(comment.id, comment.userId, text, movie.title)
+                                            replyingToComment = null
+                                        },
+                                        onCancel = { replyingToComment = null },
+                                        modifier = Modifier.padding(start = 30.dp, top = 6.dp),
+                                    )
+                                }
                             }
                         }
 
@@ -373,6 +411,7 @@ fun MovieDetailScreen(
                                 )
                             }
                         }
+
                         if (movie.similarMovies.isNotEmpty()) {
                             item {
                                 Column(Modifier.padding(top = 12.dp)) {
@@ -393,6 +432,7 @@ fun MovieDetailScreen(
                             }
                         }
                     }
+
                     MovieDetailStickyBar(
                         isFavorite = detailState.isFavorite,
                         isSaved = detailState.isSaved,
@@ -405,14 +445,17 @@ fun MovieDetailScreen(
                 }
             }
         }
+
         val currentMovie = detailState.movie
         if (showTrailerPlayer && currentMovie?.trailerKey != null) {
             TrailerPlayerOverlay(
                 videoKey = currentMovie.trailerKey,
                 onClose = { showTrailerPlayer = false },
+                onOpenInYouTube = { openInYouTubeApp(currentMovie.trailerKey) },
             )
         }
     }
+
     commentPendingDelete?.let { comment ->
         val currentMovie = detailState.movie
         AlertDialog(
@@ -433,65 +476,105 @@ fun MovieDetailScreen(
         )
     }
 }
+
 @Composable
-private fun CircleIconButton(
-    icon: ImageVector,
-    tint: Color = OnSurface,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
+private fun CircleIconButton(icon: ImageVector, tint: Color = OnSurface, onClick: () -> Unit) {
     Box(
-        modifier = modifier
+        modifier = Modifier
             .size(40.dp)
             .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.4f))
             .clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(20.dp)
-        )
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
     }
 }
+
 @Composable
 private fun TrailerPlayerOverlay(
     videoKey: String,
     onClose: () -> Unit,
+    onOpenInYouTube: () -> Unit,
 ) {
-    val context = LocalContext.current
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose { webViewRef?.destroy() }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color.Black.copy(alpha = 0.97f))
+            .pointerInput(Unit) { detectTapGestures { } },
+        contentAlignment = Alignment.Center,
     ) {
-        val lifecycleOwner = LocalLifecycleOwner.current
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { ctx ->
-                val playerView = YouTubePlayerView(ctx)
-                lifecycleOwner.lifecycle.addObserver(playerView)
-                playerView.addYouTubePlayerListener(
-                    object : AbstractYouTubePlayerListener() {
-
-                        override fun onReady(player: YouTubePlayer) {
-                            Log.d("Trailer", "Video Key = $videoKey")
-                            player.loadVideo(videoKey, 0f)
-                        }
-                    }
-                )
-
-                playerView
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                CircleIconButton(icon = Icons.Filled.Close, onClick = onClose)
             }
-        )
-        CircleIconButton(
-            icon = Icons.Default.Close,
-            onClick = onClose,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(20.dp)
-        )
+
+            AndroidView(
+                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.mediaPlaybackRequiresUserGesture = false
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        webChromeClient = object : WebChromeClient() {
+                            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                                Log.d(
+                                    "CVTrailerWebView",
+                                    "JS console [${message.messageLevel()}] ${message.message()} " +
+                                            "(${message.sourceId()}:${message.lineNumber()})",
+                                )
+                                return true
+                            }
+                        }
+                        webViewClient = object : WebViewClient() {
+                            override fun onReceivedError(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                                error: WebResourceError?,
+                            ) {
+                                super.onReceivedError(view, request, error)
+                                Log.e(
+                                    "CVTrailerWebView",
+                                    "onReceivedError: code=${error?.errorCode} desc=${error?.description} url=${request?.url}",
+                                )
+                            }
+
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                super.onPageFinished(view, url)
+                                Log.d("CVTrailerWebView", "onPageFinished: $url")
+                            }
+                        }
+                        loadUrl("https://www.youtube.com/embed/$videoKey?autoplay=1&playsinline=1&modestbranding=1&rel=0")
+                        webViewRef = this
+                    }
+                },
+            )
+
+            Spacer(Modifier.height(20.dp))
+            Text(
+                "YouTube uygulamasında aç",
+                color = Primary,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .clickable { onOpenInYouTube() },
+            )
+        }
     }
 }
