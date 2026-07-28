@@ -469,7 +469,6 @@ fun CVBottomNavBar(
         BottomNavItem("Ana Sayfa", Icons.Outlined.Home, Icons.Filled.Home),
         BottomNavItem("Arama", Icons.Outlined.Search, Icons.Filled.Search),
         BottomNavItem("Listem", Icons.Outlined.BookmarkBorder, Icons.Filled.Bookmark),
-        BottomNavItem("Profil", Icons.Outlined.Person, Icons.Filled.Person),
     )
     Row(
         modifier = modifier

@@ -15,6 +15,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.delay
 import retrofit2.HttpException
+import java.io.IOException
 
 private data class GuessedMovie(val title: String, val year: Int? = null)
 
@@ -43,13 +44,15 @@ class AiSearchRepository(
 
         guesses.mapNotNull { guess ->
             tmdbApi.searchMovies(query = guess.title).results.firstOrNull()?.toUiMovie()
-        }.take(3)
+        }.distinctBy{it.id}
+            .take(3)
     }
 
     /**
-     * Gemini bazen "503 model şu an yoğun" hatası döndürüyor — bu geçici bir durum.
-     * Sadece 503 hatasında, artan bekleme süreleriyle en fazla 3 kez deniyoruz.
-     * Başka bir hata (400, 403 vb.) gelirse hemen fırlatıyoruz, tekrar denemenin faydası yok.
+     * Gemini bazen "503 model şu an yoğun" hatası ya da geçici bir ağ zaman aşımı
+     * (SocketTimeoutException) verebiliyor — ikisi de geçici durumlar. Her ikisinde
+     * de artan bekleme süreleriyle en fazla 3 kez deniyoruz. Başka bir HTTP hatası
+     * (400, 403 vb.) gelirse hemen fırlatıyoruz, tekrar denemenin faydası yok.
      */
     private suspend fun generateContentWithRetry(
         request: GeminiRequest,
@@ -57,21 +60,29 @@ class AiSearchRepository(
     ): GeminiResponse {
         var lastError: Exception? = null
         repeat(maxAttempts) { attempt ->
+            val isLastAttempt = attempt == maxAttempts - 1
             try {
                 return geminiApi.generateContent(request)
             } catch (e: HttpException) {
                 lastError = e
-                val isLastAttempt = attempt == maxAttempts - 1
                 if (e.code() != 503 || isLastAttempt) throw e
                 delay(1500L * (attempt + 1))
+            } catch (e: IOException) {
+                // Zaman aşımı, bağlantı kopması vb. — bunlar da geçici olabilir, tekrar deneriz
+                lastError = e
+                if (isLastAttempt) throw e
+                delay(1000L * (attempt + 1))
             }
         }
         throw lastError ?: IllegalStateException("Gemini isteği başarısız oldu")
     }
 
     private fun buildPrompt(description: String): String = """
-        Kullanıcı bir filmi doğal dille tarif ediyor. Bu tarife göre en olası 3 film tahminini ver.
-        SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir açıklama veya metin ekleme:
+        Kullanıcı bir filmi doğal dille tarif ediyor.
+        En olası 3 FARKLI filmi tahmin et.
+        Aynı filmi farklı isimlerle veya tekrar etme.
+        Her film yalnızca bir kez yer alsın .
+        Sadece JSON döndür.:
         [{"title": "Film Adı", "year": 2014}, {"title": "Film Adı 2", "year": 2010}, {"title": "Film Adı 3", "year": null}]
 
         Kullanıcının tarifi: "$description"

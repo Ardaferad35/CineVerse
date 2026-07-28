@@ -1,7 +1,11 @@
 package com.arda.cineverse.ui.screens
 
 import android.content.Intent
+import android.util.Log
+import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -187,7 +191,9 @@ fun MovieDetailScreen(
                                             .size(64.dp)
                                             .clip(CircleShape)
                                             .background(Color.Black.copy(alpha = 0.5f))
-                                            .clickable { playTrailer(movie.trailerKey) },
+                                            .clickable {
+                                                playTrailer(movie.trailerKey)
+                                            },
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Icon(Icons.Filled.PlayArrow, contentDescription = "Fragmanı oynat", tint = Color.White, modifier = Modifier.size(32.dp))
@@ -224,7 +230,7 @@ fun MovieDetailScreen(
                             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                                 CVGradientButton(
                                     text = "Fragmanı İzle",
-                                    onClick = { playTrailer(movie.trailerKey) },
+                                    onClick = { playTrailer(movie.trailerKey)   },
                                     enabled = movie.trailerKey != null,
                                 )
                                 Spacer(Modifier.height(10.dp))
@@ -494,8 +500,34 @@ private fun TrailerPlayerOverlay(
                         settings.mediaPlaybackRequiresUserGesture = false
                         settings.loadWithOverviewMode = true
                         settings.useWideViewPort = true
-                        webChromeClient = WebChromeClient()
-                        webViewClient = WebViewClient()
+                        webChromeClient = object : WebChromeClient() {
+                            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                                Log.d(
+                                    "CVTrailerWebView",
+                                    "JS console [${message.messageLevel()}] ${message.message()} " +
+                                            "(${message.sourceId()}:${message.lineNumber()})",
+                                )
+                                return true
+                            }
+                        }
+                        webViewClient = object : WebViewClient() {
+                            override fun onReceivedError(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                                error: WebResourceError?,
+                            ) {
+                                super.onReceivedError(view, request, error)
+                                Log.e(
+                                    "CVTrailerWebView",
+                                    "onReceivedError: code=${error?.errorCode} desc=${error?.description} url=${request?.url}",
+                                )
+                            }
+
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                super.onPageFinished(view, url)
+                                Log.d("CVTrailerWebView", "onPageFinished: $url")
+                            }
+                        }
                         loadUrl("https://www.youtube.com/embed/$videoKey?autoplay=1&playsinline=1&modestbranding=1&rel=0")
                         webViewRef = this
                     }

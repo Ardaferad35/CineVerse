@@ -54,6 +54,7 @@ fun HomeScreen(
     onAiSearchClick: () -> Unit = {},
     onNavigateTab: (Int) -> Unit = {},
     onCategoryClick: (Category) -> Unit = {},
+    onProfileClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     homeViewModel: HomeViewModel = viewModel(),
 ) {
@@ -72,7 +73,7 @@ fun HomeScreen(
                 .statusBarsPadding(),
         ) {
             Spacer(Modifier.height(12.dp))
-            HomeTopBar()
+            HomeTopBar(onProfileClick = onProfileClick)
             Spacer(Modifier.height(12.dp))
             HomeSearchBar(
                 value = uiState.searchQuery,

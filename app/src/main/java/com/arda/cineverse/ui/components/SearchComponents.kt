@@ -31,10 +31,11 @@ fun SearchModeBar(
     query: String,
     onQueryChange: (String) -> Unit,
     mode: SearchMode,
+    isLoading: Boolean,
     onToggleMode: () -> Unit,
     onSearch: () -> Unit,
     modifier: Modifier = Modifier,
-) {
+){
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -76,7 +77,9 @@ fun SearchModeBar(
                         Brush.horizontalGradient(listOf(SurfaceVariant, SurfaceVariant))
                     },
                 )
-                .clickable { onToggleMode() }
+                .clickable(enabled = !isLoading) {
+                    onToggleMode()
+                }
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

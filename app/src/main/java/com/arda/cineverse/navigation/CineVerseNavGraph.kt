@@ -16,6 +16,7 @@ import com.arda.cineverse.ui.screens.MovieDetailScreen
 import com.arda.cineverse.ui.screens.MovieListScreen
 import com.arda.cineverse.ui.screens.MovieListSource
 import com.arda.cineverse.ui.screens.MyListScreen
+import com.arda.cineverse.ui.screens.ProfileScreen
 import com.arda.cineverse.ui.screens.RegisterScreen
 import com.arda.cineverse.ui.screens.SearchScreen
 import com.google.firebase.auth.FirebaseAuth
@@ -29,6 +30,7 @@ object CVRoutes {
     const val HOME = "home"
     const val LISTEM = "my_list"
     const val SEARCH = "search/{aiMode}"
+    const val PROFILE = "profile"
     const val MOVIE_DETAIL = "movie_detail/{movieId}"
     const val MOVIE_LIST = "movie_list/{section}"
     const val MOVIE_LIST_GENRE = "movie_list_genre/{genreId}/{label}"
@@ -100,6 +102,7 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                 onCategoryClick = { category ->
                     navController.navigate(CVRoutes.movieListGenre(category.genreId, category.label))
                 },
+                onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
             )
         }
         composable(CVRoutes.LISTEM) {
@@ -112,6 +115,7 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                         1 -> navController.navigate(CVRoutes.search(aiMode = false))
                     }
                 },
+                onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
             )
         }
         composable(
@@ -127,6 +131,17 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                         navController.popBackStack(CVRoutes.HOME, inclusive = false)
                     } else if (index == 2) {
                         navController.navigate(CVRoutes.LISTEM) { launchSingleTop = true }
+                    }
+                },
+                onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
+            )
+        }
+        composable(CVRoutes.PROFILE) {
+            ProfileScreen(
+                onBack = { navController.popBackStack() },
+                onSignedOut = {
+                    navController.navigate(CVRoutes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
                     }
                 },
             )

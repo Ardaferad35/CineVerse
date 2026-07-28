@@ -48,6 +48,7 @@ fun MyListScreen(
     onMovieClick: (movieId: Int) -> Unit = {},
     onStartExploring: () -> Unit = {},
     onNavigateTab: (Int) -> Unit = {},
+    onProfileClick: () -> Unit = {},
     viewModel: MyListViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -59,7 +60,7 @@ fun MyListScreen(
                 .statusBarsPadding(),
         ) {
             Spacer(Modifier.height(12.dp))
-            HomeTopBar()
+            HomeTopBar(onProfileClick = onProfileClick)
             Spacer(Modifier.height(16.dp))
 
             Row(

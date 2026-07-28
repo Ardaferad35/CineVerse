@@ -1,0 +1,4 @@
+- [x] Switch WebView to `LAYER_TYPE_HARDWARE` in `MovieDetailScreen.kt`.
+- [x] Set transparent background for WebView to avoid white flicker.
+- [x] Add mobile User-Agent to ensure YouTube compatibility.
+- [/] Verify trailer playback on device.

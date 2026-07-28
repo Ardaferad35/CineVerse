@@ -1,0 +1,4 @@
+- `[x]` Update `app/build.gradle.kts` to set `compileSdk` and `targetSdk` to 35
+- `[x]` Update `AndroidManifest.xml` to add `<queries>` for Google Play Services
+- `[x]` Sync project with Gradle
+- `[x]` Verify the fix by running the app (or checking Logcat if possible)

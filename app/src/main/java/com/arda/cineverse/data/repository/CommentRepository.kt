@@ -3,6 +3,7 @@ package com.arda.cineverse.data.repository
 import com.arda.cineverse.data.model.Comment
 import com.arda.cineverse.data.model.Movie
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
@@ -56,6 +57,7 @@ class CommentRepository(
             "editedAt" to null,
         )
         commentsCollection(movieId).add(comment).await()
+        adjustUserRatingStats(user.uid, sumDelta = rating, countDelta = 1)
         recalculateAggregate(movieId, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
     }
 
@@ -70,13 +72,22 @@ class CommentRepository(
         movieYear: Int?,
         movieGenreIds: List<Int> = emptyList(),
     ): Result<Unit> = runCatching {
+        val docRef = commentsCollection(movieId).document(commentId)
+        val existing = docRef.get().await()
+        val oldRating = existing.getLong("rating")?.toInt() ?: rating
+        val userId = existing.getString("userId")
+
         val updates = mapOf(
             "text" to text,
             "rating" to rating,
             "isSpoiler" to isSpoiler,
             "editedAt" to System.currentTimeMillis(),
         )
-        commentsCollection(movieId).document(commentId).update(updates).await()
+        docRef.update(updates).await()
+
+        if (userId != null && oldRating != rating) {
+            adjustUserRatingStats(userId, sumDelta = rating - oldRating, countDelta = 0)
+        }
         recalculateAggregate(movieId, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
     }
 
@@ -88,8 +99,35 @@ class CommentRepository(
         movieYear: Int?,
         movieGenreIds: List<Int> = emptyList(),
     ): Result<Unit> = runCatching {
-        commentsCollection(movieId).document(commentId).delete().await()
+        val docRef = commentsCollection(movieId).document(commentId)
+        val existing = docRef.get().await()
+        val oldRating = existing.getLong("rating")?.toInt()
+        val userId = existing.getString("userId")
+
+        docRef.delete().await()
+
+        if (userId != null && oldRating != null) {
+            adjustUserRatingStats(userId, sumDelta = -oldRating, countDelta = -1)
+        }
         recalculateAggregate(movieId, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
+    }
+
+    /**
+     * Kullanıcının "users/{uid}" belgesindeki ratingSum/ratingCount alanlarını
+     * atomik olarak (FieldValue.increment) günceller. Bu sayede Profil ekranı,
+     * hiçbir arama/tarama (collectionGroup) sorgusuna ihtiyaç duymadan —
+     * dolayısıyla hiçbir özel Firestore index'ine gerek kalmadan — kullanıcının
+     * verdiği ortalama puanı anında hesaplayabiliyor.
+     */
+    private suspend fun adjustUserRatingStats(userId: String, sumDelta: Int, countDelta: Int) {
+        runCatching {
+            firestore.collection("users").document(userId).update(
+                mapOf(
+                    "ratingSum" to FieldValue.increment(sumDelta.toLong()),
+                    "ratingCount" to FieldValue.increment(countDelta.toLong()),
+                ),
+            ).await()
+        }
     }
 
     /**
@@ -144,10 +182,6 @@ class CommentRepository(
     /**
      * "Uygulama İçi Puan" sıralaması (belirli bir tür/kategori için):
      * yalnızca o türe ait ve kullanıcılarımızca puanlanmış filmleri getirir.
-     *
-     * Not: Bu sorgu Firestore'da "composite index" gerektirebilir — ilk
-     * çalıştırmada hata alırsanız, hata mesajındaki linke tıklayıp Firebase
-     * Console'da index'i tek tıkla oluşturabilirsiniz, birkaç dakika sürer.
      */
     suspend fun getTopRatedByAppUsersForGenre(genreId: Int, page: Int = 1): Result<List<Movie>> = runCatching {
         if (page > 1) return@runCatching emptyList()
