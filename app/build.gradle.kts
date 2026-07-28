@@ -99,4 +99,6 @@ dependencies {
 
     // Film posterleri için görsel yükleme
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // youtube api
+    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.2")
 }
