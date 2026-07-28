@@ -38,6 +38,7 @@ import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.repository.CommentRepository
 import com.arda.cineverse.data.repository.MovieRepository
+import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CVGradientButton
 import com.arda.cineverse.ui.components.MovieListItemCard
@@ -111,6 +112,7 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit) 
     val repository = remember { MovieRepository() }
     val userListRepository = remember { UserListRepository() }
     val commentRepository = remember { CommentRepository() }
+    val recommendationRepository = remember { RecommendationRepository() }
     val scope = rememberCoroutineScope()
 
     val fetchPage: suspend (Int) -> Result<List<Movie>> = remember(source, sortMode) {
@@ -153,10 +155,12 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit) 
         scope.launch {
             if (isFav) {
                 userListRepository.removeFavorite(movie.id)
+                recommendationRepository.removeFavoriteSignal(movie.id)
             } else {
                 userListRepository.addFavorite(
-                    SavedMovie(id = movie.id, title = movie.title, posterUrl = movie.posterUrl, rating = movie.rating, year = movie.year),
+                    SavedMovie(id = movie.id, title = movie.title, posterUrl = movie.posterUrl, rating = movie.rating, year = movie.year, genreIds = movie.genreIds),
                 )
+                recommendationRepository.recordFavorite(movie.id, movie.genreIds)
             }
         }
     }

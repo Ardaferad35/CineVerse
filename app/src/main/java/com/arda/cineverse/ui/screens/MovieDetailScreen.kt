@@ -9,7 +9,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -37,7 +36,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,15 +48,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.arda.cineverse.data.model.Comment
@@ -69,9 +66,7 @@ import com.arda.cineverse.viewmodel.CommentViewModelFactory
 import com.arda.cineverse.viewmodel.MovieDetailViewModel
 import com.arda.cineverse.viewmodel.MovieDetailViewModelFactory
 import kotlinx.coroutines.launch
-
 private val StarColorDetail = Color(0xFFFFC857)
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MovieDetailScreen(
@@ -378,7 +373,6 @@ fun MovieDetailScreen(
                                 )
                             }
                         }
-
                         if (movie.similarMovies.isNotEmpty()) {
                             item {
                                 Column(Modifier.padding(top = 12.dp)) {
@@ -399,7 +393,6 @@ fun MovieDetailScreen(
                             }
                         }
                     }
-
                     MovieDetailStickyBar(
                         isFavorite = detailState.isFavorite,
                         isSaved = detailState.isSaved,
@@ -412,7 +405,6 @@ fun MovieDetailScreen(
                 }
             }
         }
-
         val currentMovie = detailState.movie
         if (showTrailerPlayer && currentMovie?.trailerKey != null) {
             TrailerPlayerOverlay(
@@ -421,7 +413,6 @@ fun MovieDetailScreen(
             )
         }
     }
-
     commentPendingDelete?.let { comment ->
         val currentMovie = detailState.movie
         AlertDialog(
@@ -442,7 +433,6 @@ fun MovieDetailScreen(
         )
     }
 }
-
 @Composable
 private fun CircleIconButton(
     icon: ImageVector,
@@ -466,25 +456,21 @@ private fun CircleIconButton(
         )
     }
 }
-
 @Composable
 private fun TrailerPlayerOverlay(
     videoKey: String,
     onClose: () -> Unit,
 ) {
     val context = LocalContext.current
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
         val lifecycleOwner = LocalLifecycleOwner.current
-
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
-
                 val playerView = YouTubePlayerView(ctx)
                 lifecycleOwner.lifecycle.addObserver(playerView)
                 playerView.addYouTubePlayerListener(
@@ -500,7 +486,6 @@ private fun TrailerPlayerOverlay(
                 playerView
             }
         )
-
         CircleIconButton(
             icon = Icons.Default.Close,
             onClick = onClose,
@@ -510,4 +495,3 @@ private fun TrailerPlayerOverlay(
         )
     }
 }
-

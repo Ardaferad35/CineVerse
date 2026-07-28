@@ -58,6 +58,7 @@ fun MovieDto.toUiMovie(): Movie {
         year = release_date.extractYear(),
         genre = genreNames.firstOrNull() ?: "Film",
         genres = genreNames,
+        genreIds = genre_ids,
         overview = overview,
         rating = round(vote_average * 10) / 10.0,
         posterUrl = TmdbNetworkModule.posterUrl(poster_path),

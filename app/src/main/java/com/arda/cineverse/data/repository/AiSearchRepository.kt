@@ -44,8 +44,7 @@ class AiSearchRepository(
 
         guesses.mapNotNull { guess ->
             tmdbApi.searchMovies(query = guess.title).results.firstOrNull()?.toUiMovie()
-        }.distinctBy{it.id}
-            .take(3)
+        }.distinctBy { it.id }.take(3)
     }
 
     /**
@@ -78,11 +77,8 @@ class AiSearchRepository(
     }
 
     private fun buildPrompt(description: String): String = """
-        Kullanıcı bir filmi doğal dille tarif ediyor.
-        En olası 3 FARKLI filmi tahmin et.
-        Aynı filmi farklı isimlerle veya tekrar etme.
-        Her film yalnızca bir kez yer alsın .
-        Sadece JSON döndür.:
+        Kullanıcı bir filmi doğal dille tarif ediyor. Bu tarife göre en olası 3 film tahminini ver.
+        SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir açıklama veya metin ekleme:
         [{"title": "Film Adı", "year": 2014}, {"title": "Film Adı 2", "year": 2010}, {"title": "Film Adı 3", "year": null}]
 
         Kullanıcının tarifi: "$description"

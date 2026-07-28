@@ -7,17 +7,23 @@ import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.SearchSuggestion
 import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.repository.MovieRepository
+import com.arda.cineverse.data.repository.RecommendationRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+
+private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 data class HomeUiState(
     val isLoading: Boolean = true,
     val featuredMovie: FeaturedMovie? = null,
     val popularMovies: List<Movie> = emptyList(),
     val upcomingMovies: List<UpcomingMovie> = emptyList(),
+    val recommendedMovies: List<Movie> = emptyList(),
     val errorMessage: String? = null,
     val searchQuery: String = "",
     val isSearching: Boolean = false,
@@ -26,6 +32,7 @@ data class HomeUiState(
 
 class HomeViewModel(
     private val repository: MovieRepository = MovieRepository(),
+    private val recommendationRepository: RecommendationRepository = RecommendationRepository(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -41,13 +48,19 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
-            val popularResult = repository.getPopularMovies()
-            val upcomingResult = repository.getUpcomingMovies()
-            val featuredResult = repository.getFeaturedMovie()
+            val (popular, upcoming, featured, recommended) = coroutineScope {
+                val popularDeferred = async { repository.getPopularMovies() }
+                val upcomingDeferred = async { repository.getUpcomingMovies() }
+                val featuredDeferred = async { repository.getFeaturedMovie() }
+                val recommendedDeferred = async { recommendationRepository.getRecommendations() }
 
-            val popular = popularResult.getOrNull()
-            val upcoming = upcomingResult.getOrNull()
-            val featured = featuredResult.getOrNull()
+                Quad(
+                    popularDeferred.await().getOrNull(),
+                    upcomingDeferred.await().getOrNull(),
+                    featuredDeferred.await().getOrNull(),
+                    recommendedDeferred.await().getOrDefault(emptyList()),
+                )
+            }
 
             _uiState.value = if (popular != null && upcoming != null) {
                 _uiState.value.copy(
@@ -55,6 +68,7 @@ class HomeViewModel(
                     featuredMovie = featured,
                     popularMovies = popular,
                     upcomingMovies = upcoming,
+                    recommendedMovies = recommended,
                 )
             } else {
                 _uiState.value.copy(

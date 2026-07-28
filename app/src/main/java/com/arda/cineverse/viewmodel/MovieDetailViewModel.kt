@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.arda.cineverse.data.model.MovieDetail
 import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.repository.MovieRepository
+import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.UserListRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,12 +26,14 @@ private fun MovieDetail.toSavedMovie() = SavedMovie(
     posterUrl = posterUrl,
     rating = tmdbRating,
     year = year,
+    genreIds = genreIds,
 )
 
 class MovieDetailViewModel(
     private val movieId: Int,
     private val movieRepository: MovieRepository = MovieRepository(),
     private val userListRepository: UserListRepository = UserListRepository(),
+    private val recommendationRepository: RecommendationRepository = RecommendationRepository(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
@@ -45,7 +48,11 @@ class MovieDetailViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             movieRepository.getMovieDetailFull(movieId).fold(
-                onSuccess = { movie -> _uiState.value = _uiState.value.copy(isLoading = false, movie = movie) },
+                onSuccess = { movie ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, movie = movie)
+                    // Öneri sistemi için: bu filmi "görüntülendi" penceresine ekle.
+                    recommendationRepository.recordView(movie.id, movie.genreIds)
+                },
                 onFailure = {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -71,8 +78,10 @@ class MovieDetailViewModel(
         viewModelScope.launch {
             if (newValue) {
                 userListRepository.addFavorite(movie.toSavedMovie())
+                recommendationRepository.recordFavorite(movie.id, movie.genreIds)
             } else {
                 userListRepository.removeFavorite(movie.id)
+                recommendationRepository.removeFavoriteSignal(movie.id)
             }
         }
     }

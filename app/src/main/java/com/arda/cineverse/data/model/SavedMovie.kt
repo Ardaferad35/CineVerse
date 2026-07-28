@@ -12,4 +12,5 @@ data class SavedMovie(
     val rating: Double = 0.0,
     val year: Int? = null,
     val addedAt: Long = 0L,
+    val genreIds: List<Int> = emptyList(),
 )

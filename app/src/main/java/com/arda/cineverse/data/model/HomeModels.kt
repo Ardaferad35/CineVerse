@@ -6,6 +6,7 @@ data class Movie(
     val year: Int?,
     val genre: String,
     val genres: List<String> = emptyList(),
+    val genreIds: List<Int> = emptyList(),
     val rating: Double,
     val posterUrl: String? = null,
     val isFavorite: Boolean = false,

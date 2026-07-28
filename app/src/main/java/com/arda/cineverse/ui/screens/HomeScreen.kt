@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Recommend
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -155,6 +156,31 @@ fun HomeScreen(
                                     onAddToListClick = {},
                                     modifier = Modifier.padding(horizontal = 20.dp),
                                 )
+                            }
+                        }
+
+                        if (uiState.recommendedMovies.isNotEmpty()) {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    HomeSectionHeader(
+                                        icon = Icons.Filled.Recommend,
+                                        iconTint = Primary,
+                                        title = "Sizin İçin Önerilenler",
+                                        showSeeAll = false,
+                                    )
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 20.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        items(uiState.recommendedMovies, key = { it.id }) { movie ->
+                                            PopularMovieCard(
+                                                movie = movie,
+                                                onClick = { onMovieClick(movie.id) },
+                                                onFavoriteClick = {},
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
 

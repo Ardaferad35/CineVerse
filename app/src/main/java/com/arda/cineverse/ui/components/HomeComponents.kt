@@ -287,6 +287,7 @@ fun HomeSectionHeader(
     iconTint: Color,
     title: String,
     onSeeAllClick: () -> Unit = {},
+    showSeeAll: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -299,12 +300,14 @@ fun HomeSectionHeader(
             Spacer(Modifier.width(8.dp))
             Text(title, color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
-        Row(
-            modifier = Modifier.clickable { onSeeAllClick() },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Tümünü Gör", color = Primary, style = MaterialTheme.typography.bodyMedium)
-            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+        if (showSeeAll) {
+            Row(
+                modifier = Modifier.clickable { onSeeAllClick() },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Tümünü Gör", color = Primary, style = MaterialTheme.typography.bodyMedium)
+                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+            }
         }
     }
 }
