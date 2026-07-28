@@ -1,32 +1,57 @@
 package com.arda.cineverse.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-
-private val CineVerseColorScheme = darkColorScheme(
-    primary = Primary,
-    onPrimary = OnPrimary,
-    secondary = Accent,
-    onSecondary = OnPrimary,
-    background = Background,
-    onBackground = OnSurface,
-    surface = Surface,
-    onSurface = OnSurface,
-    surfaceVariant = SurfaceVariant,
-    onSurfaceVariant = TextSecondary,
-    outline = DividerColor,
-    error = ErrorColor,
-    onError = OnPrimary,
-)
+import androidx.compose.runtime.CompositionLocalProvider
 
 @Composable
-fun CineVerseTheme(content: @Composable () -> Unit) {
-    // Design system is dark-only; ignore system light/dark setting.
-    MaterialTheme(
-        colorScheme = CineVerseColorScheme,
-        typography = CineVerseTypography,
-        content = content,
-    )
+fun CineVerseTheme(
+    isDarkTheme: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    val colors = if (isDarkTheme) DarkColors else LightColors
+
+    val materialColorScheme = if (isDarkTheme) {
+        darkColorScheme(
+            primary = colors.primary,
+            onPrimary = colors.onPrimary,
+            secondary = colors.accent,
+            onSecondary = colors.onPrimary,
+            background = colors.background,
+            onBackground = colors.onSurface,
+            surface = colors.surface,
+            onSurface = colors.onSurface,
+            surfaceVariant = colors.surfaceVariant,
+            onSurfaceVariant = colors.textSecondary,
+            outline = colors.dividerColor,
+            error = colors.errorColor,
+            onError = colors.onPrimary,
+        )
+    } else {
+        lightColorScheme(
+            primary = colors.primary,
+            onPrimary = colors.onPrimary,
+            secondary = colors.accent,
+            onSecondary = colors.onPrimary,
+            background = colors.background,
+            onBackground = colors.onSurface,
+            surface = colors.surface,
+            onSurface = colors.onSurface,
+            surfaceVariant = colors.surfaceVariant,
+            onSurfaceVariant = colors.textSecondary,
+            outline = colors.dividerColor,
+            error = colors.errorColor,
+            onError = colors.onPrimary,
+        )
+    }
+
+    CompositionLocalProvider(LocalCineVerseColors provides colors) {
+        MaterialTheme(
+            colorScheme = materialColorScheme,
+            typography = CineVerseTypography,
+            content = content,
+        )
+    }
 }

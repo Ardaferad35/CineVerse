@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -71,6 +72,15 @@ fun HomeTopBar(
                     fontSize = 20.sp,
                 ),
             )
+            if (!ThemeState.isDarkTheme) {
+                Text(
+                    "Light",
+                    color = Primary,
+                    fontWeight = FontWeight.Medium,
+                    fontStyle = FontStyle.Italic,
+                    fontSize = 20.sp,
+                )
+            }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -227,6 +237,13 @@ fun FeaturedMovieBanner(
                 ),
         )
 
+        // Bu metinler her zaman koyu bir karartmanın üzerinde durur (fotoğraf
+        // okunabilirliği için scrim bilinçli olarak hep koyu) — bu yüzden
+        // tema ile değişen OnSurface/TextSecondary yerine SABİT açık renkler
+        // kullanıyoruz, aksi halde Açık temada koyu yazı koyu zemine karışır.
+        val bannerTitleColor = Color(0xFFFFFFFF)
+        val bannerSubtleColor = Color(0xFFC7C7D1)
+
         Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
             Row(
                 modifier = Modifier
@@ -242,18 +259,18 @@ fun FeaturedMovieBanner(
 
             Spacer(Modifier.weight(1f))
 
-            Text(movie.title, color = OnSurface, fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, maxLines = 2)
+            Text(movie.title, color = bannerTitleColor, fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, maxLines = 2)
             Spacer(Modifier.height(10.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Star, contentDescription = null, tint = StarColor, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("${movie.rating}", color = OnSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Text("${movie.rating}", color = bannerTitleColor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.width(10.dp))
-                Text("${movie.year}", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text("${movie.year}", color = bannerSubtleColor, style = MaterialTheme.typography.bodyMedium)
                 if (movie.durationLabel.isNotEmpty()) {
                     Spacer(Modifier.width(10.dp))
-                    Text(movie.durationLabel, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Text(movie.durationLabel, color = bannerSubtleColor, style = MaterialTheme.typography.bodyMedium)
                 }
                 Spacer(Modifier.width(10.dp))
                 Box(
@@ -267,7 +284,7 @@ fun FeaturedMovieBanner(
             }
 
             Spacer(Modifier.height(10.dp))
-            Text(movie.description, color = TextSecondary, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
+            Text(movie.description, color = bannerSubtleColor, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
 
             Spacer(Modifier.height(16.dp))
             Row {

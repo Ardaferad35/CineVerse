@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.arda.cineverse.navigation.CineVerseNavGraph
 import com.arda.cineverse.notifications.NotificationScheduler
 import com.arda.cineverse.ui.theme.CineVerseTheme
+import com.arda.cineverse.ui.theme.ThemeState
 
 class MainActivity : ComponentActivity() {
 
@@ -20,6 +21,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Kayıtlı tema tercihini (Koyu/Açık) yükle
+        ThemeState.init(applicationContext)
 
         // Android 13+ (API 33) sistem bildirimleri için çalışma zamanı izni gerektiriyor.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -32,7 +36,7 @@ class MainActivity : ComponentActivity() {
         NotificationScheduler.scheduleAll(applicationContext)
 
         setContent {
-            CineVerseTheme {
+            CineVerseTheme(isDarkTheme = ThemeState.isDarkTheme) {
                 CineVerseNavGraph()
             }
         }

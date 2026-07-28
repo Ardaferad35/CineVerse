@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -40,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -60,6 +62,7 @@ import com.arda.cineverse.ui.theme.Primary
 import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.SurfaceVariant
 import com.arda.cineverse.ui.theme.TextSecondary
+import com.arda.cineverse.ui.theme.ThemeState
 import com.arda.cineverse.viewmodel.ProfileViewModel
 
 @Composable
@@ -75,6 +78,7 @@ fun ProfileScreen(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showComingSoonDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var notificationsEnabled by remember { mutableStateOf(true) }
 
     Column(
@@ -240,8 +244,8 @@ fun ProfileScreen(
                         icon = Icons.Filled.Palette,
                         title = "Görünüm",
                         subtitle = "Tema ve görünüm seçimi",
-                        trailingText = "Koyu",
-                        onClick = { showComingSoonDialog = true },
+                        trailingText = if (ThemeState.isDarkTheme) "Koyu" else "Açık",
+                        onClick = { showThemeDialog = true },
                     )
                     HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
                     SettingsRowWithSwitch(
@@ -351,6 +355,49 @@ fun ProfileScreen(
             text = { Text("Bu özellik henüz hazır değil, yakında eklenecek.") },
             confirmButton = {
                 TextButton(onClick = { showComingSoonDialog = false }) { Text("Tamam", color = Primary) }
+            },
+        )
+    }
+
+    if (showThemeDialog) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Görünüm") },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                ThemeState.setDarkTheme(context, true)
+                                showThemeDialog = false
+                            }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = ThemeState.isDarkTheme, onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Koyu", color = OnSurface)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                ThemeState.setDarkTheme(context, false)
+                                showThemeDialog = false
+                            }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = !ThemeState.isDarkTheme, onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Açık", color = OnSurface)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) { Text("Kapat", color = Primary) }
             },
         )
     }

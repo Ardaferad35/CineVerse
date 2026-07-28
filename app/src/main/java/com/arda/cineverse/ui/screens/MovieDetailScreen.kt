@@ -305,12 +305,16 @@ fun MovieDetailScreen(
                                                 }
                                             }
                                             Spacer(Modifier.height(4.dp))
-                                            Text("${commentState.comments.size} oy", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                                            Text("${commentState.comments.count { it.replyToCommentId == null }} oy", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
                                         }
                                         Spacer(Modifier.width(16.dp))
                                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                             for (star in 5 downTo 1) {
-                                                RatingDistributionBar(star = star, count = commentState.ratingCounts[star] ?: 0, total = commentState.comments.size)
+                                                RatingDistributionBar(
+                                                    star = star,
+                                                    count = commentState.ratingCounts[star] ?: 0,
+                                                    total = commentState.ratingCounts.values.sum(),
+                                                )
                                             }
                                         }
                                     }
