@@ -197,6 +197,7 @@ fun FeaturedMovieBanner(
     onDetailsClick: () -> Unit,
     onAddToListClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isInWatchlist: Boolean = false,
     pageCount: Int = 4,
     currentPage: Int = 0,
 ) {
@@ -309,9 +310,14 @@ fun FeaturedMovieBanner(
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, tint = OnSurface, modifier = Modifier.size(18.dp))
+                    Icon(
+                        if (isInWatchlist) Icons.Filled.Check else Icons.Filled.Add,
+                        contentDescription = null,
+                        tint = OnSurface,
+                        modifier = Modifier.size(18.dp),
+                    )
                     Spacer(Modifier.width(6.dp))
-                    Text("Listeme Ekle", color = OnSurface, fontWeight = FontWeight.SemiBold)
+                    Text(if (isInWatchlist) "Listemde" else "Listeme Ekle", color = OnSurface, fontWeight = FontWeight.SemiBold)
                 }
             }
 

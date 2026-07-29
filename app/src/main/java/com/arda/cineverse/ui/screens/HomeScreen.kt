@@ -17,8 +17,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,7 +29,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arda.cineverse.data.model.Category
+import com.arda.cineverse.data.model.FeaturedMovie
+import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.model.mockCategories
+import com.arda.cineverse.data.repository.RecommendationRepository
+import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CVBottomNavBar
 import com.arda.cineverse.ui.components.CVGradientButton
 import com.arda.cineverse.ui.components.CategoryChip
@@ -48,6 +55,7 @@ import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.HomeViewModel
 import com.arda.cineverse.viewmodel.NotificationViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -66,6 +74,48 @@ fun HomeScreen(
 
     val uiState by homeViewModel.uiState.collectAsState()
     val unreadCount by notificationViewModel.unreadCount.collectAsState()
+
+    val userListRepository = remember { UserListRepository() }
+    val recommendationRepository = remember { RecommendationRepository() }
+    val scope = rememberCoroutineScope()
+
+    var favoriteIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var watchlistIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+    LaunchedEffect(Unit) {
+        favoriteIds = userListRepository.getFavorites().getOrDefault(emptyList()).map { it.id }.toSet()
+        watchlistIds = userListRepository.getWatchlist().getOrDefault(emptyList()).map { it.id }.toSet()
+    }
+
+    fun toggleFavorite(movie: Movie) {
+        val isFav = movie.id in favoriteIds
+        favoriteIds = if (isFav) favoriteIds - movie.id else favoriteIds + movie.id
+        scope.launch {
+            if (isFav) {
+                userListRepository.removeFavorite(movie.id)
+                recommendationRepository.removeFavoriteSignal(movie.id)
+            } else {
+                userListRepository.addFavorite(
+                    SavedMovie(id = movie.id, title = movie.title, posterUrl = movie.posterUrl, rating = movie.rating, year = movie.year, genreIds = movie.genreIds),
+                )
+                recommendationRepository.recordFavorite(movie.id, movie.genreIds)
+            }
+        }
+    }
+
+    fun toggleFeaturedWatchlist(featured: FeaturedMovie) {
+        val isSaved = featured.id in watchlistIds
+        watchlistIds = if (isSaved) watchlistIds - featured.id else watchlistIds + featured.id
+        scope.launch {
+            if (isSaved) {
+                userListRepository.removeFromWatchlist(featured.id)
+            } else {
+                userListRepository.addToWatchlist(
+                    SavedMovie(id = featured.id, title = featured.title, posterUrl = featured.posterUrl, rating = featured.rating, year = featured.year),
+                )
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -161,7 +211,8 @@ fun HomeScreen(
                                 FeaturedMovieBanner(
                                     movie = featured,
                                     onDetailsClick = { onMovieClick(featured.id) },
-                                    onAddToListClick = {},
+                                    onAddToListClick = { toggleFeaturedWatchlist(featured) },
+                                    isInWatchlist = featured.id in watchlistIds,
                                     modifier = Modifier.padding(horizontal = 20.dp),
                                 )
                             }
@@ -182,9 +233,9 @@ fun HomeScreen(
                                     ) {
                                         items(uiState.recommendedMovies, key = { it.id }) { movie ->
                                             PopularMovieCard(
-                                                movie = movie,
+                                                movie = movie.copy(isFavorite = movie.id in favoriteIds),
                                                 onClick = { onMovieClick(movie.id) },
-                                                onFavoriteClick = {},
+                                                onFavoriteClick = { toggleFavorite(movie) },
                                             )
                                         }
                                     }
@@ -206,9 +257,9 @@ fun HomeScreen(
                                 ) {
                                     items(uiState.popularMovies, key = { it.id }) { movie ->
                                         PopularMovieCard(
-                                            movie = movie,
+                                            movie = movie.copy(isFavorite = movie.id in favoriteIds),
                                             onClick = { onMovieClick(movie.id) },
-                                            onFavoriteClick = {},
+                                            onFavoriteClick = { toggleFavorite(movie) },
                                         )
                                     }
                                 }
