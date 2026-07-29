@@ -7,6 +7,13 @@ data class MoviesResponseDto(
     val total_results: Int,
 )
 
+data class TvShowsResponseDto(
+    val page: Int,
+    val results: List<TvShowDto>,
+    val total_pages: Int,
+    val total_results: Int,
+)
+
 data class MovieDto(
     val id: Int,
     val title: String,
@@ -14,6 +21,17 @@ data class MovieDto(
     val poster_path: String?,
     val backdrop_path: String?,
     val release_date: String?,
+    val vote_average: Double,
+    val genre_ids: List<Int> = emptyList(),
+)
+
+data class TvShowDto(
+    val id: Int,
+    val name: String,
+    val overview: String,
+    val poster_path: String?,
+    val backdrop_path: String?,
+    val first_air_date: String?,
     val vote_average: Double,
     val genre_ids: List<Int> = emptyList(),
 )
@@ -28,6 +46,27 @@ data class MovieDetailDto(
     val vote_average: Double,
     val runtime: Int?,
     val genres: List<GenreDto> = emptyList(),
+)
+
+data class TvShowDetailDto(
+    val id: Int,
+    val name: String,
+    val overview: String,
+    val poster_path: String?,
+    val backdrop_path: String?,
+    val first_air_date: String?,
+    val vote_average: Double,
+    val episode_run_time: List<Int> = emptyList(),
+    val number_of_seasons: Int? = null,
+    val number_of_episodes: Int? = null,
+    val created_by: List<CreatedByDto> = emptyList(),
+    val genres: List<GenreDto> = emptyList(),
+)
+
+data class CreatedByDto(
+    val id: Int,
+    val name: String,
+    val profile_path: String? = null,
 )
 
 data class GenreDto(

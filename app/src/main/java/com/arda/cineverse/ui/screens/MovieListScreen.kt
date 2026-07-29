@@ -35,10 +35,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.SavedMovie
+import com.arda.cineverse.data.model.TvShow
 import com.arda.cineverse.data.model.UpcomingMovie
+import com.arda.cineverse.data.remote.toHomeMovie
 import com.arda.cineverse.data.repository.CommentRepository
 import com.arda.cineverse.data.repository.MovieRepository
 import com.arda.cineverse.data.repository.RecommendationRepository
+import com.arda.cineverse.data.repository.TvRepository
 import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CVGradientButton
 import com.arda.cineverse.ui.components.MovieListItemCard
@@ -56,6 +59,7 @@ sealed class MovieListSource {
     data object Popular : MovieListSource()
     data object Upcoming : MovieListSource()
     data class Genre(val genreId: Int, val label: String) : MovieListSource()
+    data class TvGenre(val genreId: Int, val label: String) : MovieListSource()
 }
 
 private enum class SortMode(val label: String) {
@@ -69,6 +73,7 @@ fun MovieListScreen(
     source: MovieListSource,
     onBack: () -> Unit = {},
     onMovieClick: (Int) -> Unit = {},
+    onTvShowClick: (Int) -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -89,6 +94,7 @@ fun MovieListScreen(
                     MovieListSource.Popular -> "Popüler Filmler"
                     MovieListSource.Upcoming -> "Yakında Vizyona Girecekler"
                     is MovieListSource.Genre -> source.label
+                    is MovieListSource.TvGenre -> source.label
                 },
                 color = OnSurface,
                 style = MaterialTheme.typography.titleMedium,
@@ -101,6 +107,7 @@ fun MovieListScreen(
 
         when (source) {
             MovieListSource.Upcoming -> UpcomingMoviesGrid(onMovieClick = onMovieClick)
+            is MovieListSource.TvGenre -> TvGenreList(source = source, onTvShowClick = onTvShowClick)
             else -> RichMovieList(source = source, onMovieClick = onMovieClick)
         }
     }
@@ -132,6 +139,7 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit) 
                 }
             }
             MovieListSource.Upcoming -> { _ -> Result.success(emptyList()) }
+            is MovieListSource.TvGenre -> { _ -> Result.success(emptyList()) }
         }
     }
 
@@ -296,6 +304,133 @@ private fun UpcomingMoviesGrid(onMovieClick: (Int) -> Unit) {
 
             LaunchedEffect(gridState, uiState.items.size) {
                 snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+                    .collect { lastVisibleIndex ->
+                        if (lastVisibleIndex != null && lastVisibleIndex >= uiState.items.size - 6) {
+                            viewModel.loadNextPage()
+                        }
+                    }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) -> Unit) {
+    val repository = remember { TvRepository() }
+    val userListRepository = remember { UserListRepository() }
+    val recommendationRepository = remember { RecommendationRepository() }
+    val scope = rememberCoroutineScope()
+
+    val viewModel: PaginatedMovieListViewModel<TvShow> = viewModel(
+        key = "tvGenre_${source.genreId}",
+        factory = PaginatedMovieListViewModelFactory(
+            fetchPage = { page -> repository.getTvShowsByGenre(source.genreId, page) },
+            idSelector = { it.id },
+        ),
+    )
+    val uiState by viewModel.uiState.collectAsState()
+
+    var favoriteIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var watchlistIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+    LaunchedEffect(Unit) {
+        val favorites = userListRepository.getFavorites().getOrDefault(emptyList())
+        favoriteIds = favorites.filter { it.mediaType == "tv" }.map { it.id }.toSet()
+        val watchlist = userListRepository.getWatchlist().getOrDefault(emptyList())
+        watchlistIds = watchlist.filter { it.mediaType == "tv" }.map { it.id }.toSet()
+    }
+
+    fun toggleFavorite(show: TvShow) {
+        val isFav = show.id in favoriteIds
+        favoriteIds = if (isFav) favoriteIds - show.id else favoriteIds + show.id
+        scope.launch {
+            if (isFav) {
+                userListRepository.removeFavorite(show.id, mediaType = "tv")
+                recommendationRepository.removeTvFavoriteSignal(show.id)
+            } else {
+                userListRepository.addFavorite(
+                    SavedMovie(
+                        id = show.id,
+                        title = show.name,
+                        posterUrl = show.posterUrl,
+                        rating = show.rating,
+                        year = show.year,
+                        genreIds = show.genreIds,
+                        mediaType = "tv",
+                    ),
+                )
+                recommendationRepository.recordTvFavorite(show.id, show.genreIds)
+            }
+        }
+    }
+
+    fun toggleWatchlist(show: TvShow) {
+        val isSaved = show.id in watchlistIds
+        watchlistIds = if (isSaved) watchlistIds - show.id else watchlistIds + show.id
+        scope.launch {
+            if (isSaved) {
+                userListRepository.removeFromWatchlist(show.id, mediaType = "tv")
+            } else {
+                userListRepository.addToWatchlist(
+                    SavedMovie(
+                        id = show.id,
+                        title = show.name,
+                        posterUrl = show.posterUrl,
+                        rating = show.rating,
+                        year = show.year,
+                        mediaType = "tv",
+                    ),
+                )
+            }
+        }
+    }
+
+    when {
+        uiState.isLoading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Primary)
+            }
+        }
+        uiState.errorMessage != null && uiState.items.isEmpty() -> {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(16.dp))
+                CVGradientButton(text = "Tekrar Dene", onClick = viewModel::loadFirstPage)
+            }
+        }
+        else -> {
+            val listState = rememberLazyListState()
+
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                itemsIndexed(uiState.items, key = { _, show -> show.id }) { _, show ->
+                    MovieListItemCard(
+                        movie = show.toHomeMovie(),
+                        isFavorite = show.id in favoriteIds,
+                        onDetailsClick = { onTvShowClick(show.id) },
+                        onAddToListClick = { toggleWatchlist(show) },
+                        onFavoriteClick = { toggleFavorite(show) },
+                    )
+                }
+                if (uiState.isLoadingMore) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Primary, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                        }
+                    }
+                }
+            }
+
+            LaunchedEffect(listState, uiState.items.size) {
+                snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
                     .collect { lastVisibleIndex ->
                         if (lastVisibleIndex != null && lastVisibleIndex >= uiState.items.size - 6) {
                             viewModel.loadNextPage()

@@ -4,4 +4,13 @@
         <!-- Customize your dark theme here. -->
         <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
     </style>
+
+    <!-- Sistem gece modundayken manifest'in statik olarak çözdüğü ilk splash karesi
+         (Kotlin kodu çalışmadan önce) KOYU sürüme düşsün diye — bkz. values/themes.xml
+         üstündeki açıklama. -->
+    <style name="Theme.CineVerse.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/cineverse_dark_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_logo_vector</item>
+        <item name="postSplashScreenTheme">@style/Theme.CineVerse</item>
+    </style>
 </resources>

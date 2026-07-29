@@ -1,0 +1,31 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Base "C" Shape with Gradient -->
+    <path
+        android:pathData="M12,2A10,10 0,1 0,12 22A10,10 0,0 0,19.07 18.93L17.66,17.52A8,8 0,1 1,12 4A8,8 0,0 1,17.66,6.48L19.07,5.07A10,10 0,0 0,12 2Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="2"
+                android:startY="2"
+                android:endX="22"
+                android:endY="22"
+                android:type="linear">
+                <item android:offset="0" android:color="#6C5CE7" />
+                <item android:offset="1" android:color="#A78BFA" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Film Strip Holes -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.3"
+        android:pathData="M18.5,5.5h-1.5v-1h1.5z M19.5,10.5h-1v1.5h1z M18.5,17.5h-1.5v1h1.5z M13.5,20.5h-1.5v1h1.5z M8.5,20.5h-1.5v1h1.5z M4.5,17.5h-1v-1.5h1z M3.5,12.5h-1v-1.5h1z M4.5,7.5h-1v-1.5h1z M8.5,3.5h1.5v-1h-1.5z M13.5,3.5h1.5v-1h-1.5z" />
+    <!-- Center Play Icon -->
+    <path
+        android:fillColor="#F5C542"
+        android:pathData="M10,8.5L16,12L10,15.5V8.5Z" />
+</vector>

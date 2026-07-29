@@ -1,7 +1,20 @@
 package com.arda.cineverse.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -15,9 +28,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,9 +43,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
+import com.arda.cineverse.data.model.FeaturedTvShow
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.SavedMovie
-import com.arda.cineverse.data.model.mockCategories
+import com.arda.cineverse.data.remote.toFeaturedMovie
 import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CVBottomNavBar
@@ -51,7 +65,6 @@ import com.arda.cineverse.ui.components.categoryColor
 import com.arda.cineverse.ui.components.categoryIcon
 import com.arda.cineverse.ui.theme.Accent
 import com.arda.cineverse.ui.theme.Background
-import com.arda.cineverse.ui.theme.ErrorColor
 import com.arda.cineverse.ui.theme.Primary
 import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.TextSecondary
@@ -62,59 +75,121 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     onMovieClick: (movieId: Int) -> Unit = {},
+    onTvShowClick: (tvId: Int) -> Unit = {},
     onSeeAllClick: (section: String) -> Unit = {},
     onAiSearchClick: () -> Unit = {},
     onNavigateTab: (Int) -> Unit = {},
     onCategoryClick: (Category) -> Unit = {},
+    onTvCategoryClick: (Category) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     homeViewModel: HomeViewModel = viewModel(),
     notificationViewModel: NotificationViewModel = viewModel(),
 ) {
-    var selectedCategoryId by remember { mutableStateOf(mockCategories.first().id) }
-    var selectedHomeMode by remember { mutableStateOf(HomeMode.MOVIES) }
+    var selectedCategoryId by remember { mutableStateOf("") }
 
     val uiState by homeViewModel.uiState.collectAsState()
+    // Bir tek gerçek kaynak: seçili mod her zaman ViewModel'in isTvMode'undan
+    // türetilir. Aksi halde (ör. TV detayına gidip Home'a geri dönünce) bu
+    // composable yeniden oluşturulup remember state'i sıfırlanırken,
+    // ViewModel (NavBackStackEntry'ye bağlı olduğu için) eski durumunu
+    // koruyor ve seçici ile gösterilen içerik birbirinden kopuyordu.
+    val selectedHomeMode = if (uiState.isTvMode) HomeMode.TV_SHOWS else HomeMode.MOVIES
     val unreadCount by notificationViewModel.unreadCount.collectAsState()
 
     val userListRepository = remember { UserListRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
     val scope = rememberCoroutineScope()
 
-    var favoriteIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var watchlistIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var favoriteMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var favoriteTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var watchlistMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var watchlistTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
 
     LaunchedEffect(Unit) {
-        favoriteIds = userListRepository.getFavorites().getOrDefault(emptyList()).map { it.id }.toSet()
-        watchlistIds = userListRepository.getWatchlist().getOrDefault(emptyList()).map { it.id }.toSet()
+        val favorites = userListRepository.getFavorites().getOrDefault(emptyList())
+        favoriteMovieIds = favorites.filter { it.mediaType == "movie" }.map { it.id }.toSet()
+        favoriteTvIds = favorites.filter { it.mediaType == "tv" }.map { it.id }.toSet()
+        val watchlist = userListRepository.getWatchlist().getOrDefault(emptyList())
+        watchlistMovieIds = watchlist.filter { it.mediaType == "movie" }.map { it.id }.toSet()
+        watchlistTvIds = watchlist.filter { it.mediaType == "tv" }.map { it.id }.toSet()
     }
 
-    fun toggleFavorite(movie: Movie) {
-        val isFav = movie.id in favoriteIds
-        favoriteIds = if (isFav) favoriteIds - movie.id else favoriteIds + movie.id
+    LaunchedEffect(uiState.categories, selectedHomeMode) {
+        if (uiState.categories.isNotEmpty() && uiState.categories.none { it.id == selectedCategoryId }) {
+            selectedCategoryId = uiState.categories.first().id
+        }
+    }
+
+    fun toggleFavorite(movie: Movie, mediaType: String = "movie") {
+        val isTv = mediaType == "tv"
+        val currentIds = if (isTv) favoriteTvIds else favoriteMovieIds
+        val isFav = movie.id in currentIds
+        if (isTv) {
+            favoriteTvIds = if (isFav) favoriteTvIds - movie.id else favoriteTvIds + movie.id
+        } else {
+            favoriteMovieIds = if (isFav) favoriteMovieIds - movie.id else favoriteMovieIds + movie.id
+        }
         scope.launch {
             if (isFav) {
-                userListRepository.removeFavorite(movie.id)
-                recommendationRepository.removeFavoriteSignal(movie.id)
+                userListRepository.removeFavorite(movie.id, mediaType = mediaType)
+                if (isTv) {
+                    recommendationRepository.removeTvFavoriteSignal(movie.id)
+                } else {
+                    recommendationRepository.removeFavoriteSignal(movie.id)
+                }
             } else {
                 userListRepository.addFavorite(
-                    SavedMovie(id = movie.id, title = movie.title, posterUrl = movie.posterUrl, rating = movie.rating, year = movie.year, genreIds = movie.genreIds),
+                    SavedMovie(
+                        id = movie.id,
+                        title = movie.title,
+                        posterUrl = movie.posterUrl,
+                        rating = movie.rating,
+                        year = movie.year,
+                        genreIds = movie.genreIds,
+                        mediaType = mediaType,
+                    ),
                 )
-                recommendationRepository.recordFavorite(movie.id, movie.genreIds)
+                if (isTv) {
+                    recommendationRepository.recordTvFavorite(movie.id, movie.genreIds)
+                } else {
+                    recommendationRepository.recordFavorite(movie.id, movie.genreIds)
+                }
             }
         }
     }
 
     fun toggleFeaturedWatchlist(featured: FeaturedMovie) {
-        val isSaved = featured.id in watchlistIds
-        watchlistIds = if (isSaved) watchlistIds - featured.id else watchlistIds + featured.id
+        val isSaved = featured.id in watchlistMovieIds
+        watchlistMovieIds = if (isSaved) watchlistMovieIds - featured.id else watchlistMovieIds + featured.id
         scope.launch {
             if (isSaved) {
                 userListRepository.removeFromWatchlist(featured.id)
             } else {
                 userListRepository.addToWatchlist(
                     SavedMovie(id = featured.id, title = featured.title, posterUrl = featured.posterUrl, rating = featured.rating, year = featured.year),
+                )
+            }
+        }
+    }
+
+    fun toggleFeaturedTvWatchlist(featured: FeaturedTvShow) {
+        val isSaved = featured.id in watchlistTvIds
+        watchlistTvIds = if (isSaved) watchlistTvIds - featured.id else watchlistTvIds + featured.id
+        scope.launch {
+            if (isSaved) {
+                userListRepository.removeFromWatchlist(featured.id, mediaType = "tv")
+            } else {
+                userListRepository.addToWatchlist(
+                    SavedMovie(
+                        id = featured.id,
+                        title = featured.title,
+                        posterUrl = featured.posterUrl,
+                        rating = featured.rating,
+                        year = featured.year,
+                        mediaType = "tv",
+                    ),
                 )
             }
         }
@@ -139,7 +214,15 @@ fun HomeScreen(
             Spacer(Modifier.height(12.dp))
             HomeModeSelector(
                 selected = selectedHomeMode,
-                onSelectedChange = { selectedHomeMode = it },
+                onSelectedChange = { mode ->
+                    if (selectedHomeMode != mode) {
+                        selectedCategoryId = ""
+                        when (mode) {
+                            HomeMode.MOVIES -> homeViewModel.loadMovies()
+                            HomeMode.TV_SHOWS -> homeViewModel.loadTvShows()
+                        }
+                    }
+                },
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
             Spacer(Modifier.height(12.dp))
@@ -166,7 +249,16 @@ fun HomeScreen(
                     ) {
                         Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(16.dp))
-                        CVGradientButton(text = "Tekrar Dene", onClick = { homeViewModel.loadMovies() })
+                        CVGradientButton(
+                            text = "Tekrar Dene",
+                            onClick = {
+                                if (selectedHomeMode == HomeMode.TV_SHOWS) {
+                                    homeViewModel.loadTvShows()
+                                } else {
+                                    homeViewModel.loadMovies()
+                                }
+                            },
+                        )
                     }
                 }
                 uiState.searchQuery.isNotBlank() -> {
@@ -185,7 +277,7 @@ fun HomeScreen(
                                 ) {
                                     CircularProgressIndicator(color = Primary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                                     Spacer(Modifier.width(10.dp))
-                                    Text("Aranıyor...", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    Text("Aran\u0131yor...", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                             uiState.searchSuggestions.isNotEmpty() -> {
@@ -202,7 +294,7 @@ fun HomeScreen(
                                         .background(Surface)
                                         .padding(16.dp),
                                 ) {
-                                    Text("Sonuç bulunamadı", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    Text("Sonu\u00E7 bulunamad\u0131", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }
@@ -214,16 +306,32 @@ fun HomeScreen(
                         contentPadding = PaddingValues(bottom = 110.dp),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
-                        val featured = uiState.featuredMovie
-                        if (featured != null) {
-                            item {
-                                FeaturedMovieBanner(
-                                    movie = featured,
-                                    onDetailsClick = { onMovieClick(featured.id) },
-                                    onAddToListClick = { toggleFeaturedWatchlist(featured) },
-                                    isInWatchlist = featured.id in watchlistIds,
-                                    modifier = Modifier.padding(horizontal = 20.dp),
-                                )
+                        if (uiState.isTvMode) {
+                            val featuredTv = uiState.featuredTvShow
+                            if (featuredTv != null) {
+                                item {
+                                    FeaturedMovieBanner(
+                                        movie = featuredTv.toFeaturedMovie(),
+                                        label = "GÜNÜN DİZİSİ",
+                                        onDetailsClick = { onTvShowClick(featuredTv.id) },
+                                        onAddToListClick = { toggleFeaturedTvWatchlist(featuredTv) },
+                                        isInWatchlist = featuredTv.id in watchlistTvIds,
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                    )
+                                }
+                            }
+                        } else {
+                            val featured = uiState.featuredMovie
+                            if (featured != null) {
+                                item {
+                                    FeaturedMovieBanner(
+                                        movie = featured,
+                                        onDetailsClick = { onMovieClick(featured.id) },
+                                        onAddToListClick = { toggleFeaturedWatchlist(featured) },
+                                        isInWatchlist = featured.id in watchlistMovieIds,
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                    )
+                                }
                             }
                         }
 
@@ -233,7 +341,7 @@ fun HomeScreen(
                                     HomeSectionHeader(
                                         icon = Icons.Filled.Recommend,
                                         iconTint = Primary,
-                                        title = "Sizin İçin Önerilenler",
+                                        title = "Sizin \u0130\u00E7in \u00D6nerilenler",
                                         showSeeAll = false,
                                     )
                                     LazyRow(
@@ -242,9 +350,15 @@ fun HomeScreen(
                                     ) {
                                         items(uiState.recommendedMovies, key = { it.id }) { movie ->
                                             PopularMovieCard(
-                                                movie = movie.copy(isFavorite = movie.id in favoriteIds),
-                                                onClick = { onMovieClick(movie.id) },
-                                                onFavoriteClick = { toggleFavorite(movie) },
+                                                movie = movie.copy(
+                                                    isFavorite = movie.id in if (uiState.isTvMode) favoriteTvIds else favoriteMovieIds,
+                                                ),
+                                                onClick = {
+                                                    if (uiState.isTvMode) onTvShowClick(movie.id) else onMovieClick(movie.id)
+                                                },
+                                                onFavoriteClick = {
+                                                    toggleFavorite(movie, mediaType = if (uiState.isTvMode) "tv" else "movie")
+                                                },
                                             )
                                         }
                                     }
@@ -257,8 +371,10 @@ fun HomeScreen(
                                 HomeSectionHeader(
                                     icon = Icons.Filled.LocalFireDepartment,
                                     iconTint = Color(0xFFFF7A45),
-                                    title = "Popüler Filmler",
+                                    title = if (uiState.isTvMode) "Pop\u00FCler Diziler" else "Pop\u00FCler Filmler",
                                     onSeeAllClick = { onSeeAllClick("popular") },
+                                    // TODO: Thread mediaType through MovieListScreen before enabling TV "Tumunu Gor".
+                                    showSeeAll = !uiState.isTvMode,
                                 )
                                 LazyRow(
                                     contentPadding = PaddingValues(horizontal = 20.dp),
@@ -266,32 +382,65 @@ fun HomeScreen(
                                 ) {
                                     items(uiState.popularMovies, key = { it.id }) { movie ->
                                         PopularMovieCard(
-                                            movie = movie.copy(isFavorite = movie.id in favoriteIds),
-                                            onClick = { onMovieClick(movie.id) },
-                                            onFavoriteClick = { toggleFavorite(movie) },
+                                            movie = movie.copy(
+                                                isFavorite = movie.id in if (uiState.isTvMode) favoriteTvIds else favoriteMovieIds,
+                                            ),
+                                            onClick = {
+                                                if (uiState.isTvMode) onTvShowClick(movie.id) else onMovieClick(movie.id)
+                                            },
+                                            onFavoriteClick = {
+                                                toggleFavorite(movie, mediaType = if (uiState.isTvMode) "tv" else "movie")
+                                            },
                                         )
                                     }
                                 }
                             }
                         }
 
-                        item {
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                HomeSectionHeader(
-                                    icon = Icons.Filled.CalendarMonth,
-                                    iconTint = Accent,
-                                    title = "Yakında Vizyona Girecekler",
-                                    onSeeAllClick = { onSeeAllClick("upcoming") },
-                                )
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 20.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
-                                    items(uiState.upcomingMovies, key = { it.id }) { movie ->
-                                        UpcomingMovieCard(
-                                            movie = movie,
-                                            onClick = { onMovieClick(movie.id) },
-                                        )
+                        if (uiState.isTvMode) {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    HomeSectionHeader(
+                                        icon = Icons.Filled.CalendarMonth,
+                                        iconTint = Accent,
+                                        title = "\u015Eu An Yay\u0131nda",
+                                        onSeeAllClick = { onSeeAllClick("upcoming") },
+                                        // TODO: Add a TV list source before enabling TV "Tumunu Gor".
+                                        showSeeAll = false,
+                                    )
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 20.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        items(uiState.onAirTvShows, key = { it.id }) { tvShow ->
+                                            PopularMovieCard(
+                                                movie = tvShow.copy(isFavorite = tvShow.id in favoriteTvIds),
+                                                onClick = { onTvShowClick(tvShow.id) },
+                                                onFavoriteClick = { toggleFavorite(tvShow, mediaType = "tv") },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    HomeSectionHeader(
+                                        icon = Icons.Filled.CalendarMonth,
+                                        iconTint = Accent,
+                                        title = "Yak\u0131nda Vizyona Girecekler",
+                                        onSeeAllClick = { onSeeAllClick("upcoming") },
+                                    )
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 20.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        items(uiState.upcomingMovies, key = { it.id }) { movie ->
+                                            UpcomingMovieCard(
+                                                movie = movie,
+                                                onClick = { onMovieClick(movie.id) },
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -304,12 +453,14 @@ fun HomeScreen(
                                     iconTint = Primary,
                                     title = "Kategoriler",
                                     onSeeAllClick = { onSeeAllClick("categories") },
+                                    // TODO: Thread mediaType through AllCategoriesScreen before enabling TV category browsing.
+                                    showSeeAll = !uiState.isTvMode,
                                 )
                                 LazyRow(
                                     contentPadding = PaddingValues(horizontal = 20.dp),
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
-                                    items(mockCategories, key = { it.id }) { category ->
+                                    items(uiState.categories, key = { it.id }) { category ->
                                         CategoryChip(
                                             category = category,
                                             icon = categoryIcon(category.genreId),
@@ -317,7 +468,11 @@ fun HomeScreen(
                                             selected = category.id == selectedCategoryId,
                                             onClick = {
                                                 selectedCategoryId = category.id
-                                                onCategoryClick(category)
+                                                if (uiState.isTvMode) {
+                                                    onTvCategoryClick(category)
+                                                } else {
+                                                    onCategoryClick(category)
+                                                }
                                             },
                                         )
                                     }

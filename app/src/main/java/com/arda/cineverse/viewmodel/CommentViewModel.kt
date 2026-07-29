@@ -109,9 +109,12 @@ class CommentViewModel(
     }
 }
 
-class CommentViewModelFactory(private val movieId: Int) : ViewModelProvider.Factory {
+class CommentViewModelFactory(
+    private val movieId: Int,
+    private val repository: CommentRepository = CommentRepository(),
+) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return CommentViewModel(movieId) as T
+        return CommentViewModel(movieId, repository) as T
     }
 }

@@ -40,16 +40,18 @@ class PaginatedMovieListViewModel<T>(
     fun loadFirstPage() {
         viewModelScope.launch {
             _uiState.value = PaginatedListUiState(isLoading = true)
-            val result = fetchPage(1)
-            _uiState.value = result.fold(
-                onSuccess = { items ->
-                    val deduped = items.distinctBy(idSelector)
-                    PaginatedListUiState(items = deduped, isLoading = false, currentPage = 1, endReached = deduped.isEmpty())
-                },
-                onFailure = {
+            _uiState.value = when (val outcome = fetchNonEmptyPage(fromPage = 1)) {
+                is PageFetchOutcome.Found -> {
+                    val deduped = outcome.items.distinctBy(idSelector)
+                    PaginatedListUiState(items = deduped, isLoading = false, currentPage = outcome.page, endReached = false)
+                }
+                is PageFetchOutcome.End -> {
+                    PaginatedListUiState(isLoading = false, currentPage = outcome.lastPage, endReached = true)
+                }
+                PageFetchOutcome.Error -> {
                     PaginatedListUiState(isLoading = false, errorMessage = "Filmler yüklenemedi. İnternet bağlantınızı kontrol edin.")
-                },
-            )
+                }
+            }
         }
     }
 
@@ -59,27 +61,49 @@ class PaginatedMovieListViewModel<T>(
 
         viewModelScope.launch {
             _uiState.value = state.copy(isLoadingMore = true)
-            val nextPage = state.currentPage + 1
-            val result = fetchPage(nextPage)
-            _uiState.value = result.fold(
-                onSuccess = { newItems ->
+            _uiState.value = when (val outcome = fetchNonEmptyPage(fromPage = state.currentPage + 1)) {
+                is PageFetchOutcome.Found -> {
                     val existingIds = state.items.map(idSelector).toSet()
-                    val deduped = newItems.filterNot { idSelector(it) in existingIds }
-                    state.copy(
-                        items = state.items + deduped,
-                        isLoadingMore = false,
-                        currentPage = nextPage,
-                        // TMDB'nin gerçekten sonuncu sayfasına ulaştığımızı, orijinal
-                        // (filtrelenmemiş) sonucun boş olup olmamasına göre anlıyoruz.
-                        endReached = newItems.isEmpty(),
-                    )
-                },
-                onFailure = {
+                    val deduped = outcome.items.filterNot { idSelector(it) in existingIds }
+                    state.copy(items = state.items + deduped, isLoadingMore = false, currentPage = outcome.page, endReached = false)
+                }
+                is PageFetchOutcome.End -> {
+                    state.copy(isLoadingMore = false, currentPage = outcome.lastPage, endReached = true)
+                }
+                PageFetchOutcome.Error -> {
                     // Sessizce başarısız oluyor — kullanıcı tekrar aşağı kaydırınca yeniden dener
                     state.copy(isLoadingMore = false)
-                },
-            )
+                }
+            }
         }
+    }
+
+    /**
+     * Bazı listelerde (ör. Yakında Vizyona Girecekler) repository katmanı sonuçları
+     * filtreleyebiliyor, bu yüzden tek bir TMDB sayfası boş dönse bile listenin
+     * gerçekten bittiği anlamına gelmez. Gerçek bir sonuç bulana ya da deneme
+     * sınırına ulaşana kadar sırayla sonraki sayfaları dener.
+     */
+    private suspend fun fetchNonEmptyPage(fromPage: Int): PageFetchOutcome<T> {
+        var page = fromPage
+        repeat(MAX_EMPTY_PAGE_RETRIES) {
+            val result = fetchPage(page)
+            if (result.isFailure) return PageFetchOutcome.Error
+            val items = result.getOrNull().orEmpty()
+            if (items.isNotEmpty()) return PageFetchOutcome.Found(items, page)
+            page += 1
+        }
+        return PageFetchOutcome.End(page - 1)
+    }
+
+    private sealed class PageFetchOutcome<out T> {
+        data class Found<T>(val items: List<T>, val page: Int) : PageFetchOutcome<T>()
+        data class End(val lastPage: Int) : PageFetchOutcome<Nothing>()
+        data object Error : PageFetchOutcome<Nothing>()
+    }
+
+    private companion object {
+        const val MAX_EMPTY_PAGE_RETRIES = 5
     }
 }
 

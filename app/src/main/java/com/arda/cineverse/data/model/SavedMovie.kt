@@ -13,4 +13,5 @@ data class SavedMovie(
     val year: Int? = null,
     val addedAt: Long = 0L,
     val genreIds: List<Int> = emptyList(),
+    val mediaType: String = "movie",
 )

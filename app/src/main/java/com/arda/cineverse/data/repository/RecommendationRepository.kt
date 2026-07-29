@@ -1,6 +1,7 @@
 package com.arda.cineverse.data.repository
 
 import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.model.TvShow
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -28,7 +29,12 @@ class RecommendationRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val movieRepository: MovieRepository = MovieRepository(),
+    private val tvRepository: TvRepository = TvRepository(),
 ) {
+    // "movieId" alan adı tarihi nedenlerle böyle kaldı ama film ve dizi
+    // pencereleri AYRI Firestore alanlarında tutulduğu için (recentlyViewed/
+    // recentFavorites vs. recentlyViewedTv/recentFavoritesTv) bu sınıf
+    // dizi id'leri için de sorunsuzca yeniden kullanılabiliyor.
     private data class MovieSignal(val movieId: Int, val genreIds: List<Int>) {
         fun toMap(): Map<String, Any> = mapOf("movieId" to movieId, "genreIds" to genreIds)
     }
@@ -69,6 +75,43 @@ class RecommendationRepository(
             docRef.update("recentFavorites", updated.map { it.toMap() }).await()
         }.onFailure { error ->
             android.util.Log.e("CVRecommendations", "removeFavoriteSignal başarısız oldu", error)
+        }
+    }
+
+    /** Bir dizi detayı açıldığında çağrılır. */
+    suspend fun recordTvView(tvId: Int, genreIds: List<Int>) {
+        val uid = auth.currentUser?.uid ?: return
+        runCatching {
+            addToWindow(uid, "recentlyViewedTv", tvId, genreIds)
+        }.onFailure { error ->
+            android.util.Log.e("CVRecommendations", "recordTvView başarısız oldu", error)
+        }
+    }
+
+    /** Bir dizi favorilere eklendiğinde çağrılır. */
+    suspend fun recordTvFavorite(tvId: Int, genreIds: List<Int>) {
+        val uid = auth.currentUser?.uid ?: return
+        runCatching {
+            addToWindow(uid, "recentFavoritesTv", tvId, genreIds)
+        }.onFailure { error ->
+            android.util.Log.e("CVRecommendations", "recordTvFavorite başarısız oldu", error)
+        }
+    }
+
+    /**
+     * Bir dizi favorilerden çıkarıldığında çağrılır. Sinyali pencereden
+     * tamamen kaldırır — favorile/çıkar döngüsüyle puan şişirmeyi engeller.
+     */
+    suspend fun removeTvFavoriteSignal(tvId: Int) {
+        val uid = auth.currentUser?.uid ?: return
+        runCatching {
+            val docRef = userDoc(uid)
+            val snapshot = docRef.get().await()
+            val current = readWindow(snapshot, "recentFavoritesTv")
+            val updated = current.filterNot { it.movieId == tvId }
+            docRef.update("recentFavoritesTv", updated.map { it.toMap() }).await()
+        }.onFailure { error ->
+            android.util.Log.e("CVRecommendations", "removeTvFavoriteSignal başarısız oldu", error)
         }
     }
 
@@ -146,5 +189,53 @@ class RecommendationRepository(
         result
     }.onFailure { error ->
         android.util.Log.e("CVRecommendations", "getRecommendations başarısız oldu", error)
+    }
+
+    /**
+     * getRecommendations() ile birebir aynı mantık — sadece dizi pencerelerinden
+     * (recentlyViewedTv/recentFavoritesTv) okuyup tür adaylarını
+     * TvRepository.getTvShowsByGenre() ile getiriyor.
+     */
+    suspend fun getTvRecommendations(): Result<List<TvShow>> = runCatching {
+        val uid = auth.currentUser?.uid ?: return@runCatching emptyList()
+        val snapshot = userDoc(uid).get().await()
+
+        val recentlyViewed = readWindow(snapshot, "recentlyViewedTv")
+        val recentFavorites = readWindow(snapshot, "recentFavoritesTv")
+        android.util.Log.d(
+            "CVRecommendations",
+            "recentlyViewedTv=${recentlyViewed.size} dizi, recentFavoritesTv=${recentFavorites.size} dizi",
+        )
+
+        if (recentlyViewed.isEmpty() && recentFavorites.isEmpty()) {
+            android.util.Log.d("CVRecommendations", "İki dizi penceresi de boş, öneri üretilmeyecek")
+            return@runCatching emptyList()
+        }
+
+        val genreScores = mutableMapOf<Int, Int>()
+        recentlyViewed.forEach { signal ->
+            signal.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 1 }
+        }
+        recentFavorites.forEach { signal ->
+            signal.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 3 }
+        }
+        android.util.Log.d("CVRecommendations", "Dizi tür puanları: $genreScores")
+
+        val topGenreIds = genreScores.entries.sortedByDescending { it.value }.take(2).map { it.key }
+        android.util.Log.d("CVRecommendations", "En yüksek dizi türleri: $topGenreIds")
+        if (topGenreIds.isEmpty()) return@runCatching emptyList()
+
+        val excludeIds = (recentlyViewed.map { it.movieId } + recentFavorites.map { it.movieId }).toSet()
+
+        val candidates = topGenreIds.flatMap { genreId ->
+            tvRepository.getTvShowsByGenre(genreId, page = 1).getOrDefault(emptyList())
+        }
+        android.util.Log.d("CVRecommendations", "Aday dizi sayısı: ${candidates.size}")
+
+        val result = candidates.distinctBy { it.id }.filterNot { it.id in excludeIds }.take(15)
+        android.util.Log.d("CVRecommendations", "Sonuç: ${result.size} dizi önerildi")
+        result
+    }.onFailure { error ->
+        android.util.Log.e("CVRecommendations", "getTvRecommendations başarısız oldu", error)
     }
 }

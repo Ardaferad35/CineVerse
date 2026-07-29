@@ -25,7 +25,10 @@ class MovieRepository(
     }
 
     suspend fun getUpcomingMovies(page: Int = 1): Result<List<UpcomingMovie>> = runCatching {
-        api.getUpcomingMovies(page = page).results.map { it.toUpcomingMovie() }
+        val currentYear = LocalDate.now().year
+        api.getUpcomingMovies(page = page).results
+            .map { it.toUpcomingMovie() }
+            .filter { movie -> movie.year != null && movie.year >= currentYear }
     }
 
     suspend fun searchMovies(query: String): Result<List<Movie>> = runCatching {

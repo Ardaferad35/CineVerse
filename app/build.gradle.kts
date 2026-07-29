@@ -16,8 +16,11 @@ plugins {
 
 android {
     namespace = "com.arda.cineverse"
-    compileSdk = 35
-
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
         applicationId = "com.arda.cineverse"
@@ -39,11 +42,10 @@ android {
             "\"${localProperties.getProperty("TMDB_READ_ACCESS_TOKEN", "")}\""
         )
         buildConfigField(
-                "String",
-                "GEMINI_API_KEY",
-                "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\""
+            "String",
+            "GEMINI_API_KEY",
+            "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\""
         )
-
     }
 
     buildFeatures {
@@ -84,13 +86,15 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.activity.compose)
+    implementation("androidx.core:core-splashscreen:1.0.1")
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:34.15.0"))
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-firestore")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.messaging)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // TMDB için ağ katmanı
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
@@ -99,7 +103,8 @@ dependencies {
 
     // Film posterleri için görsel yükleme
     implementation("io.coil-kt:coil-compose:2.7.0")
-    // youtube api
-    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.2")
+
+    // Zamanlanmış arka plan görevleri (gece yarısı Günün Filmi kontrolü,
+    // periyodik Yakında Vizyona Girecekler kontrolü) için
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 }

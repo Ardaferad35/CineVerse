@@ -18,12 +18,19 @@ class UserListRepository(
     private fun watchlistCollection() =
         firestore.collection("users").document(requireUid()).collection("watchlist")
 
-    suspend fun isFavorite(movieId: Int): Boolean = runCatching {
-        favoritesCollection().document(movieId.toString()).get().await().exists()
+    private fun documentId(mediaId: Int, mediaType: String = "movie"): String =
+        if (mediaType == "movie") mediaId.toString() else "${mediaType}_$mediaId"
+
+    suspend fun isFavorite(movieId: Int): Boolean = isFavorite(movieId, mediaType = "movie")
+
+    suspend fun isFavorite(mediaId: Int, mediaType: String): Boolean = runCatching {
+        favoritesCollection().document(documentId(mediaId, mediaType)).get().await().exists()
     }.getOrDefault(false)
 
-    suspend fun isInWatchlist(movieId: Int): Boolean = runCatching {
-        watchlistCollection().document(movieId.toString()).get().await().exists()
+    suspend fun isInWatchlist(movieId: Int): Boolean = isInWatchlist(movieId, mediaType = "movie")
+
+    suspend fun isInWatchlist(mediaId: Int, mediaType: String): Boolean = runCatching {
+        watchlistCollection().document(documentId(mediaId, mediaType)).get().await().exists()
     }.getOrDefault(false)
 
     suspend fun getFavorites(): Result<List<SavedMovie>> = runCatching {
@@ -41,24 +48,28 @@ class UserListRepository(
     }
 
     suspend fun addFavorite(movie: SavedMovie): Result<Unit> = runCatching {
-        favoritesCollection().document(movie.id.toString())
+        favoritesCollection().document(documentId(movie.id, movie.mediaType))
             .set(movie.copy(addedAt = System.currentTimeMillis())).await()
         Unit
     }
 
-    suspend fun removeFavorite(movieId: Int): Result<Unit> = runCatching {
-        favoritesCollection().document(movieId.toString()).delete().await()
+    suspend fun removeFavorite(movieId: Int): Result<Unit> = removeFavorite(movieId, mediaType = "movie")
+
+    suspend fun removeFavorite(mediaId: Int, mediaType: String): Result<Unit> = runCatching {
+        favoritesCollection().document(documentId(mediaId, mediaType)).delete().await()
         Unit
     }
 
     suspend fun addToWatchlist(movie: SavedMovie): Result<Unit> = runCatching {
-        watchlistCollection().document(movie.id.toString())
+        watchlistCollection().document(documentId(movie.id, movie.mediaType))
             .set(movie.copy(addedAt = System.currentTimeMillis())).await()
         Unit
     }
 
-    suspend fun removeFromWatchlist(movieId: Int): Result<Unit> = runCatching {
-        watchlistCollection().document(movieId.toString()).delete().await()
+    suspend fun removeFromWatchlist(movieId: Int): Result<Unit> = removeFromWatchlist(movieId, mediaType = "movie")
+
+    suspend fun removeFromWatchlist(mediaId: Int, mediaType: String): Result<Unit> = runCatching {
+        watchlistCollection().document(documentId(mediaId, mediaType)).delete().await()
         Unit
     }
 }

@@ -6,4 +6,43 @@
     </style>
 
     <style name="Theme.CineVerse" parent="Base.Theme.CineVerse" />
+
+    <!--
+         Android 12+ Splash Screen API (core-splashscreen backport). MainActivity bu
+         temayla açılır; installSplashScreen() sonrası postSplashScreenTheme'e geçer.
+
+         "Theme.CineVerse.Splash" (isimsiz/varsayılan), manifest'in statik olarak
+         referans verdiği stil — Kotlin kodu çalışmadan ÖNCE, sistem tarafından
+         sadece gündüz/gece (values / values-night) konfigürasyonuna göre çözülebilir
+         (bu dosyada AÇIK/gündüz sürümü, values-night/themes.xml'de KOYU/gece sürümü).
+         Bu, gerçek Android 12+ cihazlarda ilk karenin sistem gece/gündüz moduna göre
+         mümkün olan en doğru varsayılanı almasını sağlar.
+
+         Uygulamanın KENDİ kayıtlı tema tercihi (ThemeState, sistem ayarından bağımsız)
+         MainActivity.onCreate() içinde installSplashScreen()'den ÖNCE setTheme() ile
+         aşağıdaki isimlendirilmiş ".Dark"/".Light" varyantlarından birine geçilerek
+         uygulanıyor — bu, API 28-30'daki core-splashscreen "backport" yolunda splash'ı
+         tam olarak doğru gösterir ve API 31+ cihazlarda da postSplashScreenTheme
+         geçişinin/Compose içeriğinin kullanıcının gerçek tercihiyle uyuşmasını garanti
+         eder. (API 31+ gerçek platform API'sinde ilk karenin runtime kontrolüyle
+         seçilmesi Android'in kendi kısıtı nedeniyle mümkün değil — bu yüzden iki
+         mekanizma birlikte kullanılıyor.)
+    -->
+    <style name="Theme.CineVerse.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/cineverse_light_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_logo_vector</item>
+        <item name="postSplashScreenTheme">@style/Theme.CineVerse</item>
+    </style>
+
+    <style name="Theme.CineVerse.Splash.Dark" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/cineverse_dark_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_logo_vector</item>
+        <item name="postSplashScreenTheme">@style/Theme.CineVerse</item>
+    </style>
+
+    <style name="Theme.CineVerse.Splash.Light" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/cineverse_light_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_logo_vector</item>
+        <item name="postSplashScreenTheme">@style/Theme.CineVerse</item>
+    </style>
 </resources>

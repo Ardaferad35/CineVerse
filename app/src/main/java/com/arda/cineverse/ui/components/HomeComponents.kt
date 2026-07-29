@@ -240,6 +240,7 @@ fun FeaturedMovieBanner(
     onDetailsClick: () -> Unit,
     onAddToListClick: () -> Unit,
     modifier: Modifier = Modifier,
+    label: String = "GÜNÜN FİLMİ",
     isInWatchlist: Boolean = false,
     pageCount: Int = 4,
     currentPage: Int = 0,
@@ -298,7 +299,7 @@ fun FeaturedMovieBanner(
             ) {
                 Icon(Icons.Filled.EmojiEvents, contentDescription = null, tint = StarColor, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("GÜNÜN FİLMİ", color = OnSurface, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Text(label, color = OnSurface, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
 
             Spacer(Modifier.weight(1f))

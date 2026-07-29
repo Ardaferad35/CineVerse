@@ -20,6 +20,7 @@ import com.arda.cineverse.ui.screens.NotificationsScreen
 import com.arda.cineverse.ui.screens.ProfileScreen
 import com.arda.cineverse.ui.screens.RegisterScreen
 import com.arda.cineverse.ui.screens.SearchScreen
+import com.arda.cineverse.ui.screens.TvShowDetailScreen
 import com.google.firebase.auth.FirebaseAuth
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -34,15 +35,20 @@ object CVRoutes {
     const val PROFILE = "profile"
     const val NOTIFICATIONS = "notifications"
     const val MOVIE_DETAIL = "movie_detail/{movieId}"
+    const val TV_DETAIL = "tv_detail/{tvId}"
     const val MOVIE_LIST = "movie_list/{section}"
     const val MOVIE_LIST_GENRE = "movie_list_genre/{genreId}/{label}"
+    const val TV_LIST_GENRE = "tv_list_genre/{genreId}/{label}"
     const val ALL_CATEGORIES = "all_categories"
 
     fun movieDetail(movieId: Int) = "movie_detail/$movieId"
+    fun tvDetail(tvId: Int) = "tv_detail/$tvId"
     fun search(aiMode: Boolean) = "search/$aiMode"
     fun movieList(section: String) = "movie_list/$section"
     fun movieListGenre(genreId: Int, label: String) =
         "movie_list_genre/$genreId/${URLEncoder.encode(label, "UTF-8")}"
+    fun tvListGenre(genreId: Int, label: String) =
+        "tv_list_genre/$genreId/${URLEncoder.encode(label, "UTF-8")}"
 }
 
 @Composable
@@ -88,6 +94,7 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
         composable(CVRoutes.HOME) {
             HomeScreen(
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+                onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
                 onSeeAllClick = { section ->
                     when (section) {
                         "popular", "upcoming" -> navController.navigate(CVRoutes.movieList(section))
@@ -103,6 +110,9 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                 },
                 onCategoryClick = { category ->
                     navController.navigate(CVRoutes.movieListGenre(category.genreId, category.label))
+                },
+                onTvCategoryClick = { category ->
+                    navController.navigate(CVRoutes.tvListGenre(category.genreId, category.label))
                 },
                 onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
                 onNotificationsClick = { navController.navigate(CVRoutes.NOTIFICATIONS) },
@@ -186,6 +196,22 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
             )
         }
+        composable(
+            route = CVRoutes.TV_LIST_GENRE,
+            arguments = listOf(
+                navArgument("genreId") { type = NavType.IntType },
+                navArgument("label") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val genreId = backStackEntry.arguments?.getInt("genreId") ?: 0
+            val rawLabel = backStackEntry.arguments?.getString("label") ?: "Kategori"
+            val label = URLDecoder.decode(rawLabel, "UTF-8")
+            MovieListScreen(
+                source = MovieListSource.TvGenre(genreId = genreId, label = label),
+                onBack = { navController.popBackStack() },
+                onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
+            )
+        }
         composable(CVRoutes.ALL_CATEGORIES) {
             AllCategoriesScreen(
                 onBack = { navController.popBackStack() },
@@ -204,6 +230,18 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                 onBack = { navController.popBackStack() },
                 onGoHome = { navController.popBackStack(CVRoutes.HOME, inclusive = false) },
                 onMovieClick = { relatedMovieId -> navController.navigate(CVRoutes.movieDetail(relatedMovieId)) },
+            )
+        }
+        composable(
+            route = CVRoutes.TV_DETAIL,
+            arguments = listOf(navArgument("tvId") { type = NavType.IntType }),
+        ) { backStackEntry ->
+            val tvId = backStackEntry.arguments?.getInt("tvId") ?: return@composable
+            TvShowDetailScreen(
+                tvId = tvId,
+                onBack = { navController.popBackStack() },
+                onGoHome = { navController.popBackStack(CVRoutes.HOME, inclusive = false) },
+                onTvShowClick = { relatedTvId -> navController.navigate(CVRoutes.tvDetail(relatedTvId)) },
             )
         }
     }

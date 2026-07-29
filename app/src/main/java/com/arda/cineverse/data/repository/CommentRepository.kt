@@ -12,11 +12,13 @@ import kotlin.math.round
 class CommentRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val commentsRootCollection: String = "movies",
+    private val ratingsRootCollection: String = "movie_ratings",
 ) {
     private fun commentsCollection(movieId: Int) =
-        firestore.collection("movies").document(movieId.toString()).collection("comments")
+        firestore.collection(commentsRootCollection).document(movieId.toString()).collection("comments")
 
-    private fun ratingsCollection() = firestore.collection("movie_ratings")
+    private fun ratingsCollection() = firestore.collection(ratingsRootCollection)
 
     fun currentUserId(): String? = auth.currentUser?.uid
 
@@ -83,7 +85,7 @@ class CommentRepository(
                 type = "comment_reply",
                 title = "$displayName yorumunuza yanıt verdi",
                 body = "\"$movieTitle\" filmindeki yorumunuza: ${text.take(80)}",
-                movieId = movieId,
+                movieId = movieId.takeIf { commentsRootCollection == "movies" },
             )
         }
     }
