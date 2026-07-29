@@ -39,6 +39,8 @@ import com.arda.cineverse.ui.components.CVBottomNavBar
 import com.arda.cineverse.ui.components.CVGradientButton
 import com.arda.cineverse.ui.components.CategoryChip
 import com.arda.cineverse.ui.components.FeaturedMovieBanner
+import com.arda.cineverse.ui.components.HomeMode
+import com.arda.cineverse.ui.components.HomeModeSelector
 import com.arda.cineverse.ui.components.HomeSearchBar
 import com.arda.cineverse.ui.components.HomeSectionHeader
 import com.arda.cineverse.ui.components.HomeTopBar
@@ -71,6 +73,7 @@ fun HomeScreen(
     notificationViewModel: NotificationViewModel = viewModel(),
 ) {
     var selectedCategoryId by remember { mutableStateOf(mockCategories.first().id) }
+    var selectedHomeMode by remember { mutableStateOf(HomeMode.MOVIES) }
 
     val uiState by homeViewModel.uiState.collectAsState()
     val unreadCount by notificationViewModel.unreadCount.collectAsState()
@@ -132,6 +135,12 @@ fun HomeScreen(
                 onProfileClick = onProfileClick,
                 onNotificationsClick = onNotificationsClick,
                 unreadNotificationCount = unreadCount,
+            )
+            Spacer(Modifier.height(12.dp))
+            HomeModeSelector(
+                selected = selectedHomeMode,
+                onSelectedChange = { selectedHomeMode = it },
+                modifier = Modifier.padding(horizontal = 20.dp),
             )
             Spacer(Modifier.height(12.dp))
             HomeSearchBar(

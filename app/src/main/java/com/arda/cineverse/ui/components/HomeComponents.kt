@@ -45,7 +45,6 @@ private val StarColor = Color(0xFFFFC857)
 
 @Composable
 fun HomeTopBar(
-    onMenuClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     unreadNotificationCount: Int = 0,
@@ -56,10 +55,6 @@ fun HomeTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onMenuClick) {
-            Icon(Icons.Filled.Menu, contentDescription = "Menü", tint = OnSurface)
-        }
-
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.Theaters, contentDescription = null, tint = Primary, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(6.dp))
@@ -129,6 +124,54 @@ fun HomeTopBar(
                         .clip(CircleShape)
                         .background(Accent)
                         .border(2.dp, Background, CircleShape),
+                )
+            }
+        }
+    }
+}
+
+enum class HomeMode(val label: String) {
+    MOVIES("Filmler"),
+    TV_SHOWS("Diziler"),
+}
+
+@Composable
+fun HomeModeSelector(
+    selected: HomeMode,
+    onSelectedChange: (HomeMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(Surface)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        HomeMode.entries.forEach { mode ->
+            val isSelected = mode == selected
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(
+                        brush = if (isSelected) {
+                            Brush.horizontalGradient(PrimaryGradient)
+                        } else {
+                            Brush.horizontalGradient(listOf(SurfaceVariant, SurfaceVariant))
+                        },
+                    )
+                    .clickable { onSelectedChange(mode) }
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    mode.label,
+                    color = if (isSelected) OnPrimary else TextSecondary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
         }
