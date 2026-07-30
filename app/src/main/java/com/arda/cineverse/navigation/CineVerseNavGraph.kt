@@ -171,7 +171,12 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
             NotificationsScreen(
                 onBack = { navController.popBackStack() },
                 onNotificationClick = { notification ->
-                    notification.movieId?.let { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) }
+                    if (notification.tvId != null || notification.mediaType == "tv") {
+                        val id = notification.tvId ?: notification.movieId
+                        id?.let { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) }
+                    } else {
+                        notification.movieId?.let { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) }
+                    }
                 },
             )
         }

@@ -88,10 +88,10 @@ fun RegisterScreen(
             }
             Spacer(Modifier.height(12.dp))
 
-            Text("Create Account", color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Text("Hesap Oluştur", color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Join CineVerse and explore thousands of movies",
+                "CineVerse'e katılın ve binlerce film ile diziyi keşfedin",
                 color = TextSecondary,
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -101,7 +101,7 @@ fun RegisterScreen(
             CVTextField(
                 value = fullName,
                 onValueChange = { fullName = it; nameError = null },
-                placeholder = "Full name",
+                placeholder = "Ad Soyad",
                 leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary) },
                 isError = nameError != null,
                 errorText = nameError,
@@ -110,7 +110,7 @@ fun RegisterScreen(
             CVTextField(
                 value = email,
                 onValueChange = { email = it; emailError = null },
-                placeholder = "Email address",
+                placeholder = "E-posta adresi",
                 leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
                 isError = emailError != null,
                 errorText = emailError,
@@ -120,7 +120,7 @@ fun RegisterScreen(
             CVTextField(
                 value = password,
                 onValueChange = { password = it },
-                placeholder = "Password",
+                placeholder = "Şifre",
                 leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
                 isPassword = true,
                 passwordVisible = passwordVisible,
@@ -130,7 +130,7 @@ fun RegisterScreen(
             CVTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it; confirmError = null },
-                placeholder = "Confirm password",
+                placeholder = "Şifreyi tekrar edin",
                 leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
                 isPassword = true,
                 passwordVisible = confirmPasswordVisible,
@@ -141,9 +141,9 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                CVValidationRow("At least 8 characters", lengthOk)
-                CVValidationRow("Contains number or symbol", numberOrSymbolOk)
-                CVValidationRow("Mix of uppercase and lowercase", caseOk)
+                CVValidationRow("En az 8 karakter", lengthOk)
+                CVValidationRow("Rakam veya sembol içeriyor", numberOrSymbolOk)
+                CVValidationRow("Büyük ve küçük harf içeriyor", caseOk)
             }
 
             Spacer(Modifier.height(14.dp))
@@ -153,7 +153,7 @@ fun RegisterScreen(
                     onCheckedChange = { agreedToTerms = it },
                     colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
                 )
-                Text("I agree to the Terms & Conditions", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text("Kullanım Şartları & Gizlilik Politikasını kabul ediyorum", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             }
 
             if (authState is AuthState.Error) {
@@ -167,13 +167,13 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(16.dp))
             CVGradientButton(
-                text = if (isLoading) "Creating account..." else "Sign Up",
+                text = if (isLoading) "Hesap oluşturuluyor..." else "Kayıt Ol",
                 onClick = ::validateAndSubmit,
                 enabled = agreedToTerms && !isLoading,
             )
 
             Spacer(Modifier.height(24.dp))
-            CVDividerWithLabel("or continue with")
+            CVDividerWithLabel("veya şununla devam et")
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
@@ -186,8 +186,8 @@ fun RegisterScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Already have an account? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-                CVTextButton("Sign In", onClick = onNavigateToLogin)
+                Text("Zaten hesabınız var mı? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                CVTextButton("Giriş Yap", onClick = onNavigateToLogin)
             }
             Spacer(Modifier.height(24.dp))
         }

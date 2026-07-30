@@ -9,6 +9,8 @@ data class AppNotification(
     val title: String = "",
     val body: String = "",
     val movieId: Int? = null,
+    val tvId: Int? = null,
+    val mediaType: String? = null, // "movie" or "tv"
     val isRead: Boolean = false,
     val createdAt: Long = 0L,
 )

@@ -97,10 +97,10 @@ fun LoginScreen(
                     ),
                 )
                 Spacer(Modifier.height(20.dp))
-                Text("Welcome back!", color = OnSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Text("Tekrar Hoş Geldiniz!", color = OnSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Sign in to continue your movie journey",
+                    "Sinema ve dizi yolculuğunuza devam etmek için giriş yapın",
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
@@ -122,7 +122,7 @@ fun LoginScreen(
             CVTextField(
                 value = email,
                 onValueChange = { email = it; emailError = null },
-                placeholder = "Email address",
+                placeholder = "E-posta adresi",
                 leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
                 isError = emailError != null,
                 errorText = emailError,
@@ -132,7 +132,7 @@ fun LoginScreen(
             CVTextField(
                 value = password,
                 onValueChange = { password = it; passwordError = null },
-                placeholder = "Password",
+                placeholder = "Şifre",
                 leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
                 isPassword = true,
                 passwordVisible = passwordVisible,
@@ -153,9 +153,9 @@ fun LoginScreen(
                         onCheckedChange = { rememberMe = it },
                         colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
                     )
-                    Text("Remember me", color = OnSurface, style = MaterialTheme.typography.bodyMedium)
+                    Text("Beni hatırla", color = OnSurface, style = MaterialTheme.typography.bodyMedium)
                 }
-                CVTextButton("Forgot Password?", onClick = onNavigateToForgotPassword)
+                CVTextButton("Şifremi Unuttum?", onClick = onNavigateToForgotPassword)
             }
 
             if (authState is AuthState.Error) {
@@ -169,13 +169,13 @@ fun LoginScreen(
 
             Spacer(Modifier.height(16.dp))
             CVGradientButton(
-                text = if (isLoading) "Signing in..." else "Sign In",
+                text = if (isLoading) "Giriş yapılıyor..." else "Giriş Yap",
                 onClick = ::validateAndSubmit,
                 enabled = !isLoading,
             )
 
             Spacer(Modifier.height(24.dp))
-            CVDividerWithLabel("or continue with")
+            CVDividerWithLabel("veya şununla devam et")
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
@@ -188,8 +188,8 @@ fun LoginScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Don't have an account? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-                CVTextButton("Sign Up", onClick = onNavigateToRegister)
+                Text("Hesabınız yok mu? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                CVTextButton("Kayıt Ol", onClick = onNavigateToRegister)
             }
             Spacer(Modifier.height(24.dp))
         }

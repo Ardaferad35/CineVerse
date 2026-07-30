@@ -39,6 +39,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
@@ -65,12 +66,21 @@ import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.ui.theme.ThemeState
 import com.arda.cineverse.viewmodel.ProfileViewModel
 
+import androidx.compose.ui.platform.LocalContext
+import com.arda.cineverse.data.local.datastore.UserPreferences
+import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
+import kotlinx.coroutines.launch
+
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
+    val userPreferencesRepository = remember { UserPreferencesRepository(context) }
+    val userPreferences by userPreferencesRepository.userPreferences.collectAsState(initial = UserPreferences())
+    val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsState()
 
     var showSignOutConfirm by remember { mutableStateOf(false) }
@@ -79,7 +89,6 @@ fun ProfileScreen(
     var showComingSoonDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
-    var notificationsEnabled by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
@@ -252,8 +261,10 @@ fun ProfileScreen(
                         icon = Icons.Filled.Info,
                         title = "Bildirimler",
                         subtitle = "Bildirim tercihlerinizi yönetin",
-                        checked = notificationsEnabled,
-                        onCheckedChange = { notificationsEnabled = it },
+                        checked = userPreferences.notificationsEnabled,
+                        onCheckedChange = { enabled ->
+                            scope.launch { userPreferencesRepository.setNotificationsEnabled(enabled) }
+                        },
                     )
                     HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
                     SettingsRow(

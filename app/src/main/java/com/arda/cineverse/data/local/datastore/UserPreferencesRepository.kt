@@ -29,6 +29,7 @@ class UserPreferencesRepository @Inject constructor(
     private object Keys {
         val IS_DARK_THEME = booleanPreferencesKey("is_dark_theme")
         val LANGUAGE = stringPreferencesKey("language")
+        val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val HOME_LAST_SYNCED_AT = longPreferencesKey("home_last_synced_at")
     }
 
@@ -36,6 +37,7 @@ class UserPreferencesRepository @Inject constructor(
         UserPreferences(
             isDarkTheme = prefs[Keys.IS_DARK_THEME] ?: true,
             language = prefs[Keys.LANGUAGE] ?: "tr",
+            notificationsEnabled = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
             homeLastSyncedAt = prefs[Keys.HOME_LAST_SYNCED_AT],
         )
     }
@@ -46,6 +48,10 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setLanguage(language: String) {
         context.dataStore.edit { it[Keys.LANGUAGE] = language }
+    }
+
+    suspend fun setNotificationsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.NOTIFICATIONS_ENABLED] = enabled }
     }
 
     suspend fun setHomeLastSyncedAt(timestamp: Long) {
