@@ -67,15 +67,21 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import androidx.compose.runtime.LaunchedEffect
 import com.arda.cineverse.data.model.Comment
+import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.model.TvShow
 import com.arda.cineverse.data.repository.CommentRepository
+import com.arda.cineverse.data.repository.RecommendationRepository
+import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CastMemberChip
 import com.arda.cineverse.ui.components.CommentInputBox
 import com.arda.cineverse.ui.components.CommentItem
 import com.arda.cineverse.ui.components.CVGradientButton
 import com.arda.cineverse.ui.components.ExpandableOverview
 import com.arda.cineverse.ui.components.MovieDetailStickyBar
+import com.arda.cineverse.ui.components.PopularMovieCard
 import com.arda.cineverse.ui.components.RatingDistributionBar
 import com.arda.cineverse.ui.components.ReplyInputBox
 import com.arda.cineverse.ui.theme.Background
@@ -122,6 +128,40 @@ fun TvShowDetailScreen(
     val scope = rememberCoroutineScope()
     val detailState by tvShowDetailViewModel.uiState.collectAsState()
     val commentState by commentViewModel.uiState.collectAsState()
+
+    val userListRepository = remember { UserListRepository() }
+    val recommendationRepository = remember { RecommendationRepository() }
+
+    var favoriteTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+    LaunchedEffect(Unit) {
+        val favorites = userListRepository.getFavorites().getOrDefault(emptyList())
+        favoriteTvIds = favorites.filter { it.mediaType == "tv" }.map { it.id }.toSet()
+    }
+
+    fun toggleSimilarTvFavorite(similar: TvShow) {
+        val isFav = similar.id in favoriteTvIds
+        favoriteTvIds = if (isFav) favoriteTvIds - similar.id else favoriteTvIds + similar.id
+        scope.launch {
+            if (isFav) {
+                userListRepository.removeFavorite(similar.id, mediaType = "tv")
+                recommendationRepository.removeTvFavoriteSignal(similar.id)
+            } else {
+                userListRepository.addFavorite(
+                    SavedMovie(
+                        id = similar.id,
+                        title = similar.name,
+                        posterUrl = similar.posterUrl,
+                        rating = similar.rating,
+                        year = similar.year,
+                        genreIds = similar.genreIds,
+                        mediaType = "tv",
+                    ),
+                )
+                recommendationRepository.recordTvFavorite(similar.id, similar.genreIds)
+            }
+        }
+    }
 
     var editingComment by remember { mutableStateOf<Comment?>(null) }
     var commentPendingDelete by remember { mutableStateOf<Comment?>(null) }
@@ -398,7 +438,7 @@ fun TvShowDetailScreen(
                                         initialText = comment.text,
                                         initialRating = comment.rating,
                                         initialSpoiler = comment.isSpoiler,
-                                        submitLabel = "Guncelle",
+                                        submitLabel = "Güncelle",
                                         onSubmit = { text, rating, spoiler ->
                                             commentViewModel.editComment(comment.id, text, rating, spoiler, tvShow.name, tvShow.posterUrl, tvShow.year, tvShow.genreIds)
                                             editingComment = null
@@ -472,7 +512,20 @@ fun TvShowDetailScreen(
                                     Spacer(Modifier.height(12.dp))
                                     LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         items(tvShow.similarShows, key = { it.id }) { similar ->
-                                            SimilarTvShowCard(tvShow = similar, onClick = { onTvShowClick(similar.id) })
+                                            PopularMovieCard(
+                                                movie = Movie(
+                                                    id = similar.id,
+                                                    title = similar.name,
+                                                    posterUrl = similar.posterUrl,
+                                                    rating = similar.rating,
+                                                    year = similar.year,
+                                                    genreIds = similar.genreIds,
+                                                    mediaType = "tv",
+                                                    isFavorite = similar.id in favoriteTvIds,
+                                                ),
+                                                onClick = { onTvShowClick(similar.id) },
+                                                onFavoriteClick = { toggleSimilarTvFavorite(similar) },
+                                            )
                                         }
                                     }
                                 }
@@ -499,7 +552,7 @@ fun TvShowDetailScreen(
         AlertDialog(
             onDismissRequest = { commentPendingDelete = null },
             title = { Text("Yorumu sil") },
-            text = { Text("Bu yorumu silmek istediginize emin misiniz?") },
+            text = { Text("Bu yorumu silmek istediğinize emin misiniz?") },
             confirmButton = {
                 TextButton(onClick = {
                     if (currentTvShow != null) {
@@ -509,7 +562,7 @@ fun TvShowDetailScreen(
                 }) { Text("Sil", color = ErrorColor) }
             },
             dismissButton = {
-                TextButton(onClick = { commentPendingDelete = null }) { Text("Vazgec") }
+                TextButton(onClick = { commentPendingDelete = null }) { Text("Vazgeç") }
             },
         )
     }

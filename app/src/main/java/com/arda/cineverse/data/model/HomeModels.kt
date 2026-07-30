@@ -4,7 +4,7 @@ data class Movie(
     val id: Int,
     val title: String,
     val year: Int?,
-    val genre: String,
+    val genre: String = "",
     val genres: List<String> = emptyList(),
     val genreIds: List<Int> = emptyList(),
     val rating: Double,
