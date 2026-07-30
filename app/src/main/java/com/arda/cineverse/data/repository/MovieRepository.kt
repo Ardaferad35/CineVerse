@@ -190,6 +190,13 @@ class MovieRepository @Inject constructor(
             val targetGenreIds = detail.genres.map { it.id }
             val genreQueryStr = targetGenreIds.take(2).joinToString(",")
 
+            val collectionId = detail.belongs_to_collection?.id
+            val collectionDeferred = async {
+                if (collectionId != null) {
+                    runCatching { api.getCollectionDetail(collectionId).parts }.getOrDefault(emptyList())
+                } else emptyList()
+            }
+
             val discoverDeferred = async {
                 if (genreQueryStr.isNotBlank()) {
                     runCatching {
@@ -198,10 +205,13 @@ class MovieRepository @Inject constructor(
                 } else emptyList()
             }
 
+            val collectionMovies = collectionDeferred.await()
             val rawSimilar = rawSimilarDeferred.await()
             val discoverMovies = discoverDeferred.await()
 
-            val allCandidates = (rawSimilar + discoverMovies)
+            val collectionMovieIds = collectionMovies.map { it.id }.toSet()
+
+            val allCandidates = (collectionMovies + rawSimilar + discoverMovies)
                 .distinctBy { it.id }
                 .filter { it.id != movieId }
 
@@ -210,12 +220,13 @@ class MovieRepository @Inject constructor(
             val rankedSimilar = allCandidates
                 .map { candidate ->
                     val candidateTokens = tokenizeOverview(candidate.overview)
-                    val score = computeSimilarityScore(
+                    val isCollectionMember = candidate.id in collectionMovieIds
+                    val score = computeAdvancedSimilarityScore(
                         targetGenreIds = targetGenreIds,
                         targetOverviewTokens = targetTokens,
-                        candidateGenreIds = candidate.genre_ids,
+                        candidate = candidate,
                         candidateOverviewTokens = candidateTokens,
-                        candidateVoteAverage = candidate.vote_average,
+                        isCollectionMember = isCollectionMember,
                     )
                     candidate to score
                 }
@@ -235,7 +246,7 @@ class MovieRepository @Inject constructor(
 
     private fun tokenizeOverview(text: String?): Set<String> {
         if (text.isNullOrBlank()) return emptySet()
-        val stopWords = setOf("bir", "ve", "de", "da", "bu", "ile", "için", "ama", "gibi", "kendi", "daha", "en", "her", "o", "kadar", "sonra", "ki")
+        val stopWords = setOf("bir", "ve", "de", "da", "bu", "ile", "için", "ama", "gibi", "kendi", "daha", "en", "her", "o", "kadar", "sonra", "ki", "tarafından")
         return text.lowercase(java.util.Locale.forLanguageTag("tr"))
             .replace(Regex("[^a-zçğıöşü0-9\\s]"), " ")
             .split(Regex("\\s+"))
@@ -243,24 +254,36 @@ class MovieRepository @Inject constructor(
             .toSet()
     }
 
-    private fun computeSimilarityScore(
+    private fun computeAdvancedSimilarityScore(
         targetGenreIds: List<Int>,
         targetOverviewTokens: Set<String>,
-        candidateGenreIds: List<Int>,
+        candidate: com.arda.cineverse.data.remote.dto.MovieDto,
         candidateOverviewTokens: Set<String>,
-        candidateVoteAverage: Double,
+        isCollectionMember: Boolean,
     ): Double {
-        val sharedGenres = candidateGenreIds.intersect(targetGenreIds.toSet()).size
-        if (sharedGenres == 0) return 0.0
+        var score = 0.0
+
+        if (isCollectionMember) {
+            score += 100.0
+        }
+
+        val sharedGenres = candidate.genre_ids.intersect(targetGenreIds.toSet()).size
+        if (sharedGenres == 0 && !isCollectionMember) return 0.0
+
         val genreScore = sharedGenres.toDouble() / targetGenreIds.size.coerceAtLeast(1)
+        score += genreScore * 40.0
 
         val sharedTokens = candidateOverviewTokens.intersect(targetOverviewTokens).size
-        val unionSize = (targetOverviewTokens.size + candidateOverviewTokens.size - sharedTokens).coerceAtLeast(1)
-        val textScore = if (targetOverviewTokens.isEmpty()) 0.0 else sharedTokens.toDouble() / unionSize
+        if (targetOverviewTokens.isNotEmpty()) {
+            val unionSize = (targetOverviewTokens.size + candidateOverviewTokens.size - sharedTokens).coerceAtLeast(1)
+            val textJaccard = sharedTokens.toDouble() / unionSize
+            score += textJaccard * 30.0
+        }
 
-        val ratingScore = (candidateVoteAverage / 10.0).coerceIn(0.0, 1.0)
+        val ratingRatio = (candidate.vote_average / 10.0).coerceIn(0.0, 1.0)
+        score += ratingRatio * 20.0
 
-        return (genreScore * 0.45) + (textScore * 0.35) + (ratingScore * 0.20)
+        return score
     }
 
     private fun todaySeed(): Int {

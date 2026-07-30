@@ -36,6 +36,19 @@ data class TvShowDto(
     val genre_ids: List<Int> = emptyList(),
 )
 
+data class MovieCollectionDto(
+    val id: Int,
+    val name: String,
+    val poster_path: String? = null,
+    val backdrop_path: String? = null,
+)
+
+data class MovieCollectionResponseDto(
+    val id: Int,
+    val name: String,
+    val parts: List<MovieDto> = emptyList(),
+)
+
 data class MovieDetailDto(
     val id: Int,
     val title: String,
@@ -46,6 +59,7 @@ data class MovieDetailDto(
     val vote_average: Double,
     val runtime: Int?,
     val genres: List<GenreDto> = emptyList(),
+    val belongs_to_collection: MovieCollectionDto? = null,
 )
 
 data class TvShowDetailDto(

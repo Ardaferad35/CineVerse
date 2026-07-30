@@ -38,6 +38,12 @@ interface TmdbApiService {
         @Query("language") language: String = "tr-TR",
     ): MovieDetailDto
 
+    @GET("collection/{collection_id}")
+    suspend fun getCollectionDetail(
+        @Path("collection_id") collectionId: Int,
+        @Query("language") language: String = "tr-TR",
+    ): com.arda.cineverse.data.remote.dto.MovieCollectionResponseDto
+
     @GET("movie/{movie_id}/credits")
     suspend fun getMovieCredits(
         @Path("movie_id") movieId: Int,
