@@ -29,37 +29,41 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.repository.MovieRepository
+import com.arda.cineverse.data.repository.TvRepository
 import com.arda.cineverse.ui.components.CVGradientButton
+import com.arda.cineverse.ui.components.GridShimmer
 import com.arda.cineverse.ui.components.categoryColor
 import com.arda.cineverse.ui.components.categoryIcon
 import com.arda.cineverse.ui.theme.Background
 import com.arda.cineverse.ui.theme.OnSurface
-import com.arda.cineverse.ui.theme.Primary
 import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
 @Composable
 fun AllCategoriesScreen(
+    isTvMode: Boolean = false,
     onBack: () -> Unit = {},
     onCategoryClick: (Category) -> Unit = {},
 ) {
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    val repository = remember { MovieRepository() }
+    val movieRepository = remember { MovieRepository() }
+    val tvRepository = remember { TvRepository() }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
         isLoading = true
         errorMessage = null
-        repository.getAllGenres().fold(
+        val result = if (isTvMode) tvRepository.getAllTvGenres() else movieRepository.getAllGenres()
+        result.fold(
             onSuccess = { list -> categories = list; isLoading = false },
             onFailure = { errorMessage = "Kategoriler yüklenemedi"; isLoading = false },
         )
     }
 
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(isTvMode) { load() }
 
     Column(
         modifier = Modifier
@@ -76,14 +80,12 @@ fun AllCategoriesScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
             }
             Spacer(Modifier.width(8.dp))
-            Text("Tüm Kategoriler", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(if (isTvMode) "Tüm Dizi Kategorileri" else "Tüm Film Kategorileri", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
 
         when {
             isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Primary)
-                }
+                GridShimmer(columns = 2, itemCount = 10)
             }
             errorMessage != null -> {
                 Column(

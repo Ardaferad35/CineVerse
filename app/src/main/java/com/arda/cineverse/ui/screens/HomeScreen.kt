@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
 import com.arda.cineverse.data.model.FeaturedTvShow
@@ -293,9 +294,7 @@ fun HomeScreen(
 
             when {
                 uiState.isLoading -> {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Primary)
-                    }
+                    HomeScreenShimmer()
                 }
                 uiState.errorMessage != null -> {
                     Column(

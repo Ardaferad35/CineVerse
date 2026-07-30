@@ -30,9 +30,7 @@ import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.UserListRepository
-import com.arda.cineverse.ui.components.CVBottomNavBar
-import com.arda.cineverse.ui.components.HomeTopBar
-import com.arda.cineverse.ui.components.PopularMovieCard
+import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.components.SearchModeBar
 import com.arda.cineverse.ui.theme.Background
 import com.arda.cineverse.ui.theme.OnSurface
@@ -123,9 +121,7 @@ fun SearchScreen(
 
             when {
                 uiState.isLoading -> {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Primary)
-                    }
+                    GridShimmer(modifier = Modifier.weight(1f))
                 }
                 uiState.errorMessage != null -> {
                     Box(

@@ -28,11 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.arda.cineverse.ui.components.CVBottomNavBar
-import com.arda.cineverse.ui.components.CVGradientButton
-import com.arda.cineverse.ui.components.HomeTopBar
-import com.arda.cineverse.ui.components.ListTabButton
-import com.arda.cineverse.ui.components.MyListEmptyState
+import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.components.SavedMovieCard
 import com.arda.cineverse.ui.theme.Background
 import com.arda.cineverse.ui.theme.ErrorColor
@@ -106,9 +102,7 @@ fun MyListScreen(
 
             when {
                 uiState.isLoading -> {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Primary)
-                    }
+                    GridShimmer(modifier = Modifier.weight(1f))
                 }
                 uiState.errorMessage != null -> {
                     Column(

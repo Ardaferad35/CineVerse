@@ -39,7 +39,7 @@ object CVRoutes {
     const val MOVIE_LIST = "movie_list/{section}"
     const val MOVIE_LIST_GENRE = "movie_list_genre/{genreId}/{label}"
     const val TV_LIST_GENRE = "tv_list_genre/{genreId}/{label}"
-    const val ALL_CATEGORIES = "all_categories"
+    const val ALL_CATEGORIES = "all_categories?isTvMode={isTvMode}"
 
     fun movieDetail(movieId: Int) = "movie_detail/$movieId"
     fun tvDetail(tvId: Int) = "tv_detail/$tvId"
@@ -49,6 +49,7 @@ object CVRoutes {
         "movie_list_genre/$genreId/${URLEncoder.encode(label, "UTF-8")}"
     fun tvListGenre(genreId: Int, label: String) =
         "tv_list_genre/$genreId/${URLEncoder.encode(label, "UTF-8")}"
+    fun allCategories(isTvMode: Boolean = false) = "all_categories?isTvMode=$isTvMode"
 }
 
 @Composable
@@ -100,7 +101,8 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                         "popular", "upcoming" -> navController.navigate(CVRoutes.movieList(section))
                         "popular_tv" -> navController.navigate(CVRoutes.movieList("popular_tv"))
                         "on_air_tv" -> navController.navigate(CVRoutes.movieList("on_air_tv"))
-                        "categories" -> navController.navigate(CVRoutes.ALL_CATEGORIES)
+                        "categories_tv" -> navController.navigate(CVRoutes.allCategories(isTvMode = true))
+                        "categories_movie", "categories" -> navController.navigate(CVRoutes.allCategories(isTvMode = false))
                     }
                 },
                 onAiSearchClick = { navController.navigate(CVRoutes.search(aiMode = true)) },
@@ -233,11 +235,20 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                 onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
             )
         }
-        composable(CVRoutes.ALL_CATEGORIES) {
+        composable(
+            route = CVRoutes.ALL_CATEGORIES,
+            arguments = listOf(navArgument("isTvMode") { type = NavType.BoolType; defaultValue = false }),
+        ) { backStackEntry ->
+            val isTvMode = backStackEntry.arguments?.getBoolean("isTvMode") ?: false
             AllCategoriesScreen(
+                isTvMode = isTvMode,
                 onBack = { navController.popBackStack() },
                 onCategoryClick = { category ->
-                    navController.navigate(CVRoutes.movieListGenre(category.genreId, category.label))
+                    if (isTvMode) {
+                        navController.navigate(CVRoutes.tvListGenre(category.genreId, category.label))
+                    } else {
+                        navController.navigate(CVRoutes.movieListGenre(category.genreId, category.label))
+                    }
                 },
             )
         }
