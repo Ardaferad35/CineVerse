@@ -412,6 +412,56 @@ fun HomeSectionHeader(
     }
 }
 
+/**
+ * Home ekranında Room cache'inden yararlanıldığını (çevrimdışıyken) veya
+ * en son ne zaman taze veriyle senkronize edildiğini gösteren küçük bir
+ * durum şeridi. isOffline true iken önceliklidir; aksi halde son
+ * senkronizasyon zamanı gösterilir (hiç senkron olunmadıysa hiçbir şey
+ * çizilmez).
+ */
+@Composable
+fun OfflineStatusBanner(
+    isOffline: Boolean,
+    lastSyncedAt: Long?,
+    modifier: Modifier = Modifier,
+) {
+    val label = when {
+        isOffline -> "Çevrimdışı Mod • Son senkronize edilen içerikler gösteriliyor"
+        lastSyncedAt != null -> "Son güncelleme: ${formatLastSyncedAt(lastSyncedAt)}"
+        else -> null
+    } ?: return
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isOffline) ErrorColor.copy(alpha = 0.12f) else Surface)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (isOffline) Icons.Filled.CloudOff else Icons.Filled.CloudDone,
+            contentDescription = null,
+            tint = if (isOffline) ErrorColor else TextSecondary,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(label, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+private fun formatLastSyncedAt(timestampMillis: Long): String {
+    val turkishMonths = listOf(
+        "Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara",
+    )
+    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = timestampMillis }
+    val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    val month = turkishMonths[calendar.get(java.util.Calendar.MONTH)]
+    val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY).toString().padStart(2, '0')
+    val minute = calendar.get(java.util.Calendar.MINUTE).toString().padStart(2, '0')
+    return "$day $month, $hour:$minute"
+}
+
 @Composable
 fun PopularMovieCard(
     movie: Movie,

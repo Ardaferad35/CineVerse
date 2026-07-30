@@ -1,5 +1,13 @@
 package com.arda.cineverse.data.repository
 
+import com.arda.cineverse.data.common.SyncResult
+import com.arda.cineverse.data.connectivity.ConnectivityObserver
+import com.arda.cineverse.data.local.dao.CategoryDao
+import com.arda.cineverse.data.local.dao.FeaturedDao
+import com.arda.cineverse.data.local.dao.TvShowDao
+import com.arda.cineverse.data.local.entity.SectionType
+import com.arda.cineverse.data.local.mapper.toDomain
+import com.arda.cineverse.data.local.mapper.toEntity
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedTvShow
 import com.arda.cineverse.data.model.TvShow
@@ -10,13 +18,76 @@ import com.arda.cineverse.data.remote.buildTvShowDetail
 import com.arda.cineverse.data.remote.simplifyTvGenreName
 import com.arda.cineverse.data.remote.toFeaturedTvShow
 import com.arda.cineverse.data.remote.toUiTvShow
+import com.arda.cineverse.di.AppGraph
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import javax.inject.Inject
 
-class TvRepository(
+class TvRepository @Inject constructor(
     private val api: TmdbApiService = TmdbNetworkModule.api,
+    private val tvShowDao: TvShowDao = AppGraph.tvShowDao,
+    private val categoryDao: CategoryDao = AppGraph.categoryDao,
+    private val featuredDao: FeaturedDao = AppGraph.featuredDao,
+    private val connectivityObserver: ConnectivityObserver = AppGraph.connectivityObserver,
 ) {
+    // --- Offline-first: sürekli gözlemlenen bölümler ---
+
+    fun observePopularTvShows(): Flow<List<TvShow>> =
+        tvShowDao.observeSection(SectionType.TV_POPULAR).map { list -> list.map { it.toDomain() } }
+
+    fun observeOnAirTvShows(): Flow<List<TvShow>> =
+        tvShowDao.observeSection(SectionType.TV_ON_AIR).map { list -> list.map { it.toDomain() } }
+
+    fun observeFeaturedTvShow(): Flow<FeaturedTvShow?> = featuredDao.observeTv().map { it?.toDomain() }
+
+    fun observeTvCategories(): Flow<List<Category>> = categoryDao.observeAll(isTv = true).map { list -> list.map { it.toDomain() } }
+
+    fun observeSectionLastSyncedAt(section: SectionType): Flow<Long?> = tvShowDao.observeLastSyncedAt(section)
+
+    suspend fun refreshPopularTvShows(page: Int = 1): SyncResult = refreshSection(SectionType.TV_POPULAR) {
+        api.getPopularTvShows(page = page).results.map { it.toUiTvShow() }
+    }
+
+    suspend fun refreshOnAirTvShows(): SyncResult = refreshSection(SectionType.TV_ON_AIR) {
+        getOnTheAirTvShows().getOrDefault(emptyList())
+    }
+
+    suspend fun refreshFeaturedTvShow(): SyncResult {
+        if (!connectivityObserver.isCurrentlyOnline()) return SyncResult.Offline
+        return getFeaturedTvShow().fold(
+            onSuccess = { featured ->
+                featuredDao.upsertTv(featured.toEntity(System.currentTimeMillis()))
+                SyncResult.Success
+            },
+            onFailure = { SyncResult.Error(it) },
+        )
+    }
+
+    suspend fun refreshTvCategories(): SyncResult {
+        if (!connectivityObserver.isCurrentlyOnline()) return SyncResult.Offline
+        return getAllTvGenres().fold(
+            onSuccess = { categories ->
+                categoryDao.replaceAll(isTv = true, categories.mapIndexed { index, category -> category.toEntity(isTv = true, position = index) })
+                SyncResult.Success
+            },
+            onFailure = { SyncResult.Error(it) },
+        )
+    }
+
+    private suspend fun refreshSection(section: SectionType, fetch: suspend () -> List<TvShow>): SyncResult {
+        if (!connectivityObserver.isCurrentlyOnline()) return SyncResult.Offline
+        return runCatching {
+            val shows = fetch()
+            val syncedAt = System.currentTimeMillis()
+            tvShowDao.replaceSection(section, shows.map { it.toEntity(syncedAt) }, syncedAt)
+        }.fold(onSuccess = { SyncResult.Success }, onFailure = { SyncResult.Error(it) })
+    }
+
+    // --- Tek seferlik / detay çağrıları — DEĞİŞMEDEN kalıyor ---
+
     suspend fun getPopularTvShows(page: Int = 1): Result<List<TvShow>> = runCatching {
         api.getPopularTvShows(page = page).results.map { it.toUiTvShow() }
     }

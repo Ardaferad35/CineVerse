@@ -17,8 +17,13 @@ import com.arda.cineverse.notifications.NotificationScheduler
 import com.arda.cineverse.ui.screens.SplashScreen
 import com.arda.cineverse.ui.theme.CineVerseTheme
 import com.arda.cineverse.ui.theme.ThemeState
+import dagger.hilt.android.AndroidEntryPoint
 
-class MainActivity : ComponentActivity() {
+// Hilt Gradle plugin'i uygulanmadığı için (bkz. root build.gradle.kts),
+// üretilen Hilt_MainActivity sınıfı doğrudan extend ediliyor. Plugin
+// olmadan @AndroidEntryPoint'in taban sınıfı açıkça belirtilmesi gerekiyor.
+@AndroidEntryPoint(ComponentActivity::class)
+class MainActivity : Hilt_MainActivity() {
 
     private val requestNotificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),

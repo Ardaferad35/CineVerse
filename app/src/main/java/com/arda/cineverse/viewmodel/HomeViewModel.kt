@@ -2,6 +2,9 @@ package com.arda.cineverse.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.data.common.SyncResult
+import com.arda.cineverse.data.connectivity.ConnectivityObserver
+import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
 import com.arda.cineverse.data.model.FeaturedTvShow
@@ -12,21 +15,22 @@ import com.arda.cineverse.data.remote.toHomeMovie
 import com.arda.cineverse.data.repository.MovieRepository
 import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.TvRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-
-private data class Quint<A, B, C, D, E>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D,
-    val fifth: E,
-)
+import javax.inject.Inject
 
 data class HomeUiState(
     val isLoading: Boolean = true,
@@ -34,124 +38,229 @@ data class HomeUiState(
     val featuredMovie: FeaturedMovie? = null,
     val featuredTvShow: FeaturedTvShow? = null,
     val popularMovies: List<Movie> = emptyList(),
+    val topRatedMovies: List<Movie> = emptyList(),
     val upcomingMovies: List<UpcomingMovie> = emptyList(),
     val onAirTvShows: List<Movie> = emptyList(),
     val recommendedMovies: List<Movie> = emptyList(),
     val categories: List<Category> = emptyList(),
     val errorMessage: String? = null,
+    // Smart Offline Mode: Home her zaman Room'daki (belki bayat) veriyi
+    // anında gösterir; bu üç alan sadece senkronizasyon durumunu UI'a
+    // yansıtmak için var (ekstra bir loading/error state makinesi gerekmez).
+    val isOffline: Boolean = false,
+    val lastSyncedAt: Long? = null,
+    val isSyncing: Boolean = false,
     val searchQuery: String = "",
     val isSearching: Boolean = false,
     val searchSuggestions: List<SearchSuggestion> = emptyList(),
 )
 
-class HomeViewModel(
-    private val repository: MovieRepository = MovieRepository(),
-    private val tvRepository: TvRepository = TvRepository(),
-    private val recommendationRepository: RecommendationRepository = RecommendationRepository(),
+private data class MovieCache(
+    val popular: List<Movie>,
+    val topRated: List<Movie>,
+    val upcoming: List<UpcomingMovie>,
+    val featured: FeaturedMovie?,
+    val recommended: List<Movie>,
+    val categories: List<Category>,
+)
+
+private data class TvCache(
+    val popular: List<Movie>,
+    val onAir: List<Movie>,
+    val featured: FeaturedTvShow?,
+    val recommended: List<Movie>,
+    val categories: List<Category>,
+)
+
+private sealed interface HomeCacheSnapshot {
+    data class MovieSnapshot(val data: MovieCache) : HomeCacheSnapshot
+    data class TvSnapshot(val data: TvCache) : HomeCacheSnapshot
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val repository: MovieRepository,
+    private val tvRepository: TvRepository,
+    private val recommendationRepository: RecommendationRepository,
+    private val connectivityObserver: ConnectivityObserver,
+    private val userPreferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState
 
     private var searchJob: Job? = null
+    private val isTvModeFlow = MutableStateFlow(false)
 
     init {
-        loadMovies()
-    }
-
-    fun loadMovies() {
-        loadHome(isTvMode = false)
-    }
-
-    fun loadTvShows() {
-        loadHome(isTvMode = true)
-    }
-
-    private fun loadHome(isTvMode: Boolean) {
+        observeCache()
+        observeLastSyncedAt()
+        // İlk açılışta (ve her yeniden bağlantı kurulduğunda) taze veri çek.
+        // Offline'ken observeCache() zaten Room'daki son senkronize veriyi
+        // anında gösteriyor, bu yüzden burada beklemeye gerek yok.
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, isTvMode = isTvMode, errorMessage = null)
-            if (isTvMode) {
-                loadTvHome()
-            } else {
-                loadMovieHome()
+            connectivityObserver.isOnline.distinctUntilChanged().collect { online ->
+                if (online) refreshCurrentMode()
             }
         }
     }
 
-    private suspend fun loadMovieHome() {
-        val (popular, upcoming, featured, recommended, categories) = coroutineScope {
-            val popularDeferred = async { repository.getPopularMovies() }
-            val upcomingDeferred = async { repository.getUpcomingMovies() }
-            val featuredDeferred = async { repository.getFeaturedMovie() }
-            val recommendedDeferred = async { recommendationRepository.getRecommendations() }
-            val categoriesDeferred = async { repository.getAllGenres() }
+    fun loadMovies() = switchMode(isTv = false)
 
-            Quint(
-                popularDeferred.await().getOrNull(),
-                upcomingDeferred.await().getOrNull(),
-                featuredDeferred.await().getOrNull(),
-                recommendedDeferred.await().getOrDefault(emptyList()),
-                categoriesDeferred.await().getOrDefault(emptyList()),
-            )
+    fun loadTvShows() = switchMode(isTv = true)
+
+    private fun switchMode(isTv: Boolean) {
+        if (isTvModeFlow.value == isTv) return
+        isTvModeFlow.value = isTv
+        _uiState.value = _uiState.value.copy(isTvMode = isTv, errorMessage = null)
+        viewModelScope.launch { refreshCurrentMode() }
+    }
+
+    private fun observeCache() {
+        isTvModeFlow
+            .flatMapLatest { isTv -> if (isTv) tvCacheFlow() else movieCacheFlow() }
+            .onEach { snapshot ->
+                _uiState.value = when (snapshot) {
+                    is HomeCacheSnapshot.MovieSnapshot -> {
+                        val data = snapshot.data
+                        val hasContent = data.popular.isNotEmpty()
+                        _uiState.value.copy(
+                            isTvMode = false,
+                            isLoading = _uiState.value.isLoading && !hasContent,
+                            errorMessage = if (hasContent) null else _uiState.value.errorMessage,
+                            featuredMovie = data.featured,
+                            featuredTvShow = null,
+                            popularMovies = data.popular,
+                            topRatedMovies = data.topRated,
+                            upcomingMovies = data.upcoming,
+                            onAirTvShows = emptyList(),
+                            recommendedMovies = data.recommended,
+                            categories = data.categories,
+                        )
+                    }
+                    is HomeCacheSnapshot.TvSnapshot -> {
+                        val data = snapshot.data
+                        val hasContent = data.popular.isNotEmpty() || data.onAir.isNotEmpty()
+                        _uiState.value.copy(
+                            isTvMode = true,
+                            isLoading = _uiState.value.isLoading && !hasContent,
+                            errorMessage = if (hasContent) null else _uiState.value.errorMessage,
+                            featuredMovie = null,
+                            featuredTvShow = data.featured,
+                            popularMovies = data.popular,
+                            topRatedMovies = emptyList(),
+                            upcomingMovies = emptyList(),
+                            onAirTvShows = data.onAir,
+                            recommendedMovies = data.recommended,
+                            categories = data.categories,
+                        )
+                    }
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observeLastSyncedAt() {
+        combine(connectivityObserver.isOnline, userPreferencesRepository.userPreferences) { online, prefs ->
+            online to prefs.homeLastSyncedAt
+        }.onEach { (online, lastSyncedAt) ->
+            _uiState.value = _uiState.value.copy(isOffline = !online, lastSyncedAt = lastSyncedAt)
+        }.launchIn(viewModelScope)
+    }
+
+    private fun movieCacheFlow(): kotlinx.coroutines.flow.Flow<HomeCacheSnapshot> {
+        val core = combine(
+            repository.observePopularMovies(),
+            repository.observeTopRatedMovies(),
+            repository.observeUpcomingMovies(),
+            repository.observeFeaturedMovie(),
+        ) { popular, topRated, upcoming, featured ->
+            MovieCoreCache(popular, topRated, upcoming, featured)
         }
+        val extra = combine(
+            recommendationRepository.observeRecommendedMovies(),
+            repository.observeCategories(),
+        ) { recommended, categories -> recommended to categories }
 
-        _uiState.value = if (popular != null && upcoming != null) {
-            _uiState.value.copy(
-                isLoading = false,
-                isTvMode = false,
-                featuredMovie = featured,
-                featuredTvShow = null,
-                popularMovies = popular,
-                upcomingMovies = upcoming,
-                onAirTvShows = emptyList(),
-                recommendedMovies = recommended,
-                categories = categories,
-            )
-        } else {
-            _uiState.value.copy(
-                isLoading = false,
-                isTvMode = false,
-                errorMessage = "Filmler y\u00FCklenemedi. \u0130nternet ba\u011Flant\u0131n\u0131z\u0131 kontrol edin.",
+        return combine(core, extra) { core2, (recommended, categories) ->
+            HomeCacheSnapshot.MovieSnapshot(
+                MovieCache(
+                    popular = core2.popular,
+                    topRated = core2.topRated,
+                    upcoming = core2.upcoming,
+                    featured = core2.featured,
+                    recommended = recommended,
+                    categories = categories,
+                ),
             )
         }
     }
 
-    private suspend fun loadTvHome() {
-        val (popular, onAir, featured, recommended, categories) = coroutineScope {
-            val popularDeferred = async { tvRepository.getPopularTvShows() }
-            val onAirDeferred = async { tvRepository.getOnTheAirTvShows() }
-            val featuredDeferred = async { tvRepository.getFeaturedTvShow() }
-            val recommendedDeferred = async { recommendationRepository.getTvRecommendations() }
-            val categoriesDeferred = async { tvRepository.getAllTvGenres() }
-
-            Quint(
-                popularDeferred.await().getOrNull(),
-                onAirDeferred.await().getOrNull(),
-                featuredDeferred.await().getOrNull(),
-                recommendedDeferred.await().getOrDefault(emptyList()),
-                categoriesDeferred.await().getOrDefault(emptyList()),
-            )
-        }
-
-        _uiState.value = if (popular != null && onAir != null) {
-            _uiState.value.copy(
-                isLoading = false,
-                isTvMode = true,
-                featuredMovie = null,
-                featuredTvShow = featured,
-                popularMovies = popular.map { it.toHomeMovie() },
-                upcomingMovies = emptyList(),
-                onAirTvShows = onAir.map { it.toHomeMovie() },
-                recommendedMovies = recommended.map { it.toHomeMovie() },
+    private fun tvCacheFlow(): kotlinx.coroutines.flow.Flow<HomeCacheSnapshot> = combine(
+        tvRepository.observePopularTvShows(),
+        tvRepository.observeOnAirTvShows(),
+        tvRepository.observeFeaturedTvShow(),
+        recommendationRepository.observeRecommendedTvShows(),
+        tvRepository.observeTvCategories(),
+    ) { popular, onAir, featured, recommended, categories ->
+        HomeCacheSnapshot.TvSnapshot(
+            TvCache(
+                popular = popular.map { it.toHomeMovie() },
+                onAir = onAir.map { it.toHomeMovie() },
+                featured = featured,
+                recommended = recommended.map { it.toHomeMovie() },
                 categories = categories,
-            )
+            ),
+        )
+    }
+
+    private suspend fun refreshCurrentMode() {
+        _uiState.value = _uiState.value.copy(isSyncing = true)
+        val results = if (isTvModeFlow.value) {
+            coroutineScope {
+                listOf(
+                    async { tvRepository.refreshPopularTvShows() },
+                    async { tvRepository.refreshOnAirTvShows() },
+                    async { tvRepository.refreshFeaturedTvShow() },
+                    async { tvRepository.refreshTvCategories() },
+                    async { recommendationRepository.refreshTvRecommendations() },
+                ).awaitAll()
+            }
         } else {
-            _uiState.value.copy(
-                isLoading = false,
-                isTvMode = true,
-                errorMessage = "Diziler y\u00FCklenemedi. \u0130nternet ba\u011Flant\u0131n\u0131z\u0131 kontrol edin.",
-            )
+            coroutineScope {
+                listOf(
+                    async { repository.refreshPopularMovies() },
+                    async { repository.refreshTopRatedMovies() },
+                    async { repository.refreshUpcomingMovies() },
+                    async { repository.refreshFeaturedMovie() },
+                    async { repository.refreshCategories() },
+                    async { recommendationRepository.refreshRecommendations() },
+                ).awaitAll()
+            }
         }
+
+        val anySuccess = results.any { it is SyncResult.Success }
+        if (anySuccess) {
+            userPreferencesRepository.setHomeLastSyncedAt(System.currentTimeMillis())
+        }
+
+        val hasCachedContent = _uiState.value.popularMovies.isNotEmpty() ||
+            _uiState.value.onAirTvShows.isNotEmpty()
+
+        _uiState.value = _uiState.value.copy(
+            isSyncing = false,
+            isLoading = false,
+            errorMessage = if (!anySuccess && !hasCachedContent) {
+                if (_uiState.value.isTvMode) {
+                    "Diziler yüklenemedi. İnternet bağlantınızı kontrol edin."
+                } else {
+                    "Filmler yüklenemedi. İnternet bağlantınızı kontrol edin."
+                }
+            } else {
+                null
+            },
+        )
     }
 
     /**
@@ -184,3 +293,10 @@ class HomeViewModel(
         _uiState.value = _uiState.value.copy(searchQuery = "", searchSuggestions = emptyList(), isSearching = false)
     }
 }
+
+private data class MovieCoreCache(
+    val popular: List<Movie>,
+    val topRated: List<Movie>,
+    val upcoming: List<UpcomingMovie>,
+    val featured: FeaturedMovie?,
+)

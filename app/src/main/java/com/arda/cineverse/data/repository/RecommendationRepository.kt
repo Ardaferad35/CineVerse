@@ -1,11 +1,24 @@
 package com.arda.cineverse.data.repository
 
+import com.arda.cineverse.data.common.SyncResult
+import com.arda.cineverse.data.connectivity.ConnectivityObserver
+import com.arda.cineverse.data.local.dao.MovieDao
+import com.arda.cineverse.data.local.dao.TvShowDao
+import com.arda.cineverse.data.local.dao.WatchHistoryDao
+import com.arda.cineverse.data.local.entity.SectionType
+import com.arda.cineverse.data.local.entity.WatchHistoryEntity
+import com.arda.cineverse.data.local.mapper.toDomain
+import com.arda.cineverse.data.local.mapper.toEntity
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.TvShow
+import com.arda.cineverse.di.AppGraph
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
 /**
  * "Sizin İçin Önerilenler" (Ana Sayfa) için içerik-tabanlı basit bir öneri
@@ -24,12 +37,22 @@ import kotlinx.coroutines.tasks.await
  *    çıkarma, o filmi pencereden TAMAMEN SİLER (puanı azaltmaz, çünkü
  *    zaten kalıcı bir puan yok) — tekrar favorilemek sadece filmi pencereye
  *    geri koyar, birikimli bir avantaj sağlamaz.
+ *
+ * OFFLINE MOD: getRecommendations()/getTvRecommendations() hesaplaması hâlâ
+ * online iken (Firestore + TMDB discover) yapılıyor — bu mantık DEĞİŞMEDİ.
+ * refreshRecommendations()/refreshTvRecommendations() sonucu Room'a
+ * (FOR_YOU/TV_FOR_YOU section) yazarak offline erişilebilir kılıyor; ayrıca
+ * "son izlenen 20" pencerelerini watch_history tablosuna aynalıyor.
  */
-class RecommendationRepository(
+class RecommendationRepository @Inject constructor(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val movieRepository: MovieRepository = MovieRepository(),
     private val tvRepository: TvRepository = TvRepository(),
+    private val movieDao: MovieDao = AppGraph.movieDao,
+    private val tvShowDao: TvShowDao = AppGraph.tvShowDao,
+    private val watchHistoryDao: WatchHistoryDao = AppGraph.watchHistoryDao,
+    private val connectivityObserver: ConnectivityObserver = AppGraph.connectivityObserver,
 ) {
     // "movieId" alan adı tarihi nedenlerle böyle kaldı ama film ve dizi
     // pencereleri AYRI Firestore alanlarında tutulduğu için (recentlyViewed/
@@ -40,6 +63,64 @@ class RecommendationRepository(
     }
 
     private fun userDoc(uid: String) = firestore.collection("users").document(uid)
+
+    // --- Offline-first: Room'dan gözlem ---
+
+    fun observeRecommendedMovies(): Flow<List<Movie>> =
+        movieDao.observeSection(SectionType.FOR_YOU).map { list -> list.map { it.toDomain() } }
+
+    fun observeRecommendedTvShows(): Flow<List<TvShow>> =
+        tvShowDao.observeSection(SectionType.TV_FOR_YOU).map { list -> list.map { it.toDomain() } }
+
+    suspend fun refreshRecommendations(): SyncResult {
+        if (!connectivityObserver.isCurrentlyOnline()) return SyncResult.Offline
+        return getRecommendations().fold(
+            onSuccess = { movies ->
+                val syncedAt = System.currentTimeMillis()
+                movieDao.replaceSection(SectionType.FOR_YOU, movies.map { it.toEntity(syncedAt) }, syncedAt)
+                syncWatchHistoryFromFirestore()
+                SyncResult.Success
+            },
+            onFailure = { SyncResult.Error(it) },
+        )
+    }
+
+    suspend fun refreshTvRecommendations(): SyncResult {
+        if (!connectivityObserver.isCurrentlyOnline()) return SyncResult.Offline
+        return getTvRecommendations().fold(
+            onSuccess = { shows ->
+                val syncedAt = System.currentTimeMillis()
+                tvShowDao.replaceSection(SectionType.TV_FOR_YOU, shows.map { it.toEntity(syncedAt) }, syncedAt)
+                syncWatchHistoryFromFirestore()
+                SyncResult.Success
+            },
+            onFailure = { SyncResult.Error(it) },
+        )
+    }
+
+    /** Firestore'daki recentlyViewed/recentlyViewedTv pencerelerini watch_history tablosuna aynalar. */
+    private suspend fun syncWatchHistoryFromFirestore() {
+        val uid = auth.currentUser?.uid ?: return
+        runCatching {
+            val snapshot = userDoc(uid).get().await()
+            val viewedMovies = readWindow(snapshot, "recentlyViewed")
+            watchHistoryDao.replaceAll(
+                mediaType = "movie",
+                items = viewedMovies.mapIndexed { index, signal ->
+                    WatchHistoryEntity(signal.movieId, "movie", signal.genreIds, System.currentTimeMillis(), index)
+                },
+            )
+            val viewedTv = readWindow(snapshot, "recentlyViewedTv")
+            watchHistoryDao.replaceAll(
+                mediaType = "tv",
+                items = viewedTv.mapIndexed { index, signal ->
+                    WatchHistoryEntity(signal.movieId, "tv", signal.genreIds, System.currentTimeMillis(), index)
+                },
+            )
+        }.onFailure { error ->
+            android.util.Log.e("CVRecommendations", "syncWatchHistoryFromFirestore başarısız oldu", error)
+        }
+    }
 
     /** Bir film detayı açıldığında çağrılır. */
     suspend fun recordView(movieId: Int, genreIds: List<Int>) {

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Recommend
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
@@ -58,6 +60,7 @@ import com.arda.cineverse.ui.components.HomeModeSelector
 import com.arda.cineverse.ui.components.HomeSearchBar
 import com.arda.cineverse.ui.components.HomeSectionHeader
 import com.arda.cineverse.ui.components.HomeTopBar
+import com.arda.cineverse.ui.components.OfflineStatusBanner
 import com.arda.cineverse.ui.components.PopularMovieCard
 import com.arda.cineverse.ui.components.SearchSuggestionsList
 import com.arda.cineverse.ui.components.UpcomingMovieCard
@@ -69,7 +72,9 @@ import com.arda.cineverse.ui.theme.Primary
 import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.HomeViewModel
+import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.viewmodel.NotificationViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -84,7 +89,7 @@ fun HomeScreen(
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
-    homeViewModel: HomeViewModel = viewModel(),
+    homeViewModel: HomeViewModel = hiltViewModel(),
     notificationViewModel: NotificationViewModel = viewModel(),
 ) {
     var selectedCategoryId by remember { mutableStateOf("") }
@@ -106,20 +111,48 @@ fun HomeScreen(
     var favoriteTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var watchlistMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var watchlistTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var offlineActionMessage by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(offlineActionMessage) {
+        if (offlineActionMessage != null) {
+            delay(2500)
+            offlineActionMessage = null
+        }
+    }
+
+    // Favoriler/İzleme Listesi Room'dan (offline-first) gözlemleniyor; ayrıca
+    // her Home açılışında çevrimiçiyse Firestore'dan taze veriyle senkronize
+    // edilir (bkz. UserListRepository.syncFavoritesAndWatchlist).
     LaunchedEffect(Unit) {
-        val favorites = userListRepository.getFavorites().getOrDefault(emptyList())
-        favoriteMovieIds = favorites.filter { it.mediaType == "movie" }.map { it.id }.toSet()
-        favoriteTvIds = favorites.filter { it.mediaType == "tv" }.map { it.id }.toSet()
-        val watchlist = userListRepository.getWatchlist().getOrDefault(emptyList())
-        watchlistMovieIds = watchlist.filter { it.mediaType == "movie" }.map { it.id }.toSet()
-        watchlistTvIds = watchlist.filter { it.mediaType == "tv" }.map { it.id }.toSet()
+        scope.launch { userListRepository.syncFavoritesAndWatchlist() }
+    }
+    LaunchedEffect(Unit) {
+        userListRepository.observeFavorites().collect { favorites ->
+            favoriteMovieIds = favorites.filter { it.mediaType == "movie" }.map { it.id }.toSet()
+            favoriteTvIds = favorites.filter { it.mediaType == "tv" }.map { it.id }.toSet()
+        }
+    }
+    LaunchedEffect(Unit) {
+        userListRepository.observeWatchlist().collect { watchlist ->
+            watchlistMovieIds = watchlist.filter { it.mediaType == "movie" }.map { it.id }.toSet()
+            watchlistTvIds = watchlist.filter { it.mediaType == "tv" }.map { it.id }.toSet()
+        }
     }
 
     LaunchedEffect(uiState.categories, selectedHomeMode) {
         if (uiState.categories.isNotEmpty() && uiState.categories.none { it.id == selectedCategoryId }) {
             selectedCategoryId = uiState.categories.first().id
         }
+    }
+
+    /** Offline'ken yazma işlemleri reddedilir; optimistic UI değişikliği geri alınır ve kullanıcıya bilgi verilir. */
+    fun handleOfflineWriteFailure(error: Throwable, revert: () -> Unit): Boolean {
+        if (error is OfflineWriteException) {
+            revert()
+            offlineActionMessage = error.message
+            return true
+        }
+        return false
     }
 
     fun toggleFavorite(movie: Movie, mediaType: String = "movie") {
@@ -131,14 +164,16 @@ fun HomeScreen(
         } else {
             favoriteMovieIds = if (isFav) favoriteMovieIds - movie.id else favoriteMovieIds + movie.id
         }
+        fun revert() {
+            if (isTv) {
+                favoriteTvIds = if (isFav) favoriteTvIds + movie.id else favoriteTvIds - movie.id
+            } else {
+                favoriteMovieIds = if (isFav) favoriteMovieIds + movie.id else favoriteMovieIds - movie.id
+            }
+        }
         scope.launch {
-            if (isFav) {
+            val result = if (isFav) {
                 userListRepository.removeFavorite(movie.id, mediaType = mediaType)
-                if (isTv) {
-                    recommendationRepository.removeTvFavoriteSignal(movie.id)
-                } else {
-                    recommendationRepository.removeFavoriteSignal(movie.id)
-                }
             } else {
                 userListRepository.addFavorite(
                     SavedMovie(
@@ -151,10 +186,15 @@ fun HomeScreen(
                         mediaType = mediaType,
                     ),
                 )
-                if (isTv) {
-                    recommendationRepository.recordTvFavorite(movie.id, movie.genreIds)
+            }
+            result.onFailure { error ->
+                if (!handleOfflineWriteFailure(error) { revert() }) return@onFailure
+            }
+            if (result.isSuccess) {
+                if (isFav) {
+                    if (isTv) recommendationRepository.removeTvFavoriteSignal(movie.id) else recommendationRepository.removeFavoriteSignal(movie.id)
                 } else {
-                    recommendationRepository.recordFavorite(movie.id, movie.genreIds)
+                    if (isTv) recommendationRepository.recordTvFavorite(movie.id, movie.genreIds) else recommendationRepository.recordFavorite(movie.id, movie.genreIds)
                 }
             }
         }
@@ -164,12 +204,17 @@ fun HomeScreen(
         val isSaved = featured.id in watchlistMovieIds
         watchlistMovieIds = if (isSaved) watchlistMovieIds - featured.id else watchlistMovieIds + featured.id
         scope.launch {
-            if (isSaved) {
+            val result = if (isSaved) {
                 userListRepository.removeFromWatchlist(featured.id)
             } else {
                 userListRepository.addToWatchlist(
                     SavedMovie(id = featured.id, title = featured.title, posterUrl = featured.posterUrl, rating = featured.rating, year = featured.year),
                 )
+            }
+            result.onFailure { error ->
+                handleOfflineWriteFailure(error) {
+                    watchlistMovieIds = if (isSaved) watchlistMovieIds + featured.id else watchlistMovieIds - featured.id
+                }
             }
         }
     }
@@ -178,7 +223,7 @@ fun HomeScreen(
         val isSaved = featured.id in watchlistTvIds
         watchlistTvIds = if (isSaved) watchlistTvIds - featured.id else watchlistTvIds + featured.id
         scope.launch {
-            if (isSaved) {
+            val result = if (isSaved) {
                 userListRepository.removeFromWatchlist(featured.id, mediaType = "tv")
             } else {
                 userListRepository.addToWatchlist(
@@ -191,6 +236,11 @@ fun HomeScreen(
                         mediaType = "tv",
                     ),
                 )
+            }
+            result.onFailure { error ->
+                handleOfflineWriteFailure(error) {
+                    watchlistTvIds = if (isSaved) watchlistTvIds + featured.id else watchlistTvIds - featured.id
+                }
             }
         }
     }
@@ -231,6 +281,12 @@ fun HomeScreen(
                 onValueChange = { homeViewModel.onSearchQueryChange(it) },
                 onAiClick = onAiSearchClick,
                 onClear = { homeViewModel.clearSearch() },
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
+            Spacer(Modifier.height(12.dp))
+            OfflineStatusBanner(
+                isOffline = uiState.isOffline,
+                lastSyncedAt = uiState.lastSyncedAt,
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
             Spacer(Modifier.height(16.dp))
@@ -397,6 +453,31 @@ fun HomeScreen(
                             }
                         }
 
+                        if (!uiState.isTvMode && uiState.topRatedMovies.isNotEmpty()) {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    HomeSectionHeader(
+                                        icon = Icons.Filled.Star,
+                                        iconTint = Color(0xFFFFC857),
+                                        title = "En \u00C7ok Be\u011Fenilenler",
+                                        showSeeAll = false,
+                                    )
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 20.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        items(uiState.topRatedMovies, key = { it.id }) { movie ->
+                                            PopularMovieCard(
+                                                movie = movie.copy(isFavorite = movie.id in favoriteMovieIds),
+                                                onClick = { onMovieClick(movie.id) },
+                                                onFavoriteClick = { toggleFavorite(movie, mediaType = "movie") },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         if (uiState.isTvMode) {
                             item {
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -493,6 +574,22 @@ fun HomeScreen(
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 16.dp),
             )
+        }
+
+        offlineActionMessage?.let { message ->
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 88.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Surface)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(message, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

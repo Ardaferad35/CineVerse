@@ -3,6 +3,7 @@ package com.arda.cineverse.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.MovieDetail
 import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.repository.MovieRepository
@@ -18,6 +19,27 @@ data class MovieDetailUiState(
     val isFavorite: Boolean = false,
     val isSaved: Boolean = false,
     val errorMessage: String? = null,
+    // true ise `movie` TMDB'den tam çekilemedi, Home cache'inden (Room)
+    // kurtarılan kısmi bir görünüm — kadro/fragman/benzer filmler eksik.
+    val isOfflineFallback: Boolean = false,
+)
+
+/** Room'da cache'lenmiş temel film verisinden (kadro/fragman/benzer filmler olmadan) kısmi bir MovieDetail oluşturur. */
+private fun Movie.toPartialMovieDetail(): MovieDetail = MovieDetail(
+    id = id,
+    title = title,
+    backdropUrl = null,
+    posterUrl = posterUrl,
+    tmdbRating = rating,
+    year = year,
+    durationLabel = "",
+    genres = genres,
+    genreIds = genreIds,
+    overview = overview,
+    director = null,
+    cast = emptyList(),
+    trailerKey = null,
+    similarMovies = emptyList(),
 )
 
 private fun MovieDetail.toSavedMovie() = SavedMovie(
@@ -46,18 +68,31 @@ class MovieDetailViewModel(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, isOfflineFallback = false)
             movieRepository.getMovieDetailFull(movieId).fold(
                 onSuccess = { movie ->
-                    _uiState.value = _uiState.value.copy(isLoading = false, movie = movie)
+                    _uiState.value = _uiState.value.copy(isLoading = false, movie = movie, isOfflineFallback = false)
                     // Öneri sistemi için: bu filmi "görüntülendi" penceresine ekle.
                     recommendationRepository.recordView(movie.id, movie.genreIds)
                 },
                 onFailure = {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = "Film bilgileri yüklenemedi. İnternet bağlantınızı kontrol edin.",
-                    )
+                    // Tam detay çekilemedi (muhtemelen çevrimdışı) — Home'da
+                    // daha önce cache'lenmiş temel film verisiyle kısmi bir
+                    // görünüm göstermeyi dene. Kadro/fragman/benzer filmler
+                    // bölümleri bu veri boş geldiğinde UI'da zaten gizleniyor.
+                    val cachedMovie = movieRepository.getCachedMovie(movieId)
+                    if (cachedMovie != null) {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            movie = cachedMovie.toPartialMovieDetail(),
+                            isOfflineFallback = true,
+                        )
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = "Film bilgileri yüklenemedi. İnternet bağlantınızı kontrol edin.",
+                        )
+                    }
                 },
             )
         }

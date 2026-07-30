@@ -4,30 +4,40 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Uygulama genelinde aktif tema tercihini tutar. Bir kez init() ile
- * SharedPreferences'tan okunur, sonrasında Profil ekranından
- * setDarkTheme() ile değiştirilebilir — değişiklik anında tüm ekranlara
- * yansır (CineVerseTheme bunu okuyor) ve kalıcı olarak saklanır.
+ * DataStore'dan okunur, sonrasında Profil ekranından setDarkTheme() ile
+ * değiştirilebilir — değişiklik anında tüm ekranlara yansır (CineVerseTheme
+ * bunu okuyor) ve kalıcı olarak saklanır.
+ *
+ * init() SENKRON çalışmak zorunda: MainActivity, installSplashScreen()'den
+ * ÖNCE setTheme() ile native splash temasını belirlemek için bu değeri
+ * hemen okumalı (bkz. MainActivity.onCreate). DataStore async olduğundan
+ * burada tek seferlik runBlocking kullanılıyor — tıpkı önceki
+ * SharedPreferences sürümünün de onCreate()'i bloklaması gibi.
  */
 object ThemeState {
-    private const val PREFS_NAME = "cineverse_theme_prefs"
-    private const val KEY_IS_DARK = "is_dark_theme"
-
     var isDarkTheme by mutableStateOf(true)
         private set
 
+    private var repository: UserPreferencesRepository? = null
+    private val backgroundScope = CoroutineScope(Dispatchers.IO)
+
     fun init(context: Context) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        isDarkTheme = prefs.getBoolean(KEY_IS_DARK, true)
+        val repo = repository ?: UserPreferencesRepository(context.applicationContext).also { repository = it }
+        isDarkTheme = runBlocking(Dispatchers.IO) { repo.userPreferences.first().isDarkTheme }
     }
 
     fun setDarkTheme(context: Context, isDark: Boolean) {
         isDarkTheme = isDark
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_IS_DARK, isDark)
-            .apply()
+        val repo = repository ?: UserPreferencesRepository(context.applicationContext).also { repository = it }
+        backgroundScope.launch { repo.setDarkTheme(isDark) }
     }
 }

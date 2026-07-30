@@ -26,6 +26,12 @@ interface TmdbApiService {
         @Query("page") page: Int = 1,
     ): MoviesResponseDto
 
+    @GET("movie/top_rated")
+    suspend fun getTopRatedMovies(
+        @Query("language") language: String = "tr-TR",
+        @Query("page") page: Int = 1,
+    ): MoviesResponseDto
+
     @GET("movie/{movie_id}")
     suspend fun getMovieDetail(
         @Path("movie_id") movieId: Int,

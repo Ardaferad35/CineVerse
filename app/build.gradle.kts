@@ -12,6 +12,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    id("com.google.devtools.ksp")
+    // Hilt Gradle plugin BİLEREK yok — bkz. root build.gradle.kts'teki not.
 }
 
 android {
@@ -107,4 +109,24 @@ dependencies {
     // Zamanlanmış arka plan görevleri (gece yarısı Günün Filmi kontrolü,
     // periyodik Yakında Vizyona Girecekler kontrolü) için
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+
+    // Smart Offline Mode: yerel önbellek (Room), ayar deposu (DataStore) ve
+    // bunları bağlayan dependency injection (Hilt)
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
+
+    implementation("com.google.dagger:hilt-android:2.57.1")
+    ksp("com.google.dagger:hilt-android-compiler:2.57.1")
+    // 1.4.0, compileSdk 37 gerektiriyor (proje 36'da) ve dagger:hilt-android'i
+    // 2.59'a yükseltip yukarıdaki 2.57.1 compiler ile sürüm uyuşmazlığı
+    // yaratıyordu ("getSavedStateHandleHolder" symbol not found) — bu yüzden
+    // compileSdk 36 ile uyumlu 1.2.0'da sabitlendi.
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
