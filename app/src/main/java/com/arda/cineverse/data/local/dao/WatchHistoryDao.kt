@@ -16,6 +16,9 @@ interface WatchHistoryDao {
     @Query("DELETE FROM watch_history WHERE mediaType = :mediaType")
     suspend fun clear(mediaType: String)
 
+    @Query("DELETE FROM watch_history")
+    suspend fun clearAll()
+
     @Upsert
     suspend fun upsertAll(items: List<WatchHistoryEntity>)
 

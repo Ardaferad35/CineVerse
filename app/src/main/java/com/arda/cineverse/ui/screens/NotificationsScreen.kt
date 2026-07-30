@@ -20,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -46,6 +47,11 @@ fun NotificationsScreen(
     viewModel: NotificationViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Liste yükleme + "hepsini okundu say" yan etkisi kasıtlı olarak burada,
+    // sadece bu ekran gerçekten açıldığında tetikleniyor (bkz.
+    // NotificationViewModel.init dokümantasyonu).
+    LaunchedEffect(Unit) { viewModel.loadNotifications() }
 
     Column(
         modifier = Modifier

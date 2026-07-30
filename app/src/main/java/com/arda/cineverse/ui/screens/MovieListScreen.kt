@@ -45,6 +45,9 @@ import com.arda.cineverse.data.repository.TvRepository
 import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CVGradientButton
 import com.arda.cineverse.ui.components.MovieListItemCard
+import com.arda.cineverse.ui.components.OfflineActionSnackbar
+import com.arda.cineverse.ui.components.OfflineWriteMessageState
+import com.arda.cineverse.ui.components.rememberOfflineWriteMessageState
 import com.arda.cineverse.ui.components.SortChip
 import com.arda.cineverse.ui.components.UpcomingMovieCard
 import com.arda.cineverse.ui.theme.Background
@@ -70,6 +73,43 @@ private enum class SortMode(val label: String) {
     APP_RATING("Uygulama İçi Puan"),
 }
 
+private fun Movie.toSavedMovie() = SavedMovie(id = id, title = title, posterUrl = posterUrl, rating = rating, year = year, genreIds = genreIds, mediaType = mediaType)
+private fun TvShow.toSavedMovie() = SavedMovie(id = id, title = name, posterUrl = posterUrl, rating = rating, year = year, genreIds = genreIds, mediaType = "tv")
+
+/**
+ * Favori toggle'ının offline-aware yazma + öneri sinyali güncelleme mantığı —
+ * bu dosyadaki 4 farklı listede (film türü/popüler dizi/yayındaki dizi/dizi
+ * türü) aynı şekilde tekrarlanmasın diye ortaklandı.
+ */
+private suspend fun writeFavoriteToggle(
+    userListRepository: UserListRepository,
+    recommendationRepository: RecommendationRepository,
+    isFav: Boolean,
+    savedMovie: SavedMovie,
+): Result<Unit> {
+    val result = if (isFav) {
+        userListRepository.removeFavorite(savedMovie.id, mediaType = savedMovie.mediaType)
+    } else {
+        userListRepository.addFavorite(savedMovie)
+    }
+    result.onSuccess {
+        val isTv = savedMovie.mediaType == "tv"
+        if (isFav) {
+            if (isTv) recommendationRepository.removeTvFavoriteSignal(savedMovie.id) else recommendationRepository.removeFavoriteSignal(savedMovie.id)
+        } else {
+            if (isTv) recommendationRepository.recordTvFavorite(savedMovie.id, savedMovie.genreIds) else recommendationRepository.recordFavorite(savedMovie.id, savedMovie.genreIds)
+        }
+    }
+    return result
+}
+
+private suspend fun writeWatchlistToggle(userListRepository: UserListRepository, isSaved: Boolean, savedMovie: SavedMovie): Result<Unit> =
+    if (isSaved) {
+        userListRepository.removeFromWatchlist(savedMovie.id, mediaType = savedMovie.mediaType)
+    } else {
+        userListRepository.addToWatchlist(savedMovie)
+    }
+
 @Composable
 fun MovieListScreen(
     source: MovieListSource,
@@ -77,50 +117,69 @@ fun MovieListScreen(
     onMovieClick: (Int) -> Unit = {},
     onTvShowClick: (Int) -> Unit = {},
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Background)
-            .statusBarsPadding(),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    // Bu ekrandaki 4 farklı liste türünün (film türü/popüler dizi/yayındaki
+    // dizi/dizi türü) hepsi aynı favori/izleme listesi toggle mantığını
+    // paylaşıyor — offline mesaj state'i burada tek yerden tutulup ilgili
+    // listeye geçiriliyor, aynı anda sadece biri gösterildiği için çakışma olmaz.
+    val offlineMessageState = rememberOfflineWriteMessageState()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Background)
+                .statusBarsPadding(),
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                }
+                Text(
+                    text = when (source) {
+                        MovieListSource.Popular -> "Popüler Filmler"
+                        MovieListSource.Upcoming -> "Yakında Vizyona Girecekler"
+                        MovieListSource.TvPopular -> "Popüler Diziler"
+                        MovieListSource.TvOnAir -> "Şu An Yayında"
+                        is MovieListSource.Genre -> source.label
+                        is MovieListSource.TvGenre -> source.label
+                    },
+                    color = OnSurface,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                IconButton(onClick = { /* Detaylı filtreleme sonraki adımda eklenecek */ }) {
+                    Icon(Icons.Filled.FilterList, contentDescription = "Filtrele", tint = OnSurface)
+                }
             }
-            Text(
-                text = when (source) {
-                    MovieListSource.Popular -> "Popüler Filmler"
-                    MovieListSource.Upcoming -> "Yakında Vizyona Girecekler"
-                    MovieListSource.TvPopular -> "Popüler Diziler"
-                    MovieListSource.TvOnAir -> "Şu An Yayında"
-                    is MovieListSource.Genre -> source.label
-                    is MovieListSource.TvGenre -> source.label
-                },
-                color = OnSurface,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            IconButton(onClick = { /* Detaylı filtreleme sonraki adımda eklenecek */ }) {
-                Icon(Icons.Filled.FilterList, contentDescription = "Filtrele", tint = OnSurface)
+
+            when (source) {
+                MovieListSource.Upcoming -> UpcomingMoviesGrid(onMovieClick = onMovieClick)
+                is MovieListSource.TvGenre -> TvGenreList(source = source, onTvShowClick = onTvShowClick, offlineMessageState = offlineMessageState)
+                MovieListSource.TvPopular -> TvPopularList(onTvShowClick = onTvShowClick, offlineMessageState = offlineMessageState)
+                MovieListSource.TvOnAir -> TvOnAirList(onTvShowClick = onTvShowClick, offlineMessageState = offlineMessageState)
+                else -> RichMovieList(source = source, onMovieClick = onMovieClick, offlineMessageState = offlineMessageState)
             }
         }
 
-        when (source) {
-            MovieListSource.Upcoming -> UpcomingMoviesGrid(onMovieClick = onMovieClick)
-            is MovieListSource.TvGenre -> TvGenreList(source = source, onTvShowClick = onTvShowClick)
-            MovieListSource.TvPopular -> TvPopularList(onTvShowClick = onTvShowClick)
-            MovieListSource.TvOnAir -> TvOnAirList(onTvShowClick = onTvShowClick)
-            else -> RichMovieList(source = source, onMovieClick = onMovieClick)
+        offlineMessageState.message?.let {
+            OfflineActionSnackbar(
+                message = it,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 20.dp)
+                    .fillMaxWidth(),
+            )
         }
     }
 }
 
 @Composable
-private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit) {
+private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
     var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
     val repository = remember { MovieRepository() }
     val userListRepository = remember { UserListRepository() }
@@ -169,14 +228,8 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit) 
         val isFav = movie.id in favoriteIds
         favoriteIds = if (isFav) favoriteIds - movie.id else favoriteIds + movie.id
         scope.launch {
-            if (isFav) {
-                userListRepository.removeFavorite(movie.id)
-                recommendationRepository.removeFavoriteSignal(movie.id)
-            } else {
-                userListRepository.addFavorite(
-                    SavedMovie(id = movie.id, title = movie.title, posterUrl = movie.posterUrl, rating = movie.rating, year = movie.year, genreIds = movie.genreIds),
-                )
-                recommendationRepository.recordFavorite(movie.id, movie.genreIds)
+            writeFavoriteToggle(userListRepository, recommendationRepository, isFav, movie.toSavedMovie()).onFailure { error ->
+                offlineMessageState.handle(error) { favoriteIds = if (isFav) favoriteIds + movie.id else favoriteIds - movie.id }
             }
         }
     }
@@ -185,12 +238,8 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit) 
         val isSaved = movie.id in watchlistIds
         watchlistIds = if (isSaved) watchlistIds - movie.id else watchlistIds + movie.id
         scope.launch {
-            if (isSaved) {
-                userListRepository.removeFromWatchlist(movie.id)
-            } else {
-                userListRepository.addToWatchlist(
-                    SavedMovie(id = movie.id, title = movie.title, posterUrl = movie.posterUrl, rating = movie.rating, year = movie.year),
-                )
+            writeWatchlistToggle(userListRepository, isSaved, movie.toSavedMovie()).onFailure { error ->
+                offlineMessageState.handle(error) { watchlistIds = if (isSaved) watchlistIds + movie.id else watchlistIds - movie.id }
             }
         }
     }
@@ -323,7 +372,7 @@ private fun UpcomingMoviesGrid(onMovieClick: (Int) -> Unit) {
 }
 
 @Composable
-private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) -> Unit) {
+private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
     val repository = remember { TvRepository() }
     val userListRepository = remember { UserListRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
@@ -352,22 +401,8 @@ private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) ->
         val isFav = show.id in favoriteIds
         favoriteIds = if (isFav) favoriteIds - show.id else favoriteIds + show.id
         scope.launch {
-            if (isFav) {
-                userListRepository.removeFavorite(show.id, mediaType = "tv")
-                recommendationRepository.removeTvFavoriteSignal(show.id)
-            } else {
-                userListRepository.addFavorite(
-                    SavedMovie(
-                        id = show.id,
-                        title = show.name,
-                        posterUrl = show.posterUrl,
-                        rating = show.rating,
-                        year = show.year,
-                        genreIds = show.genreIds,
-                        mediaType = "tv",
-                    ),
-                )
-                recommendationRepository.recordTvFavorite(show.id, show.genreIds)
+            writeFavoriteToggle(userListRepository, recommendationRepository, isFav, show.toSavedMovie()).onFailure { error ->
+                offlineMessageState.handle(error) { favoriteIds = if (isFav) favoriteIds + show.id else favoriteIds - show.id }
             }
         }
     }
@@ -376,19 +411,8 @@ private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) ->
         val isSaved = show.id in watchlistIds
         watchlistIds = if (isSaved) watchlistIds - show.id else watchlistIds + show.id
         scope.launch {
-            if (isSaved) {
-                userListRepository.removeFromWatchlist(show.id, mediaType = "tv")
-            } else {
-                userListRepository.addToWatchlist(
-                    SavedMovie(
-                        id = show.id,
-                        title = show.name,
-                        posterUrl = show.posterUrl,
-                        rating = show.rating,
-                        year = show.year,
-                        mediaType = "tv",
-                    ),
-                )
+            writeWatchlistToggle(userListRepository, isSaved, show.toSavedMovie()).onFailure { error ->
+                offlineMessageState.handle(error) { watchlistIds = if (isSaved) watchlistIds + show.id else watchlistIds - show.id }
             }
         }
     }
@@ -449,7 +473,7 @@ private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) ->
     }
 }
 @Composable
-private fun TvPopularList(onTvShowClick: (Int) -> Unit) {
+private fun TvPopularList(onTvShowClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
     val repository = remember { TvRepository() }
     val userListRepository = remember { UserListRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
@@ -478,14 +502,8 @@ private fun TvPopularList(onTvShowClick: (Int) -> Unit) {
         val isFav = show.id in favoriteIds
         favoriteIds = if (isFav) favoriteIds - show.id else favoriteIds + show.id
         scope.launch {
-            if (isFav) {
-                userListRepository.removeFavorite(show.id, mediaType = "tv")
-                recommendationRepository.removeTvFavoriteSignal(show.id)
-            } else {
-                userListRepository.addFavorite(
-                    SavedMovie(id = show.id, title = show.name, posterUrl = show.posterUrl, rating = show.rating, year = show.year, genreIds = show.genreIds, mediaType = "tv"),
-                )
-                recommendationRepository.recordTvFavorite(show.id, show.genreIds)
+            writeFavoriteToggle(userListRepository, recommendationRepository, isFav, show.toSavedMovie()).onFailure { error ->
+                offlineMessageState.handle(error) { favoriteIds = if (isFav) favoriteIds + show.id else favoriteIds - show.id }
             }
         }
     }
@@ -494,12 +512,8 @@ private fun TvPopularList(onTvShowClick: (Int) -> Unit) {
         val isSaved = show.id in watchlistIds
         watchlistIds = if (isSaved) watchlistIds - show.id else watchlistIds + show.id
         scope.launch {
-            if (isSaved) {
-                userListRepository.removeFromWatchlist(show.id, mediaType = "tv")
-            } else {
-                userListRepository.addToWatchlist(
-                    SavedMovie(id = show.id, title = show.name, posterUrl = show.posterUrl, rating = show.rating, year = show.year, mediaType = "tv"),
-                )
+            writeWatchlistToggle(userListRepository, isSaved, show.toSavedMovie()).onFailure { error ->
+                offlineMessageState.handle(error) { watchlistIds = if (isSaved) watchlistIds + show.id else watchlistIds - show.id }
             }
         }
     }
@@ -559,7 +573,7 @@ private fun TvPopularList(onTvShowClick: (Int) -> Unit) {
 }
 
 @Composable
-private fun TvOnAirList(onTvShowClick: (Int) -> Unit) {
+private fun TvOnAirList(onTvShowClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
     val repository = remember { TvRepository() }
     val userListRepository = remember { UserListRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
@@ -590,14 +604,8 @@ private fun TvOnAirList(onTvShowClick: (Int) -> Unit) {
         val isFav = show.id in favoriteIds
         favoriteIds = if (isFav) favoriteIds - show.id else favoriteIds + show.id
         scope.launch {
-            if (isFav) {
-                userListRepository.removeFavorite(show.id, mediaType = "tv")
-                recommendationRepository.removeTvFavoriteSignal(show.id)
-            } else {
-                userListRepository.addFavorite(
-                    SavedMovie(id = show.id, title = show.name, posterUrl = show.posterUrl, rating = show.rating, year = show.year, genreIds = show.genreIds, mediaType = "tv"),
-                )
-                recommendationRepository.recordTvFavorite(show.id, show.genreIds)
+            writeFavoriteToggle(userListRepository, recommendationRepository, isFav, show.toSavedMovie()).onFailure { error ->
+                offlineMessageState.handle(error) { favoriteIds = if (isFav) favoriteIds + show.id else favoriteIds - show.id }
             }
         }
     }
@@ -606,12 +614,8 @@ private fun TvOnAirList(onTvShowClick: (Int) -> Unit) {
         val isSaved = show.id in watchlistIds
         watchlistIds = if (isSaved) watchlistIds - show.id else watchlistIds + show.id
         scope.launch {
-            if (isSaved) {
-                userListRepository.removeFromWatchlist(show.id, mediaType = "tv")
-            } else {
-                userListRepository.addToWatchlist(
-                    SavedMovie(id = show.id, title = show.name, posterUrl = show.posterUrl, rating = show.rating, year = show.year, mediaType = "tv"),
-                )
+            writeWatchlistToggle(userListRepository, isSaved, show.toSavedMovie()).onFailure { error ->
+                offlineMessageState.handle(error) { watchlistIds = if (isSaved) watchlistIds + show.id else watchlistIds - show.id }
             }
         }
     }

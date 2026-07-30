@@ -1,0 +1,122 @@
+rules_version = '2';
+
+// CineVerse Firestore güvenlik kuralları.
+//
+// Bu proje sunucu tarafı kod (Cloud Functions) kullanmıyor; tüm yazımlar
+// doğrudan Android istemcisinden yapılıyor. Bu yüzden bu dosya kod içindeki
+// kontrollerin (ör. CommentRepository/NotificationRepository'deki sahiplik ve
+// alan doğrulamaları) TEK gerçek güvenlik sınırıdır — istemci tarafındaki
+// kontroller sadece erken/anlamlı hata mesajı içindir, atlanabilir
+// (reverse-engineer edilmiş bir istemci veya doğrudan REST/gRPC çağrısıyla).
+//
+// Deploy: `firebase deploy --only firestore:rules`
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // --- users/{uid} ---------------------------------------------------
+    // Profil, herkese (giriş yapmış herkese) OKUNABİLİR olmalı çünkü yorum
+    // listesi başka kullanıcıların fullName/avatarId alanlarını canlı okuyor
+    // (bkz. CommentRepository.getComments). Yazma sadece sahibine açık;
+    // ratingSum/ratingCount CommentRepository tarafından FieldValue.increment
+    // ile güncelleniyor ama her zaman İŞLEMİ YAPAN kullanıcının kendi
+    // belgesine yazılıyor (yorum sahiplik kontrolünden sonra), dolayısıyla
+    // "sadece sahibi yazabilir" kuralı burada da geçerli.
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if false;
+
+      match /favorites/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /watchlist/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Bildirimler: SADECE sahibi okuyabilir/silebilir. Ancak "create"
+      // BAŞKA bir kullanıcı tarafından yapılabilmeli — biri sizin yorumunuza
+      // yanıt verdiğinde KENDİ cihazından SİZİN bildirim kutunuza yazıyor
+      // (bkz. NotificationRepository.createNotification). Bu yüzden yazma
+      // izni sahiplikle değil, isValidNotification() ile (dar bir alan/tip
+      // doğrulamasıyla) sınırlanıyor.
+      match /notifications/{notificationId} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isSignedIn() && isValidNotification(request.resource.data);
+        // Güncelleme sadece bildirim sahibine ve sadece isRead alanına açık
+        // (markAsRead/markAllAsRead) — içerik sonradan değiştirilemez.
+        allow update: if isOwner(uid)
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead'])
+          && request.resource.data.isRead is bool;
+      }
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasOnly(['type', 'title', 'body', 'movieId', 'tvId', 'mediaType', 'isRead', 'createdAt'])
+        && data.type in ['comment_reply']
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 150
+        && data.body is string && data.body.size() > 0 && data.body.size() <= 500
+        && data.isRead == false
+        && data.createdAt is int;
+    }
+
+    // --- movies/{movieId}/comments/{commentId} --------------------------
+    // --- tv_shows/{tvId}/comments/{commentId} ---------------------------
+    // Yorumlar herkese (giriş yapmış herkese) okunabilir; oluşturma sadece
+    // kendi userId'niz ile, güncelleme/silme SADECE yorumun asıl sahibine
+    // açık (CommentRepository.updateComment/deleteComment'teki istemci
+    // tarafı kontrolün sunucu tarafı karşılığı — asıl güvenlik sınırı BURASI).
+    match /movies/{movieId}/comments/{commentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidComment(request.resource.data, request.auth.uid);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+        && isValidComment(request.resource.data, request.auth.uid);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /tv_shows/{tvId}/comments/{commentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidComment(request.resource.data, request.auth.uid);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+        && isValidComment(request.resource.data, request.auth.uid);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    function isValidComment(data, uid) {
+      return data.userId == uid
+        && data.text is string && data.text.size() <= 2000
+        && data.rating is int && data.rating >= 0 && data.rating <= 5;
+    }
+
+    // --- movie_ratings/{movieId} -----------------------------------------
+    // --- tv_show_ratings/{tvId} -------------------------------------------
+    // Film/dizi başına tek bir toplu (aggregate) belge; CommentRepository,
+    // bir kullanıcı KENDİ yorumunu ekleyip/düzenleyip/sildiğinde bu ortak
+    // belgeyi yeniden hesaplayıp yazıyor. Belirli bir sahibi olmadığından
+    // yazma sahiplikle değil, şekil (shape) doğrulamasıyla sınırlanıyor.
+    match /movie_ratings/{movieId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidRatingAggregate(request.resource.data);
+    }
+
+    match /tv_show_ratings/{tvId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidRatingAggregate(request.resource.data);
+    }
+
+    function isValidRatingAggregate(data) {
+      return data.averageRating is number && data.averageRating >= 0 && data.averageRating <= 5
+        && data.ratingCount is int && data.ratingCount >= 0;
+    }
+  }
+}

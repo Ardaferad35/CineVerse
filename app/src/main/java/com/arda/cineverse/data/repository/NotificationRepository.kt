@@ -17,7 +17,9 @@ class NotificationRepository(
      * Belirli bir kullanıcıya bildirim yazar. "targetUserId" bildirimi alacak
      * kişidir — örneğin bir yoruma yanıt verildiğinde, yanıtı yazan kişinin
      * cihazı doğrudan YORUM SAHİBİNİN bildirim kutusuna yazar (sunucu kodu
-     * gerekmez, Firestore güvenlik kurallarının buna izin vermesi yeterli).
+     * yok, bu yüzden gerçek yetkilendirme firestore.rules'taki
+     * `isValidNotification()` kuralında yapılıyor — buradaki kontroller sadece
+     * erken/anlamlı bir hata vermek için, GÜVENLİK SINIRI DEĞİL).
      */
     suspend fun createNotification(
         targetUserId: String,
@@ -25,12 +27,21 @@ class NotificationRepository(
         title: String,
         body: String,
         movieId: Int? = null,
+        tvId: Int? = null,
+        mediaType: String? = null,
     ): Result<Unit> = runCatching {
+        auth.currentUser?.uid ?: error("Bu işlem için giriş yapmalısınız")
+        require(type in ALLOWED_NOTIFICATION_TYPES) { "Geçersiz bildirim tipi: $type" }
+        require(title.isNotBlank() && title.length <= MAX_TITLE_LENGTH) { "Geçersiz bildirim başlığı" }
+        require(body.isNotBlank() && body.length <= MAX_BODY_LENGTH) { "Geçersiz bildirim içeriği" }
+
         val notification = hashMapOf(
             "type" to type,
-            "title" to title,
-            "body" to body,
+            "title" to title.take(MAX_TITLE_LENGTH),
+            "body" to body.take(MAX_BODY_LENGTH),
             "movieId" to movieId,
+            "tvId" to tvId,
+            "mediaType" to mediaType,
             "isRead" to false,
             "createdAt" to System.currentTimeMillis(),
         )
@@ -67,5 +78,12 @@ class NotificationRepository(
         val uid = auth.currentUser?.uid ?: return@runCatching
         val unread = notificationsCollection(uid).whereEqualTo("isRead", false).get().await()
         unread.documents.forEach { doc -> doc.reference.update("isRead", true).await() }
+    }
+
+    companion object {
+        // firestore.rules'taki isValidNotification() ile senkron tutulmalı.
+        private val ALLOWED_NOTIFICATION_TYPES = setOf("comment_reply")
+        private const val MAX_TITLE_LENGTH = 150
+        private const val MAX_BODY_LENGTH = 500
     }
 }

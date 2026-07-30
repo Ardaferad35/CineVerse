@@ -67,6 +67,28 @@ class RecommendationRepository @Inject constructor(
 
     private fun userDoc(uid: String) = firestore.collection("users").document(uid)
 
+    /**
+     * Sinyal pencerelerini (recentlyViewed/recentFavorites/vb.) okuyup
+     * değiştirirken read-modify-write yerine Firestore transaction'ı kullanır.
+     * Aksi halde art arda hızlı gelen iki çağrı (ör. hızlı favori aç/kapa,
+     * ya da art arda birkaç film açma) aynı eski snapshot üzerinden okuyup
+     * birbirinin yazdığını sessizce ezebilir (lost update) — bkz. sınıf
+     * dokümantasyonundaki "kayan pencere" tasarımı, kaybolan bir sinyal
+     * kullanıcıya hiç yansımaz.
+     */
+    private suspend fun <T> runUserDocTransaction(
+        uid: String,
+        block: (DocumentSnapshot) -> Pair<Map<String, Any>, T>,
+    ): T {
+        val docRef = userDoc(uid)
+        return firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(docRef)
+            val (updates, result) = block(snapshot)
+            transaction.update(docRef, updates)
+            result
+        }.await()
+    }
+
     // --- Offline-first: Room'dan gözlem ---
 
     fun observeRecommendedMovies(): Flow<List<Movie>> =
@@ -152,18 +174,14 @@ class RecommendationRepository @Inject constructor(
     suspend fun removeFavoriteSignal(movieId: Int) {
         val uid = auth.currentUser?.uid ?: return
         runCatching {
-            val docRef = userDoc(uid)
-            val snapshot = docRef.get().await()
-            val currentFavs = readWindow(snapshot, "recentFavorites")
-            val updatedFavs = currentFavs.filterNot { it.movieId == movieId }
-            val currentViews = readWindow(snapshot, "recentlyViewed")
-            val updatedViews = currentViews.filterNot { it.movieId == movieId }
-            docRef.update(
+            runUserDocTransaction(uid) { snapshot ->
+                val updatedFavs = readWindow(snapshot, "recentFavorites").filterNot { it.movieId == movieId }
+                val updatedViews = readWindow(snapshot, "recentlyViewed").filterNot { it.movieId == movieId }
                 mapOf(
                     "recentFavorites" to updatedFavs.map { it.toMap() },
                     "recentlyViewed" to updatedViews.map { it.toMap() },
-                )
-            ).await()
+                ) to Unit
+            }
         }.onFailure { error ->
             android.util.Log.e("CVRecommendations", "removeFavoriteSignal başarısız oldu", error)
         }
@@ -196,18 +214,14 @@ class RecommendationRepository @Inject constructor(
     suspend fun removeTvFavoriteSignal(tvId: Int) {
         val uid = auth.currentUser?.uid ?: return
         runCatching {
-            val docRef = userDoc(uid)
-            val snapshot = docRef.get().await()
-            val currentFavs = readWindow(snapshot, "recentFavoritesTv")
-            val updatedFavs = currentFavs.filterNot { it.movieId == tvId }
-            val currentViews = readWindow(snapshot, "recentlyViewedTv")
-            val updatedViews = currentViews.filterNot { it.movieId == tvId }
-            docRef.update(
+            runUserDocTransaction(uid) { snapshot ->
+                val updatedFavs = readWindow(snapshot, "recentFavoritesTv").filterNot { it.movieId == tvId }
+                val updatedViews = readWindow(snapshot, "recentlyViewedTv").filterNot { it.movieId == tvId }
                 mapOf(
                     "recentFavoritesTv" to updatedFavs.map { it.toMap() },
                     "recentlyViewedTv" to updatedViews.map { it.toMap() },
-                )
-            ).await()
+                ) to Unit
+            }
         }.onFailure { error ->
             android.util.Log.e("CVRecommendations", "removeTvFavoriteSignal başarısız oldu", error)
         }
@@ -219,25 +233,25 @@ class RecommendationRepository @Inject constructor(
         val uid = auth.currentUser?.uid ?: return
         runCatching {
             val field = if (mediaType == "tv") "recentSearchesTv" else "recentSearches"
-            val docRef = userDoc(uid)
-            val snapshot = docRef.get().await()
-            val current = readSearchWindow(snapshot, field)
-            val updated = (listOf(SearchSignal(genreIds, System.currentTimeMillis())) + current).take(20)
-            docRef.update(field, updated.map { mapOf("genreIds" to it.genreIds, "timestamp" to it.timestamp) }).await()
+            runUserDocTransaction(uid) { snapshot ->
+                val current = readSearchWindow(snapshot, field)
+                val updated = (listOf(SearchSignal(genreIds, System.currentTimeMillis())) + current).take(20)
+                mapOf(field to updated.map { mapOf("genreIds" to it.genreIds, "timestamp" to it.timestamp) }) to Unit
+            }
         }.onFailure { error ->
             android.util.Log.e("CVRecommendations", "recordSearchSignal başarısız oldu", error)
         }
     }
 
     private suspend fun addToWindow(uid: String, field: String, movieId: Int, genreIds: List<Int>) {
-        val docRef = userDoc(uid)
-        val snapshot = docRef.get().await()
-        val current = readWindow(snapshot, field)
-        // Aynı film zaten pencerede varsa önce çıkarılır, sonra en başa
-        // (en taze konuma) tekrar eklenir — yinelenmeden, sadece güncellenir.
-        val updated = (listOf(MovieSignal(movieId, genreIds)) + current.filterNot { it.movieId == movieId }).take(20)
-        docRef.update(field, updated.map { it.toMap() }).await()
-        android.util.Log.d("CVRecommendations", "$field güncellendi: movieId=$movieId genreIds=$genreIds yeni boyut=${updated.size}")
+        val newSize = runUserDocTransaction(uid) { snapshot ->
+            val current = readWindow(snapshot, field)
+            // Aynı film zaten pencerede varsa önce çıkarılır, sonra en başa
+            // (en taze konuma) tekrar eklenir — yinelenmeden, sadece güncellenir.
+            val updated = (listOf(MovieSignal(movieId, genreIds)) + current.filterNot { it.movieId == movieId }).take(20)
+            mapOf(field to updated.map { it.toMap() }) to updated.size
+        }
+        android.util.Log.d("CVRecommendations", "$field güncellendi: movieId=$movieId genreIds=$genreIds yeni boyut=$newSize")
     }
 
     @Suppress("UNCHECKED_CAST")

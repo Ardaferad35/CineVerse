@@ -190,5 +190,17 @@ fun MyListScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         )
+
+        ClearOfflineMessageAfterDelay(uiState.offlineMessage) { viewModel.clearOfflineMessage() }
+        uiState.offlineMessage?.let {
+            OfflineActionSnackbar(
+                message = it,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 88.dp)
+                    .fillMaxWidth(),
+            )
+        }
     }
 }

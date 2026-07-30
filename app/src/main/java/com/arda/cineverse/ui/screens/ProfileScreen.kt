@@ -312,9 +312,8 @@ fun ProfileScreen(
             text = { Text("Hesabınızdan çıkış yapmak istediğinize emin misiniz?") },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.signOut()
                     showSignOutConfirm = false
-                    onSignedOut()
+                    viewModel.signOut { onSignedOut() }
                 }) { Text("Çıkış Yap", color = ErrorColor) }
             },
             dismissButton = {

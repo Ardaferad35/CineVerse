@@ -23,8 +23,17 @@ class NotificationViewModel(
     private val _unreadCount = MutableStateFlow(0)
     val unreadCount: StateFlow<Int> = _unreadCount
 
+    // NOT: init'te SADECE refreshUnreadCount() çağrılıyor — loadNotifications()
+    // ÇAĞRILMIYOR. Bu ViewModel hem NotificationsScreen'de (liste + "hepsini
+    // okundu say") hem de HomeScreen'de (sadece rozet sayısı için, AYRI bir
+    // örnek olarak) kullanılıyor. Önceden ikisi de init'te birlikte
+    // tetikleniyordu; bu hem iki coroutine'in aynı _unreadCount'a sırasız
+    // yazmasına (rozet yanlışlıkla sıfırdan farklı görünmesi) HEM DE daha
+    // ciddisi: sadece Ana Sayfa'yı açmanın bile TÜM bildirimleri sessizce
+    // okundu işaretlemesine yol açıyordu. loadNotifications() artık sadece
+    // NotificationsScreen gerçekten açıldığında (bkz. o ekrandaki
+    // LaunchedEffect) çağrılıyor.
     init {
-        loadNotifications()
         refreshUnreadCount()
     }
 
