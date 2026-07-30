@@ -49,6 +49,7 @@ class RecommendationRepository @Inject constructor(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val movieRepository: MovieRepository = MovieRepository(),
     private val tvRepository: TvRepository = TvRepository(),
+    private val userListRepository: UserListRepository = UserListRepository(),
     private val movieDao: MovieDao = AppGraph.movieDao,
     private val tvShowDao: TvShowDao = AppGraph.tvShowDao,
     private val watchHistoryDao: WatchHistoryDao = AppGraph.watchHistoryDao,
@@ -61,6 +62,8 @@ class RecommendationRepository @Inject constructor(
     private data class MovieSignal(val movieId: Int, val genreIds: List<Int>) {
         fun toMap(): Map<String, Any> = mapOf("movieId" to movieId, "genreIds" to genreIds)
     }
+
+    private data class SearchSignal(val genreIds: List<Int>, val timestamp: Long)
 
     private fun userDoc(uid: String) = firestore.collection("users").document(uid)
 
@@ -122,7 +125,7 @@ class RecommendationRepository @Inject constructor(
         }
     }
 
-    /** Bir film detayı açıldığında çağrılır. */
+    /** Bir film detayı açıldığında çağrılır (+3 Puan sinyali). */
     suspend fun recordView(movieId: Int, genreIds: List<Int>) {
         val uid = auth.currentUser?.uid ?: return
         runCatching {
@@ -132,7 +135,7 @@ class RecommendationRepository @Inject constructor(
         }
     }
 
-    /** Bir film favorilere eklendiğinde çağrılır. */
+    /** Bir film favorilere eklendiğinde çağrılır (+10 Puan sinyali). */
     suspend fun recordFavorite(movieId: Int, genreIds: List<Int>) {
         val uid = auth.currentUser?.uid ?: return
         runCatching {
@@ -143,23 +146,30 @@ class RecommendationRepository @Inject constructor(
     }
 
     /**
-     * Bir film favorilerden çıkarıldığında çağrılır. Sinyali pencereden
-     * tamamen kaldırır — favorile/çıkar döngüsüyle puan şişirmeyi engeller.
+     * Bir film favorilerden çıkarıldığında çağrılır.
+     * Hem favori sinyalini hem de tıklama/izleme sinyallerini TAMAMEN TEMİZLER!
      */
     suspend fun removeFavoriteSignal(movieId: Int) {
         val uid = auth.currentUser?.uid ?: return
         runCatching {
             val docRef = userDoc(uid)
             val snapshot = docRef.get().await()
-            val current = readWindow(snapshot, "recentFavorites")
-            val updated = current.filterNot { it.movieId == movieId }
-            docRef.update("recentFavorites", updated.map { it.toMap() }).await()
+            val currentFavs = readWindow(snapshot, "recentFavorites")
+            val updatedFavs = currentFavs.filterNot { it.movieId == movieId }
+            val currentViews = readWindow(snapshot, "recentlyViewed")
+            val updatedViews = currentViews.filterNot { it.movieId == movieId }
+            docRef.update(
+                mapOf(
+                    "recentFavorites" to updatedFavs.map { it.toMap() },
+                    "recentlyViewed" to updatedViews.map { it.toMap() },
+                )
+            ).await()
         }.onFailure { error ->
             android.util.Log.e("CVRecommendations", "removeFavoriteSignal başarısız oldu", error)
         }
     }
 
-    /** Bir dizi detayı açıldığında çağrılır. */
+    /** Bir dizi detayı açıldığında çağrılır (+3 Puan sinyali). */
     suspend fun recordTvView(tvId: Int, genreIds: List<Int>) {
         val uid = auth.currentUser?.uid ?: return
         runCatching {
@@ -169,7 +179,7 @@ class RecommendationRepository @Inject constructor(
         }
     }
 
-    /** Bir dizi favorilere eklendiğinde çağrılır. */
+    /** Bir dizi favorilere eklendiğinde çağrılır (+10 Puan sinyali). */
     suspend fun recordTvFavorite(tvId: Int, genreIds: List<Int>) {
         val uid = auth.currentUser?.uid ?: return
         runCatching {
@@ -180,19 +190,42 @@ class RecommendationRepository @Inject constructor(
     }
 
     /**
-     * Bir dizi favorilerden çıkarıldığında çağrılır. Sinyali pencereden
-     * tamamen kaldırır — favorile/çıkar döngüsüyle puan şişirmeyi engeller.
+     * Bir dizi favorilerden çıkarıldığında çağrılır.
+     * Hem favori sinyalini hem de tıklama/izleme sinyallerini TAMAMEN TEMİZLER!
      */
     suspend fun removeTvFavoriteSignal(tvId: Int) {
         val uid = auth.currentUser?.uid ?: return
         runCatching {
             val docRef = userDoc(uid)
             val snapshot = docRef.get().await()
-            val current = readWindow(snapshot, "recentFavoritesTv")
-            val updated = current.filterNot { it.movieId == tvId }
-            docRef.update("recentFavoritesTv", updated.map { it.toMap() }).await()
+            val currentFavs = readWindow(snapshot, "recentFavoritesTv")
+            val updatedFavs = currentFavs.filterNot { it.movieId == tvId }
+            val currentViews = readWindow(snapshot, "recentlyViewedTv")
+            val updatedViews = currentViews.filterNot { it.movieId == tvId }
+            docRef.update(
+                mapOf(
+                    "recentFavoritesTv" to updatedFavs.map { it.toMap() },
+                    "recentlyViewedTv" to updatedViews.map { it.toMap() },
+                )
+            ).await()
         }.onFailure { error ->
             android.util.Log.e("CVRecommendations", "removeTvFavoriteSignal başarısız oldu", error)
+        }
+    }
+
+    /** Arama yapıldığında son 20 arama sinyaline kaydeder (+5 Puan). */
+    suspend fun recordSearchSignal(genreIds: List<Int>, mediaType: String = "movie") {
+        if (genreIds.isEmpty()) return
+        val uid = auth.currentUser?.uid ?: return
+        runCatching {
+            val field = if (mediaType == "tv") "recentSearchesTv" else "recentSearches"
+            val docRef = userDoc(uid)
+            val snapshot = docRef.get().await()
+            val current = readSearchWindow(snapshot, field)
+            val updated = (listOf(SearchSignal(genreIds, System.currentTimeMillis())) + current).take(20)
+            docRef.update(field, updated.map { mapOf("genreIds" to it.genreIds, "timestamp" to it.timestamp) }).await()
+        }.onFailure { error ->
+            android.util.Log.e("CVRecommendations", "recordSearchSignal başarısız oldu", error)
         }
     }
 
@@ -221,6 +254,17 @@ class RecommendationRepository @Inject constructor(
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private fun readSearchWindow(snapshot: DocumentSnapshot, field: String): List<SearchSignal> {
+        val raw = snapshot.get(field) as? List<*> ?: return emptyList()
+        return raw.mapNotNull { entry ->
+            val map = entry as? Map<*, *> ?: return@mapNotNull null
+            val genreIds = (map["genreIds"] as? List<*>)?.mapNotNull { (it as? Number)?.toInt() } ?: emptyList()
+            val timestamp = (map["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis()
+            SearchSignal(genreIds, timestamp)
+        }
+    }
+
     /**
      * En yüksek ilgi gösterilen 1-2 türden, kullanıcının son zamanlarda
      * zaten izlediği/favorilediği filmler hariç, popüler filmleri getirir.
@@ -233,39 +277,71 @@ class RecommendationRepository @Inject constructor(
 
         val recentlyViewed = readWindow(snapshot, "recentlyViewed")
         val recentFavorites = readWindow(snapshot, "recentFavorites")
-        android.util.Log.d(
-            "CVRecommendations",
-            "recentlyViewed=${recentlyViewed.size} film, recentFavorites=${recentFavorites.size} film",
-        )
+        val recentSearches = readSearchWindow(snapshot, "recentSearches")
+        val activeFavorites = userListRepository.getFavorites().getOrDefault(emptyList()).filter { it.mediaType == "movie" }
 
-        if (recentlyViewed.isEmpty() && recentFavorites.isEmpty()) {
-            android.util.Log.d("CVRecommendations", "İki pencere de boş, öneri üretilmeyecek")
-            return@runCatching emptyList()
-        }
-
-        // Tür puanları HER SEFERİNDE bu iki pencereden anlık hesaplanıyor —
-        // kalıcı bir sayaç yok. Favorileme 3 kat, izleme 1 kat ağırlıklı.
         val genreScores = mutableMapOf<Int, Int>()
-        recentlyViewed.forEach { signal ->
-            signal.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 1 }
+
+        // 1. Aktif Favoriler (En Yüksek Öncelik: +10 Puan)
+        activeFavorites.forEach { fav ->
+            fav.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 10 }
         }
-        recentFavorites.forEach { signal ->
+
+        // 2. Son 20 Arama Sinyali (+5 Puan)
+        recentSearches.forEach { search ->
+            search.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 5 }
+        }
+
+        // 3. Son 20 Tıklama / İzleme Sinyali (+3 Puan)
+        recentlyViewed.forEach { signal ->
             signal.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 3 }
         }
-        android.util.Log.d("CVRecommendations", "Tür puanları: $genreScores")
+
+        // 4. Firestore Geçmiş Favori Sinyalleri (+2 Puan)
+        recentFavorites.forEach { signal ->
+            signal.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 2 }
+        }
+        android.util.Log.d("CVRecommendations", "Film çoklu sinyal tür puanları: $genreScores")
 
         val topGenreIds = genreScores.entries.sortedByDescending { it.value }.take(2).map { it.key }
-        android.util.Log.d("CVRecommendations", "En yüksek türler: $topGenreIds")
+        android.util.Log.d("CVRecommendations", "En yüksek film türleri: $topGenreIds")
         if (topGenreIds.isEmpty()) return@runCatching emptyList()
 
-        val excludeIds = (recentlyViewed.map { it.movieId } + recentFavorites.map { it.movieId }).toSet()
+        val excludeIds = (recentlyViewed.map { it.movieId } + recentFavorites.map { it.movieId } + activeFavorites.map { it.id }).toSet()
 
-        val candidates = topGenreIds.flatMap { genreId ->
-            movieRepository.getMoviesByGenre(genreId, page = 1).getOrDefault(emptyList())
+        val candidateList = mutableListOf<Movie>()
+        for (genreId in topGenreIds) {
+            for (page in 1..3) {
+                val items = movieRepository.getMoviesByGenre(genreId, page = page).getOrDefault(emptyList())
+                candidateList.addAll(items)
+            }
         }
-        android.util.Log.d("CVRecommendations", "Aday film sayısı: ${candidates.size}")
 
-        val result = candidates.distinctBy { it.id }.filterNot { it.id in excludeIds }.take(15)
+        // 1. Kullanıcının Pozitif İlgi Gösterdiği Türler Kümesi
+        val preferredGenreSet = topGenreIds.toSet()
+
+        // 2. Dinamik Genel Filtreleme ve Puanlama (Tüm Türler İçin Evrensel Mantık)
+        val result = candidateList
+            .distinctBy { it.id }
+            .filterNot { it.id in excludeIds }
+            .filter { movie ->
+                val preferredCount = movie.genreIds.count { it in preferredGenreSet }
+                val totalGenreCount = movie.genreIds.size.coerceAtLeast(1)
+                val preferredRatio = preferredCount.toDouble() / totalGenreCount
+                // İçerikte kullanıcının tercih ettiği tür ağırlıkta olmalı (en az %40 uyum)
+                preferredCount > 0 && (preferredRatio >= 0.40 || preferredCount >= 2)
+            }
+            .map { movie ->
+                val matchingGenreCount = movie.genreIds.count { it in preferredGenreSet }
+                val totalGenreCount = movie.genreIds.size.coerceAtLeast(1)
+                val genreAffinityRatio = matchingGenreCount.toDouble() / totalGenreCount
+                val score = (matchingGenreCount * 10.0) + (genreAffinityRatio * 5.0) + (movie.rating * 1.5)
+                movie to score
+            }
+            .sortedByDescending { it.second }
+            .map { it.first }
+            .take(15)
+
         android.util.Log.d("CVRecommendations", "Sonuç: ${result.size} film önerildi")
         result
     }.onFailure { error ->
@@ -283,37 +359,69 @@ class RecommendationRepository @Inject constructor(
 
         val recentlyViewed = readWindow(snapshot, "recentlyViewedTv")
         val recentFavorites = readWindow(snapshot, "recentFavoritesTv")
-        android.util.Log.d(
-            "CVRecommendations",
-            "recentlyViewedTv=${recentlyViewed.size} dizi, recentFavoritesTv=${recentFavorites.size} dizi",
-        )
-
-        if (recentlyViewed.isEmpty() && recentFavorites.isEmpty()) {
-            android.util.Log.d("CVRecommendations", "İki dizi penceresi de boş, öneri üretilmeyecek")
-            return@runCatching emptyList()
-        }
+        val recentSearches = readSearchWindow(snapshot, "recentSearchesTv")
+        val activeFavorites = userListRepository.getFavorites().getOrDefault(emptyList()).filter { it.mediaType == "tv" }
 
         val genreScores = mutableMapOf<Int, Int>()
-        recentlyViewed.forEach { signal ->
-            signal.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 1 }
+
+        // 1. Aktif Favoriler (En Yüksek Öncelik: +10 Puan)
+        activeFavorites.forEach { fav ->
+            fav.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 10 }
         }
-        recentFavorites.forEach { signal ->
+
+        // 2. Son 20 Arama Sinyali (+5 Puan)
+        recentSearches.forEach { search ->
+            search.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 5 }
+        }
+
+        // 3. Son 20 Tıklama / İzleme Sinyali (+3 Puan)
+        recentlyViewed.forEach { signal ->
             signal.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 3 }
         }
-        android.util.Log.d("CVRecommendations", "Dizi tür puanları: $genreScores")
+
+        // 4. Firestore Geçmiş Favori Sinyalleri (+2 Puan)
+        recentFavorites.forEach { signal ->
+            signal.genreIds.forEach { genreId -> genreScores[genreId] = (genreScores[genreId] ?: 0) + 2 }
+        }
+        android.util.Log.d("CVRecommendations", "Dizi çoklu sinyal tür puanları: $genreScores")
 
         val topGenreIds = genreScores.entries.sortedByDescending { it.value }.take(2).map { it.key }
         android.util.Log.d("CVRecommendations", "En yüksek dizi türleri: $topGenreIds")
         if (topGenreIds.isEmpty()) return@runCatching emptyList()
 
-        val excludeIds = (recentlyViewed.map { it.movieId } + recentFavorites.map { it.movieId }).toSet()
+        val excludeIds = (recentlyViewed.map { it.movieId } + recentFavorites.map { it.movieId } + activeFavorites.map { it.id }).toSet()
 
-        val candidates = topGenreIds.flatMap { genreId ->
-            tvRepository.getTvShowsByGenre(genreId, page = 1).getOrDefault(emptyList())
+        val candidateList = mutableListOf<TvShow>()
+        for (genreId in topGenreIds) {
+            for (page in 1..3) {
+                val items = tvRepository.getTvShowsByGenre(genreId, page = page).getOrDefault(emptyList())
+                candidateList.addAll(items)
+            }
         }
-        android.util.Log.d("CVRecommendations", "Aday dizi sayısı: ${candidates.size}")
 
-        val result = candidates.distinctBy { it.id }.filterNot { it.id in excludeIds }.take(15)
+        val preferredGenreSet = topGenreIds.toSet()
+
+        val result = candidateList
+            .distinctBy { it.id }
+            .filterNot { it.id in excludeIds }
+            .filter { show ->
+                val preferredCount = show.genreIds.count { it in preferredGenreSet }
+                val totalGenreCount = show.genreIds.size.coerceAtLeast(1)
+                val preferredRatio = preferredCount.toDouble() / totalGenreCount
+                // İçerikte kullanıcının tercih ettiği tür ağırlıkta olmalı (en az %40 uyum)
+                preferredCount > 0 && (preferredRatio >= 0.40 || preferredCount >= 2)
+            }
+            .map { show ->
+                val matchingGenreCount = show.genreIds.count { it in preferredGenreSet }
+                val totalGenreCount = show.genreIds.size.coerceAtLeast(1)
+                val genreAffinityRatio = matchingGenreCount.toDouble() / totalGenreCount
+                val score = (matchingGenreCount * 10.0) + (genreAffinityRatio * 5.0) + (show.rating * 1.5)
+                show to score
+            }
+            .sortedByDescending { it.second }
+            .map { it.first }
+            .take(15)
+
         android.util.Log.d("CVRecommendations", "Sonuç: ${result.size} dizi önerildi")
         result
     }.onFailure { error ->

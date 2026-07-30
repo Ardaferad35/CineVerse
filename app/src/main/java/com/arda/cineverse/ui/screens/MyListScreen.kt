@@ -150,7 +150,7 @@ fun MyListScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.Favorite, contentDescription = null, tint = Primary, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("${uiState.currentList.size} Film", color = OnSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            Text("${uiState.currentList.size} İçerik", color = OnSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC857), modifier = Modifier.size(16.dp))
@@ -168,7 +168,7 @@ fun MyListScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        items(uiState.currentList, key = { it.id }) { movie ->
+                        items(uiState.currentList, key = { "${it.mediaType}_${it.id}" }) { movie ->
                             SavedMovieCard(
                                 movie = movie,
                                 badgeIcon = if (uiState.selectedTab == MyListTab.FAVORITES) Icons.Filled.Favorite else Icons.Filled.Bookmark,
@@ -180,7 +180,7 @@ fun MyListScreen(
                                         onMovieClick(movie.id)
                                     }
                                 },
-                                onBadgeClick = { viewModel.removeFromCurrentList(movie.id) },
+                                onBadgeClick = { viewModel.removeFromCurrentList(movie.id, movie.mediaType) },
                             )
                         }
                     }

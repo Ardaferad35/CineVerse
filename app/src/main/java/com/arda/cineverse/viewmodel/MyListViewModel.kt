@@ -3,6 +3,7 @@ package com.arda.cineverse.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arda.cineverse.data.model.SavedMovie
+import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.UserListRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +31,7 @@ data class MyListUiState(
 
 class MyListViewModel(
     private val repository: UserListRepository = UserListRepository(),
+    private val recommendationRepository: RecommendationRepository = RecommendationRepository(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MyListUiState())
@@ -59,14 +61,32 @@ class MyListViewModel(
         _uiState.value = _uiState.value.copy(selectedTab = tab)
     }
 
-    fun removeFromCurrentList(movieId: Int) {
+    fun removeFromCurrentList(mediaId: Int, mediaType: String = "movie") {
+        val isFavTab = _uiState.value.selectedTab == MyListTab.FAVORITES
+
+        // 1. İyimser Güncelleme: Kart ekrandan tak diye anında kaybolur, yükleme ekranı ÇIKMAZ!
+        if (isFavTab) {
+            val updatedFavs = _uiState.value.favorites.filterNot { it.id == mediaId && it.mediaType == mediaType }
+            _uiState.value = _uiState.value.copy(favorites = updatedFavs)
+        } else {
+            val updatedWatch = _uiState.value.watchlist.filterNot { it.id == mediaId && it.mediaType == mediaType }
+            _uiState.value = _uiState.value.copy(watchlist = updatedWatch)
+        }
+
+        // 2. Arka planda sessizce silme ve Öneri Sinyallerini derhal temizleme
         viewModelScope.launch {
-            if (_uiState.value.selectedTab == MyListTab.FAVORITES) {
-                repository.removeFavorite(movieId)
+            if (isFavTab) {
+                repository.removeFavorite(mediaId, mediaType)
+                if (mediaType == "tv") {
+                    recommendationRepository.removeTvFavoriteSignal(mediaId)
+                    recommendationRepository.refreshTvRecommendations()
+                } else {
+                    recommendationRepository.removeFavoriteSignal(mediaId)
+                    recommendationRepository.refreshRecommendations()
+                }
             } else {
-                repository.removeFromWatchlist(movieId)
+                repository.removeFromWatchlist(mediaId, mediaType)
             }
-            loadAll()
         }
     }
 }

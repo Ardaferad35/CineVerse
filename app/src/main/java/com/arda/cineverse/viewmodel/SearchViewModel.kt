@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.repository.AiSearchRepository
 import com.arda.cineverse.data.repository.MovieRepository
+import com.arda.cineverse.data.repository.RecommendationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -23,6 +24,7 @@ data class SearchUiState(
 class SearchViewModel(
     private val movieRepository: MovieRepository = MovieRepository(),
     private val aiSearchRepository: AiSearchRepository = AiSearchRepository(),
+    private val recommendationRepository: RecommendationRepository = RecommendationRepository(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -52,6 +54,11 @@ class SearchViewModel(
             result.fold(
                 onSuccess = { movies ->
                     _uiState.value = _uiState.value.copy(isLoading = false, results = movies)
+                    val allGenreIds = movies.flatMap { it.genreIds }.distinct()
+                    if (allGenreIds.isNotEmpty()) {
+                        val isTv = movies.any { it.mediaType == "tv" }
+                        recommendationRepository.recordSearchSignal(allGenreIds, if (isTv) "tv" else "movie")
+                    }
                 },
                 onFailure = {
                     _uiState.value = _uiState.value.copy(
