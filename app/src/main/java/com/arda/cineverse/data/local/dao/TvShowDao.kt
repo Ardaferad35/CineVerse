@@ -27,6 +27,10 @@ interface TvShowDao {
     @Query("SELECT MIN(syncedAt) FROM tv_section_cross_ref WHERE section = :section")
     fun observeLastSyncedAt(section: SectionType): Flow<Long?>
 
+    /** Offline detay fallback'i için: Home'da herhangi bir bölümde cache'lenmiş tekil dizi. */
+    @Query("SELECT * FROM tv_shows WHERE id = :tvId LIMIT 1")
+    suspend fun getTvShowById(tvId: Int): TvShowEntity?
+
     @Upsert
     suspend fun upsertTvShows(shows: List<TvShowEntity>)
 

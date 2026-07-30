@@ -5,9 +5,11 @@ import com.arda.cineverse.data.connectivity.ConnectivityObserver
 import com.arda.cineverse.data.local.dao.CategoryDao
 import com.arda.cineverse.data.local.dao.FeaturedDao
 import com.arda.cineverse.data.local.dao.MovieDao
+import com.arda.cineverse.data.local.dao.SavedMovieDao
 import com.arda.cineverse.data.local.entity.SectionType
 import com.arda.cineverse.data.local.mapper.toDomain
 import com.arda.cineverse.data.local.mapper.toEntity
+import com.arda.cineverse.data.local.mapper.toPartialMovie
 import com.arda.cineverse.data.local.mapper.toUpcomingMovie
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
@@ -35,6 +37,7 @@ class MovieRepository @Inject constructor(
     private val movieDao: MovieDao = AppGraph.movieDao,
     private val categoryDao: CategoryDao = AppGraph.categoryDao,
     private val featuredDao: FeaturedDao = AppGraph.featuredDao,
+    private val savedMovieDao: SavedMovieDao = AppGraph.savedMovieDao,
     private val connectivityObserver: ConnectivityObserver = AppGraph.connectivityObserver,
 ) {
     // ---------------------------------------------------------------
@@ -60,11 +63,20 @@ class MovieRepository @Inject constructor(
 
     /**
      * Offline'ken film detayı açılırken kullanılır: TMDB'den tam detay
-     * (kadro/fragman/benzer filmler) çekilemezse, Home'da daha önce
-     * cache'lenmiş temel film bilgisiyle (başlık, poster, puan, yıl, tür,
-     * özet) kısmi bir görünüm oluşturmaya yarar.
+     * (kadro/fragman/benzer filmler) çekilemezse, sırasıyla üç kaynağa
+     * bakarak kısmi bir görünüm oluşturmaya çalışır:
+     * 1. Home'da daha önce cache'lenmiş temel film bilgisi (movies tablosu).
+     * 2. "Günün Filmi" slotu (featured_movie) — id eşleşiyorsa (slot her
+     *    zaman TEK satır olduğundan başka bir filme ait olabilir, bu yüzden
+     *    id kontrolü şart).
+     * 3. Kullanıcının favorilediği/izleme listesine eklediği ama Home'un
+     *    hiçbir bölümünde hiç görünmemiş film (saved_movies).
+     * Üçü de yoksa film offline'da hiç açılamaz (gerçek "hiç görülmemiş" film).
      */
-    suspend fun getCachedMovie(movieId: Int): Movie? = movieDao.getMovieById(movieId)?.toDomain()
+    suspend fun getCachedMovie(movieId: Int): Movie? =
+        movieDao.getMovieById(movieId)?.toDomain()
+            ?: featuredDao.getMovie()?.takeIf { it.id == movieId }?.toPartialMovie()
+            ?: savedMovieDao.getById(movieId, mediaType = "movie")?.toPartialMovie()
 
     suspend fun refreshPopularMovies(page: Int = 1): SyncResult = refreshSection(SectionType.POPULAR) {
         api.getPopularMovies(page = page).results.map { it.toUiMovie() }

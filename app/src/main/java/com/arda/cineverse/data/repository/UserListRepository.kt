@@ -64,17 +64,21 @@ class UserListRepository @Inject constructor(
         }.fold(onSuccess = { SyncResult.Success }, onFailure = { SyncResult.Error(it) })
     }
 
+    // Firestore yerine Room'a bakıyor — bkz. SavedMovieDao.exists(). Firestore
+    // .get() offline'ken güvenilir şekilde cevap vermeyebileceğinden (SDK'nın
+    // kendi cache'i o belgeyi hiç görmemiş olabilir), kalp/kaydet ikonunun
+    // durumu eskiden offline'da hep "false" gösteriyordu — artık her zaman
+    // Room'daki (senkron olduğu sürece güncel) gerçek durumu yansıtıyor.
+
     suspend fun isFavorite(movieId: Int): Boolean = isFavorite(movieId, mediaType = "movie")
 
-    suspend fun isFavorite(mediaId: Int, mediaType: String): Boolean = runCatching {
-        favoritesCollection().document(documentId(mediaId, mediaType)).get().await().exists()
-    }.getOrDefault(false)
+    suspend fun isFavorite(mediaId: Int, mediaType: String): Boolean =
+        savedMovieDao.exists(mediaId, mediaType, LIST_FAVORITE)
 
     suspend fun isInWatchlist(movieId: Int): Boolean = isInWatchlist(movieId, mediaType = "movie")
 
-    suspend fun isInWatchlist(mediaId: Int, mediaType: String): Boolean = runCatching {
-        watchlistCollection().document(documentId(mediaId, mediaType)).get().await().exists()
-    }.getOrDefault(false)
+    suspend fun isInWatchlist(mediaId: Int, mediaType: String): Boolean =
+        savedMovieDao.exists(mediaId, mediaType, LIST_WATCHLIST)
 
     suspend fun getFavorites(): Result<List<SavedMovie>> = runCatching {
         favoritesCollection()

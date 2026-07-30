@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
@@ -298,6 +299,29 @@ fun TvShowDetailScreen(
                                         .align(Alignment.BottomStart)
                                         .padding(horizontal = 20.dp, vertical = 16.dp),
                                 ) {
+                                    if (detailState.isOfflineFallback) {
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(ErrorColor.copy(alpha = 0.16f))
+                                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.CloudOff,
+                                                contentDescription = null,
+                                                tint = ErrorColor,
+                                                modifier = Modifier.size(12.dp),
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Text(
+                                                "Çevrimdışı • Sınırlı bilgi gösteriliyor",
+                                                color = ErrorColor,
+                                                style = MaterialTheme.typography.labelSmall,
+                                            )
+                                        }
+                                        Spacer(Modifier.height(8.dp))
+                                    }
                                     Text(tvShow.name, color = OnSurface, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.height(6.dp))
                                     Row(verticalAlignment = Alignment.CenterVertically) {

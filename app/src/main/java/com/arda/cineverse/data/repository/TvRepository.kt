@@ -4,10 +4,12 @@ import com.arda.cineverse.data.common.SyncResult
 import com.arda.cineverse.data.connectivity.ConnectivityObserver
 import com.arda.cineverse.data.local.dao.CategoryDao
 import com.arda.cineverse.data.local.dao.FeaturedDao
+import com.arda.cineverse.data.local.dao.SavedMovieDao
 import com.arda.cineverse.data.local.dao.TvShowDao
 import com.arda.cineverse.data.local.entity.SectionType
 import com.arda.cineverse.data.local.mapper.toDomain
 import com.arda.cineverse.data.local.mapper.toEntity
+import com.arda.cineverse.data.local.mapper.toPartialTvShow
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedTvShow
 import com.arda.cineverse.data.model.TvShow
@@ -31,6 +33,7 @@ class TvRepository @Inject constructor(
     private val tvShowDao: TvShowDao = AppGraph.tvShowDao,
     private val categoryDao: CategoryDao = AppGraph.categoryDao,
     private val featuredDao: FeaturedDao = AppGraph.featuredDao,
+    private val savedMovieDao: SavedMovieDao = AppGraph.savedMovieDao,
     private val connectivityObserver: ConnectivityObserver = AppGraph.connectivityObserver,
 ) {
     // --- Offline-first: sürekli gözlemlenen bölümler ---
@@ -42,6 +45,23 @@ class TvRepository @Inject constructor(
         tvShowDao.observeSection(SectionType.TV_ON_AIR).map { list -> list.map { it.toDomain() } }
 
     fun observeFeaturedTvShow(): Flow<FeaturedTvShow?> = featuredDao.observeTv().map { it?.toDomain() }
+
+    /**
+     * Offline'ken dizi detayı açılırken kullanılır: TMDB'den tam detay
+     * (kadro/fragman/benzer diziler) çekilemezse, sırasıyla üç kaynağa
+     * bakarak kısmi bir görünüm oluşturmaya çalışır:
+     * 1. Home'da daha önce cache'lenmiş temel dizi bilgisi (tv_shows tablosu).
+     * 2. "Günün Dizisi" slotu (featured_tv) — id eşleşiyorsa (slot her zaman
+     *    TEK satır olduğundan başka bir diziye ait olabilir, bu yüzden id
+     *    kontrolü şart).
+     * 3. Kullanıcının favorilediği/izleme listesine eklediği ama Home'un
+     *    hiçbir bölümünde hiç görünmemiş dizi (saved_movies, ör. The 100).
+     * Üçü de yoksa dizi offline'da hiç açılamaz (gerçek "hiç görülmemiş" dizi).
+     */
+    suspend fun getCachedTvShow(tvId: Int): TvShow? =
+        tvShowDao.getTvShowById(tvId)?.toDomain()
+            ?: featuredDao.getTv()?.takeIf { it.id == tvId }?.toPartialTvShow()
+            ?: savedMovieDao.getById(tvId, mediaType = "tv")?.toPartialTvShow()
 
     fun observeTvCategories(): Flow<List<Category>> = categoryDao.observeAll(isTv = true).map { list -> list.map { it.toDomain() } }
 

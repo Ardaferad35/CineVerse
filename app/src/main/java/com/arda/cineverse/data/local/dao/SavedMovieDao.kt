@@ -13,6 +13,23 @@ interface SavedMovieDao {
     @Query("SELECT * FROM saved_movies WHERE listType = :listType ORDER BY addedAt DESC")
     fun observeByListType(listType: String): Flow<List<SavedMovieEntity>>
 
+    /**
+     * Offline detay fallback'i için: bir film/dizi Home'un hiçbir bölümünde
+     * (popüler/en çok oylanan/vb.) hiç görünmemiş olsa bile, kullanıcı onu
+     * favorilere/izleme listesine eklediyse burada denk gelinebilir.
+     */
+    @Query("SELECT * FROM saved_movies WHERE mediaId = :mediaId AND mediaType = :mediaType LIMIT 1")
+    suspend fun getById(mediaId: Int, mediaType: String): SavedMovieEntity?
+
+    /**
+     * "Favori mi/izleme listemde mi" göstergesi (kalp/kaydet ikonu) için.
+     * Firestore'a gitmek yerine Room'a bakar — bu sayede offline'ken de
+     * doğru durumu gösterir (Firestore .get() offline'ken güvenilir şekilde
+     * cevap vermeyebilir, Room ise senkron olduğu sürece her zaman doğru).
+     */
+    @Query("SELECT EXISTS(SELECT 1 FROM saved_movies WHERE mediaId = :mediaId AND mediaType = :mediaType AND listType = :listType)")
+    suspend fun exists(mediaId: Int, mediaType: String, listType: String): Boolean
+
     @Query("DELETE FROM saved_movies WHERE listType = :listType")
     suspend fun clear(listType: String)
 
