@@ -153,15 +153,83 @@ class TvRepository @Inject constructor(
             val detailDeferred = async { api.getTvShowDetail(tvId) }
             val creditsDeferred = async { api.getTvShowCredits(tvId) }
             val videosDeferred = async { api.getTvShowVideos(tvId) }
-            val similarDeferred = async { api.getSimilarTvShows(tvId) }
+            val rawSimilarDeferred = async { runCatching { api.getSimilarTvShows(tvId).results }.getOrDefault(emptyList()) }
+
+            val detail = detailDeferred.await()
+            val targetGenreIds = detail.genres.map { it.id }
+            val genreQueryStr = targetGenreIds.take(2).joinToString(",")
+
+            val discoverDeferred = async {
+                if (genreQueryStr.isNotBlank()) {
+                    runCatching {
+                        api.discoverTvShows(withGenres = genreQueryStr, sortBy = "popularity.desc", minVoteCount = 100).results
+                    }.getOrDefault(emptyList())
+                } else emptyList()
+            }
+
+            val rawSimilar = rawSimilarDeferred.await()
+            val discoverShows = discoverDeferred.await()
+
+            val allCandidates = (rawSimilar + discoverShows)
+                .distinctBy { it.id }
+                .filter { it.id != tvId }
+
+            val targetTokens = tokenizeOverview(detail.overview)
+
+            val rankedSimilar = allCandidates
+                .map { candidate ->
+                    val candidateTokens = tokenizeOverview(candidate.overview)
+                    val score = computeSimilarityScore(
+                        targetGenreIds = targetGenreIds,
+                        targetOverviewTokens = targetTokens,
+                        candidateGenreIds = candidate.genre_ids,
+                        candidateOverviewTokens = candidateTokens,
+                        candidateVoteAverage = candidate.vote_average,
+                    )
+                    candidate to score
+                }
+                .filter { it.second > 0.0 }
+                .sortedByDescending { it.second }
+                .map { it.first }
+                .take(10)
 
             buildTvShowDetail(
-                detail = detailDeferred.await(),
+                detail = detail,
                 credits = creditsDeferred.await(),
                 videos = videosDeferred.await(),
-                similar = similarDeferred.await().results.take(10),
+                similar = rankedSimilar.ifEmpty { rawSimilar.take(10) },
             )
         }
+    }
+
+    private fun tokenizeOverview(text: String?): Set<String> {
+        if (text.isNullOrBlank()) return emptySet()
+        val stopWords = setOf("bir", "ve", "de", "da", "bu", "ile", "için", "ama", "gibi", "kendi", "daha", "en", "her", "o", "kadar", "sonra", "ki")
+        return text.lowercase(java.util.Locale.forLanguageTag("tr"))
+            .replace(Regex("[^a-zçğıöşü0-9\\s]"), " ")
+            .split(Regex("\\s+"))
+            .filter { it.length > 2 && it !in stopWords }
+            .toSet()
+    }
+
+    private fun computeSimilarityScore(
+        targetGenreIds: List<Int>,
+        targetOverviewTokens: Set<String>,
+        candidateGenreIds: List<Int>,
+        candidateOverviewTokens: Set<String>,
+        candidateVoteAverage: Double,
+    ): Double {
+        val sharedGenres = candidateGenreIds.intersect(targetGenreIds.toSet()).size
+        if (sharedGenres == 0) return 0.0
+        val genreScore = sharedGenres.toDouble() / targetGenreIds.size.coerceAtLeast(1)
+
+        val sharedTokens = candidateOverviewTokens.intersect(targetOverviewTokens).size
+        val unionSize = (targetOverviewTokens.size + candidateOverviewTokens.size - sharedTokens).coerceAtLeast(1)
+        val textScore = if (targetOverviewTokens.isEmpty()) 0.0 else sharedTokens.toDouble() / unionSize
+
+        val ratingScore = (candidateVoteAverage / 10.0).coerceIn(0.0, 1.0)
+
+        return (genreScore * 0.45) + (textScore * 0.35) + (ratingScore * 0.20)
     }
 
     private fun todaySeed(): Int {

@@ -136,9 +136,9 @@ fun TvShowDetailScreen(
     fun shareTvShow(name: String) {
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "CineVerse'de \"$name\" dizisine goz at!")
+            putExtra(Intent.EXTRA_TEXT, "CineVerse'de \"$name\" dizisine göz at!")
         }
-        context.startActivity(Intent.createChooser(sendIntent, "Paylas"))
+        context.startActivity(Intent.createChooser(sendIntent, "Paylaş"))
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {

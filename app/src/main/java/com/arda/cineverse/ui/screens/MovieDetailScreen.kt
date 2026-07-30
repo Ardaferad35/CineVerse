@@ -74,6 +74,12 @@ import com.arda.cineverse.viewmodel.MovieDetailViewModel
 import com.arda.cineverse.viewmodel.MovieDetailViewModelFactory
 import kotlinx.coroutines.launch
 
+import androidx.compose.runtime.LaunchedEffect
+import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.model.SavedMovie
+import com.arda.cineverse.data.repository.RecommendationRepository
+import com.arda.cineverse.data.repository.UserListRepository
+
 private val StarColorDetail = Color(0xFFFFC857)
 
 // Backdrop üzerindeki ikon düğmeleri her zaman koyu bir karartmanın (Color.Black
@@ -97,6 +103,40 @@ fun MovieDetailScreen(
     val scope = rememberCoroutineScope()
     val detailState by movieDetailViewModel.uiState.collectAsState()
     val commentState by commentViewModel.uiState.collectAsState()
+
+    val userListRepository = remember { UserListRepository() }
+    val recommendationRepository = remember { RecommendationRepository() }
+
+    var favoriteMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+    LaunchedEffect(Unit) {
+        val favorites = userListRepository.getFavorites().getOrDefault(emptyList())
+        favoriteMovieIds = favorites.map { it.id }.toSet()
+    }
+
+    fun toggleSimilarFavorite(similar: Movie) {
+        val isFav = similar.id in favoriteMovieIds
+        favoriteMovieIds = if (isFav) favoriteMovieIds - similar.id else favoriteMovieIds + similar.id
+        scope.launch {
+            if (isFav) {
+                userListRepository.removeFavorite(similar.id, mediaType = "movie")
+                recommendationRepository.removeFavoriteSignal(similar.id)
+            } else {
+                userListRepository.addFavorite(
+                    SavedMovie(
+                        id = similar.id,
+                        title = similar.title,
+                        posterUrl = similar.posterUrl,
+                        rating = similar.rating,
+                        year = similar.year,
+                        genreIds = similar.genreIds,
+                        mediaType = "movie",
+                    ),
+                )
+                recommendationRepository.recordFavorite(similar.id, similar.genreIds)
+            }
+        }
+    }
 
     var editingComment by remember { mutableStateOf<Comment?>(null) }
     var commentPendingDelete by remember { mutableStateOf<Comment?>(null) }
@@ -474,7 +514,11 @@ fun MovieDetailScreen(
                                     Spacer(Modifier.height(12.dp))
                                     LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         items(movie.similarMovies, key = { it.id }) { similar ->
-                                            PopularMovieCard(movie = similar, onClick = { onMovieClick(similar.id) }, onFavoriteClick = {})
+                                            PopularMovieCard(
+                                                movie = similar.copy(isFavorite = similar.id in favoriteMovieIds),
+                                                onClick = { onMovieClick(similar.id) },
+                                                onFavoriteClick = { toggleSimilarFavorite(similar) },
+                                            )
                                         }
                                     }
                                 }

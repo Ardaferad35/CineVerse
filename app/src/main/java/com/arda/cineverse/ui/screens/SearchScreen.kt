@@ -21,7 +21,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.model.SavedMovie
+import com.arda.cineverse.data.repository.RecommendationRepository
+import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CVBottomNavBar
 import com.arda.cineverse.ui.components.HomeTopBar
 import com.arda.cineverse.ui.components.PopularMovieCard
@@ -32,6 +40,7 @@ import com.arda.cineverse.ui.theme.Primary
 import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.SearchMode
 import com.arda.cineverse.viewmodel.SearchViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun SearchScreen(
@@ -45,6 +54,48 @@ fun SearchScreen(
     viewModel: SearchViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val userListRepository = remember { UserListRepository() }
+    val recommendationRepository = remember { RecommendationRepository() }
+
+    var favoriteIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+    LaunchedEffect(Unit) {
+        val favorites = userListRepository.getFavorites().getOrDefault(emptyList())
+        favoriteIds = favorites.map { it.id }.toSet()
+    }
+
+    fun toggleFavorite(movie: Movie) {
+        val isFav = movie.id in favoriteIds
+        favoriteIds = if (isFav) favoriteIds - movie.id else favoriteIds + movie.id
+        scope.launch {
+            if (isFav) {
+                userListRepository.removeFavorite(movie.id, mediaType = movie.mediaType)
+                if (movie.mediaType == "tv") {
+                    recommendationRepository.removeTvFavoriteSignal(movie.id)
+                } else {
+                    recommendationRepository.removeFavoriteSignal(movie.id)
+                }
+            } else {
+                userListRepository.addFavorite(
+                    SavedMovie(
+                        id = movie.id,
+                        title = movie.title,
+                        posterUrl = movie.posterUrl,
+                        rating = movie.rating,
+                        year = movie.year,
+                        genreIds = movie.genreIds,
+                        mediaType = movie.mediaType,
+                    ),
+                )
+                if (movie.mediaType == "tv") {
+                    recommendationRepository.recordTvFavorite(movie.id, movie.genreIds)
+                } else {
+                    recommendationRepository.recordFavorite(movie.id, movie.genreIds)
+                }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (startInAiMode) viewModel.setMode(SearchMode.AI)
@@ -137,7 +188,7 @@ fun SearchScreen(
                     ) {
                         items(uiState.results, key = { "${it.mediaType}_${it.id}" }) { movie ->
                             PopularMovieCard(
-                                movie = movie,
+                                movie = movie.copy(isFavorite = movie.id in favoriteIds),
                                 onClick = {
                                     if (movie.mediaType == "tv") {
                                         onTvShowClick(movie.id)
@@ -145,7 +196,7 @@ fun SearchScreen(
                                         onMovieClick(movie.id)
                                     }
                                 },
-                                onFavoriteClick = {},
+                                onFavoriteClick = { toggleFavorite(movie) },
                             )
                         }
                     }
