@@ -3,6 +3,7 @@ package com.arda.cineverse.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -22,6 +23,7 @@ import com.arda.cineverse.ui.screens.ProfileScreen
 import com.arda.cineverse.ui.screens.RegisterScreen
 import com.arda.cineverse.ui.screens.SearchScreen
 import com.arda.cineverse.ui.screens.TvShowDetailScreen
+import com.arda.cineverse.viewmodel.NotificationViewModel
 import com.google.firebase.auth.FirebaseAuth
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -62,6 +64,14 @@ fun CineVerseNavGraph(
     val startDestination = remember {
         if (FirebaseAuth.getInstance().currentUser != null) CVRoutes.HOME else CVRoutes.LOGIN
     }
+
+    // HomeScreen (rozet) ve NotificationsScreen (liste + "hepsini okundu say")
+    // KASITLI OLARAK aynı örneği paylaşıyor. Her ikisi de kendi varsayılan
+    // viewModel()'ini kullansaydı, her biri nav-backstack kaydına bağlı AYRI
+    // bir örnek olurdu — Bildirimler ekranında hepsini okundu işaretlemek,
+    // Home'daki tamamen farklı objeye ait rozeti hiç etkilemezdi (rozet eski
+    // değerde donup kalırdı, tam da bu bug).
+    val notificationViewModel: NotificationViewModel = viewModel()
 
     // Bildirime dokunularak açılışta (soğuk başlangıç) veya uygulama zaten
     // açıkken (onNewIntent) tetiklenir. Giriş yapılmamışsa hedefe gitmenin
@@ -109,6 +119,7 @@ fun CineVerseNavGraph(
         }
         composable(CVRoutes.HOME) {
             HomeScreen(
+                notificationViewModel = notificationViewModel,
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
                 onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
                 onSeeAllClick = { section ->
@@ -184,6 +195,7 @@ fun CineVerseNavGraph(
         }
         composable(CVRoutes.NOTIFICATIONS) {
             NotificationsScreen(
+                viewModel = notificationViewModel,
                 onBack = { navController.popBackStack() },
                 onNotificationClick = { notification ->
                     if (notification.tvId != null || notification.mediaType == "tv") {

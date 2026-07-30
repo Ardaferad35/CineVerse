@@ -147,6 +147,34 @@ fun FeaturedTvEntity.toDomain(): FeaturedTvShow = FeaturedTvShow(
     backdropUrl = backdropUrl,
 )
 
+/**
+ * Offline detay fallback'inin üçüncü basamağı: film/dizi ne Home cache'inde
+ * (movies/tv_shows) ne de favorilerde/izleme listesinde (saved_movies) ama
+ * "Günün Filmi/Dizisi" ise, o slotta zaten özet dahil zengin bir kopyası var
+ * — bkz. MovieRepository.getCachedMovie/TvRepository.getCachedTvShow. Çağıran
+ * taraf, dönen satırın GERÇEKTEN aranan id'ye ait olduğunu (slot her zaman
+ * "current" olduğu için farklı bir film/dizi olabilir) kontrol etmeli.
+ */
+fun FeaturedMovieEntity.toPartialMovie(): Movie = Movie(
+    id = id,
+    title = title,
+    year = year,
+    genre = genre,
+    rating = rating,
+    posterUrl = posterUrl,
+    overview = description,
+)
+
+fun FeaturedTvEntity.toPartialTvShow(): TvShow = TvShow(
+    id = id,
+    name = title,
+    year = year,
+    genre = genre,
+    rating = rating,
+    posterUrl = posterUrl,
+    overview = description,
+)
+
 fun SavedMovie.toEntity(listType: String): SavedMovieEntity = SavedMovieEntity(
     mediaId = id,
     mediaType = mediaType,
@@ -168,4 +196,30 @@ fun SavedMovieEntity.toDomain(): SavedMovie = SavedMovie(
     addedAt = addedAt,
     genreIds = genreIds,
     mediaType = mediaType,
+)
+
+/**
+ * Offline detay fallback'inin ikinci basamağı: film/dizi Home cache'inde
+ * (movies/tv_shows) hiç yoksa ama kullanıcı onu favorilere/izleme listesine
+ * eklediyse, o kayıttaki minimum bilgiden (özet/tür ismi olmadan) kısmi bir
+ * görünüm oluşturur — bkz. MovieRepository.getCachedMovie/TvRepository.getCachedTvShow.
+ */
+fun SavedMovieEntity.toPartialMovie(): Movie = Movie(
+    id = mediaId,
+    title = title,
+    year = year,
+    genreIds = genreIds,
+    rating = rating,
+    posterUrl = posterUrl,
+    mediaType = mediaType,
+)
+
+fun SavedMovieEntity.toPartialTvShow(): TvShow = TvShow(
+    id = mediaId,
+    name = title,
+    year = year,
+    genre = "",
+    genreIds = genreIds,
+    rating = rating,
+    posterUrl = posterUrl,
 )
