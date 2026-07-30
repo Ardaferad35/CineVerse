@@ -340,6 +340,7 @@ fun HomeScreen(
                                 SearchSuggestionsList(
                                     suggestions = uiState.searchSuggestions,
                                     onMovieClick = onMovieClick,
+                                    onTvShowClick = onTvShowClick,
                                 )
                             }
                             else -> {

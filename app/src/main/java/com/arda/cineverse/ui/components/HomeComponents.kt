@@ -661,6 +661,7 @@ fun CVBottomNavBar(
 fun SearchSuggestionsList(
     suggestions: List<SearchSuggestion>,
     onMovieClick: (Int) -> Unit,
+    onTvShowClick: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -670,11 +671,21 @@ fun SearchSuggestionsList(
             .background(Surface),
     ) {
         suggestions.forEachIndexed { index, suggestion ->
-            val clickable = suggestion.type == SuggestionType.MOVIE
+            val clickable = suggestion.type == SuggestionType.MOVIE || suggestion.type == SuggestionType.TV
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(if (clickable) Modifier.clickable { onMovieClick(suggestion.id) } else Modifier)
+                    .then(
+                        if (clickable) {
+                            Modifier.clickable {
+                                if (suggestion.type == SuggestionType.TV) {
+                                    onTvShowClick(suggestion.id)
+                                } else {
+                                    onMovieClick(suggestion.id)
+                                }
+                            }
+                        } else Modifier
+                    )
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
