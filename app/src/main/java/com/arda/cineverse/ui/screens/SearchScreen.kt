@@ -38,6 +38,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
     startInAiMode: Boolean = false,
     onMovieClick: (movieId: Int) -> Unit = {},
+    onTvShowClick: (tvId: Int) -> Unit = {},
     onNavigateTab: (Int) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
@@ -93,7 +94,7 @@ fun SearchScreen(
                         Spacer(Modifier.height(12.dp))
                         Text(
                             if (uiState.mode == SearchMode.AI) {
-                                "Filmi kendi cümlelerinle tarif et, yapay zeka en olası 3 filmi bulsun"
+                                "Film veya diziyi kendi cümlelerinle tarif et, yapay zeka en olası 3 sonucu bulsun"
                             } else {
                                 "Film veya dizi adı yazarak aramaya başla"
                             },
@@ -134,8 +135,18 @@ fun SearchScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        items(uiState.results, key = { it.id }) { movie ->
-                            PopularMovieCard(movie = movie, onClick = { onMovieClick(movie.id) }, onFavoriteClick = {})
+                        items(uiState.results, key = { "${it.mediaType}_${it.id}" }) { movie ->
+                            PopularMovieCard(
+                                movie = movie,
+                                onClick = {
+                                    if (movie.mediaType == "tv") {
+                                        onTvShowClick(movie.id)
+                                    } else {
+                                        onMovieClick(movie.id)
+                                    }
+                                },
+                                onFavoriteClick = {},
+                            )
                         }
                     }
                 }

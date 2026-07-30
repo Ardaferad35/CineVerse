@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -130,18 +131,31 @@ fun MovieDetailScreen(
                 }
             }
             detailState.movie == null -> {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(
-                        detailState.errorMessage ?: "Film bulunamadı",
-                        color = TextSecondary,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    CVGradientButton(text = "Tekrar Dene", onClick = { movieDetailViewModel.load() })
+                Box(modifier = Modifier.fillMaxSize()) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .statusBarsPadding()
+                            .padding(12.dp)
+                            .align(Alignment.TopStart),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            detailState.errorMessage ?: "Film bulunamadı",
+                            color = TextSecondary,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        CVGradientButton(text = "Tekrar Dene", onClick = { movieDetailViewModel.load() })
+                    }
                 }
             }
             else -> {

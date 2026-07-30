@@ -98,6 +98,8 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
                 onSeeAllClick = { section ->
                     when (section) {
                         "popular", "upcoming" -> navController.navigate(CVRoutes.movieList(section))
+                        "popular_tv" -> navController.navigate(CVRoutes.movieList("popular_tv"))
+                        "on_air_tv" -> navController.navigate(CVRoutes.movieList("on_air_tv"))
                         "categories" -> navController.navigate(CVRoutes.ALL_CATEGORIES)
                     }
                 },
@@ -121,6 +123,7 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
         composable(CVRoutes.LISTEM) {
             MyListScreen(
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+                onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
                 onStartExploring = { navController.popBackStack(CVRoutes.HOME, inclusive = false) },
                 onNavigateTab = { index ->
                     when (index) {
@@ -140,6 +143,7 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
             SearchScreen(
                 startInAiMode = aiMode,
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+                onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
                 onNavigateTab = { index ->
                     if (index == 0) {
                         navController.popBackStack(CVRoutes.HOME, inclusive = false)
@@ -174,11 +178,28 @@ fun CineVerseNavGraph(navController: NavHostController = rememberNavController()
             arguments = listOf(navArgument("section") { type = NavType.StringType }),
         ) { backStackEntry ->
             val section = backStackEntry.arguments?.getString("section") ?: "popular"
-            MovieListScreen(
-                source = if (section == "upcoming") MovieListSource.Upcoming else MovieListSource.Popular,
-                onBack = { navController.popBackStack() },
-                onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
-            )
+            when (section) {
+                "upcoming" -> MovieListScreen(
+                    source = MovieListSource.Upcoming,
+                    onBack = { navController.popBackStack() },
+                    onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+                )
+                "popular_tv" -> MovieListScreen(
+                    source = MovieListSource.TvPopular,
+                    onBack = { navController.popBackStack() },
+                    onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
+                )
+                "on_air_tv" -> MovieListScreen(
+                    source = MovieListSource.TvOnAir,
+                    onBack = { navController.popBackStack() },
+                    onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
+                )
+                else -> MovieListScreen(
+                    source = MovieListSource.Popular,
+                    onBack = { navController.popBackStack() },
+                    onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+                )
+            }
         }
         composable(
             route = CVRoutes.MOVIE_LIST_GENRE,

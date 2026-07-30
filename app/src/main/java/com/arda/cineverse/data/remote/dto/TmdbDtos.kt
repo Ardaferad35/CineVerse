@@ -78,6 +78,7 @@ data class GenreListResponseDto(
     val genres: List<GenreDto> = emptyList(),
 )
 
+
 data class CreditsResponseDto(
     val cast: List<CastMemberDto>,
     val crew: List<CrewMemberDto> = emptyList(),
@@ -123,4 +124,5 @@ data class MultiSearchResultDto(
     val profile_path: String? = null,
     val release_date: String? = null,
     val first_air_date: String? = null,
+    val vote_average: Double? = null,
 )

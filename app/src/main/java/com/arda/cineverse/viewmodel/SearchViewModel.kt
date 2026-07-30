@@ -47,7 +47,7 @@ class SearchViewModel(
             val result = if (mode == SearchMode.AI) {
                 aiSearchRepository.searchWithDescription(query)
             } else {
-                movieRepository.searchMovies(query)
+                movieRepository.searchMoviesAndTv(query)
             }
             result.fold(
                 onSuccess = { movies ->

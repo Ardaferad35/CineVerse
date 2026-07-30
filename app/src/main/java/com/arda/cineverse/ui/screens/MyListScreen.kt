@@ -46,6 +46,7 @@ import com.arda.cineverse.viewmodel.MyListViewModel
 fun MyListScreen(
     modifier: Modifier = Modifier,
     onMovieClick: (movieId: Int) -> Unit = {},
+    onTvShowClick: (tvId: Int) -> Unit = {},
     onStartExploring: () -> Unit = {},
     onNavigateTab: (Int) -> Unit = {},
     onProfileClick: () -> Unit = {},
@@ -172,7 +173,13 @@ fun MyListScreen(
                                 movie = movie,
                                 badgeIcon = if (uiState.selectedTab == MyListTab.FAVORITES) Icons.Filled.Favorite else Icons.Filled.Bookmark,
                                 badgeTint = if (uiState.selectedTab == MyListTab.FAVORITES) ErrorColor else Primary,
-                                onClick = { onMovieClick(movie.id) },
+                                onClick = {
+                                    if (movie.mediaType == "tv") {
+                                        onTvShowClick(movie.id)
+                                    } else {
+                                        onMovieClick(movie.id)
+                                    }
+                                },
                                 onBadgeClick = { viewModel.removeFromCurrentList(movie.id) },
                             )
                         }

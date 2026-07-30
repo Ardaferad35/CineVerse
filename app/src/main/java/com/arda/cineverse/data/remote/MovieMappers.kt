@@ -122,6 +122,31 @@ fun MultiSearchResultDto.toSearchSuggestion(): SearchSuggestion? {
     )
 }
 
+fun MultiSearchResultDto.toUiMovie(): Movie? {
+    val isMovie = media_type == "movie"
+    val isTv = media_type == "tv"
+    if (!isMovie && !isTv) return null
+
+    val displayTitle = if (isMovie) title ?: name ?: "" else name ?: title ?: ""
+    if (displayTitle.isBlank()) return null
+
+    val dateStr = if (isMovie) release_date else first_air_date
+    val parsedYear = dateStr?.take(4)?.toIntOrNull()
+
+    return Movie(
+        id = id,
+        title = displayTitle,
+        year = parsedYear,
+        genre = if (isTv) "Dizi" else "Film",
+        genres = listOf(if (isTv) "Dizi" else "Film"),
+        genreIds = emptyList(),
+        rating = vote_average ?: 0.0,
+        posterUrl = TmdbNetworkModule.posterUrl(poster_path),
+        isFavorite = false,
+        mediaType = if (isTv) "tv" else "movie",
+    )
+}
+
 fun buildMovieDetail(
     detail: MovieDetailDto,
     credits: CreditsResponseDto,

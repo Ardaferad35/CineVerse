@@ -428,9 +428,8 @@ fun HomeScreen(
                                     icon = Icons.Filled.LocalFireDepartment,
                                     iconTint = Color(0xFFFF7A45),
                                     title = if (uiState.isTvMode) "Pop\u00FCler Diziler" else "Pop\u00FCler Filmler",
-                                    onSeeAllClick = { onSeeAllClick("popular") },
-                                    // TODO: Thread mediaType through MovieListScreen before enabling TV "Tumunu Gor".
-                                    showSeeAll = !uiState.isTvMode,
+                                    onSeeAllClick = { onSeeAllClick(if (uiState.isTvMode) "popular_tv" else "popular") },
+                                    showSeeAll = true,
                                 )
                                 LazyRow(
                                     contentPadding = PaddingValues(horizontal = 20.dp),
@@ -485,9 +484,8 @@ fun HomeScreen(
                                         icon = Icons.Filled.CalendarMonth,
                                         iconTint = Accent,
                                         title = "\u015Eu An Yay\u0131nda",
-                                        onSeeAllClick = { onSeeAllClick("upcoming") },
-                                        // TODO: Add a TV list source before enabling TV "Tumunu Gor".
-                                        showSeeAll = false,
+                                        onSeeAllClick = { onSeeAllClick("on_air_tv") },
+                                        showSeeAll = true,
                                     )
                                     LazyRow(
                                         contentPadding = PaddingValues(horizontal = 20.dp),
@@ -533,9 +531,7 @@ fun HomeScreen(
                                     icon = Icons.Filled.GridView,
                                     iconTint = Primary,
                                     title = "Kategoriler",
-                                    onSeeAllClick = { onSeeAllClick("categories") },
-                                    // TODO: Thread mediaType through AllCategoriesScreen before enabling TV category browsing.
-                                    showSeeAll = !uiState.isTvMode,
+                                    showSeeAll = false,
                                 )
                                 LazyRow(
                                     contentPadding = PaddingValues(horizontal = 20.dp),

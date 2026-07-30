@@ -17,7 +17,11 @@ import kotlinx.coroutines.delay
 import retrofit2.HttpException
 import java.io.IOException
 
-private data class GuessedMovie(val title: String, val year: Int? = null)
+private data class GuessedItem(
+    val title: String,
+    val year: Int? = null,
+    val type: String? = null,
+)
 
 class AiSearchRepository(
     private val geminiApi: GeminiApiService = GeminiNetworkModule.api,
@@ -26,8 +30,8 @@ class AiSearchRepository(
     private val gson = Gson()
 
     /**
-     * Kullanıcının doğal dille yaptığı film tarifini Gemini'ye gönderir,
-     * dönen 3 tahmini TMDB'de arayıp gerçek film verisiyle eşleştirir.
+     * Kullanıcının doğal dille yaptığı film veya dizi tarifini Gemini'ye gönderir,
+     * dönen 3 tahmini TMDB'de arayıp gerçek film/dizi verisiyle eşleştirir.
      */
     suspend fun searchWithDescription(description: String): Result<List<Movie>> = runCatching {
         val request = GeminiRequest(
@@ -39,12 +43,19 @@ class AiSearchRepository(
         val rawJson = response.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text
             ?: error("Yapay zeka bir yanıt üretemedi")
 
-        val type = object : TypeToken<List<GuessedMovie>>() {}.type
-        val guesses: List<GuessedMovie> = gson.fromJson(rawJson, type)
+        val type = object : TypeToken<List<GuessedItem>>() {}.type
+        val guesses: List<GuessedItem> = gson.fromJson(rawJson, type)
 
         guesses.mapNotNull { guess ->
-            tmdbApi.searchMovies(query = guess.title).results.firstOrNull()?.toUiMovie()
-        }.distinctBy { it.id }.take(3)
+            val searchResults = tmdbApi.searchMulti(query = guess.title).results.mapNotNull { it.toUiMovie() }
+            if (guess.type == "tv") {
+                searchResults.firstOrNull { it.mediaType == "tv" } ?: searchResults.firstOrNull()
+            } else if (guess.type == "movie") {
+                searchResults.firstOrNull { it.mediaType == "movie" } ?: searchResults.firstOrNull()
+            } else {
+                searchResults.firstOrNull()
+            }
+        }.distinctBy { "${it.mediaType}_${it.id}" }.take(3)
     }
 
     /**
@@ -77,9 +88,9 @@ class AiSearchRepository(
     }
 
     private fun buildPrompt(description: String): String = """
-        Kullanıcı bir filmi doğal dille tarif ediyor. Bu tarife göre en olası 3 film tahminini ver.
+        Kullanıcı bir film veya diziyi doğal dille tarif ediyor. Bu tarife göre en olası 3 film veya dizi tahminini ver.
         SADECE aşağıdaki JSON formatında yanıt ver, başka hiçbir açıklama veya metin ekleme:
-        [{"title": "Film Adı", "year": 2014}, {"title": "Film Adı 2", "year": 2010}, {"title": "Film Adı 3", "year": null}]
+        [{"title": "Başlık 1", "year": 2014, "type": "movie"}, {"title": "Başlık 2", "year": 2010, "type": "tv"}, {"title": "Başlık 3", "year": null, "type": "movie"}]
 
         Kullanıcının tarifi: "$description"
     """.trimIndent()

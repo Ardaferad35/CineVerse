@@ -11,6 +11,7 @@ data class Movie(
     val posterUrl: String? = null,
     val isFavorite: Boolean = false,
     val overview: String = "",
+    val mediaType: String = "movie",
 )
 
 data class UpcomingMovie(
