@@ -57,6 +57,7 @@ fun SearchScreen(
     val recommendationRepository = remember { RecommendationRepository() }
 
     var favoriteIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    val offlineMessageState = rememberOfflineWriteMessageState()
 
     LaunchedEffect(Unit) {
         val favorites = userListRepository.getFavorites().getOrDefault(emptyList())
@@ -66,14 +67,12 @@ fun SearchScreen(
     fun toggleFavorite(movie: Movie) {
         val isFav = movie.id in favoriteIds
         favoriteIds = if (isFav) favoriteIds - movie.id else favoriteIds + movie.id
+        fun revert() {
+            favoriteIds = if (isFav) favoriteIds + movie.id else favoriteIds - movie.id
+        }
         scope.launch {
-            if (isFav) {
+            val result = if (isFav) {
                 userListRepository.removeFavorite(movie.id, mediaType = movie.mediaType)
-                if (movie.mediaType == "tv") {
-                    recommendationRepository.removeTvFavoriteSignal(movie.id)
-                } else {
-                    recommendationRepository.removeFavoriteSignal(movie.id)
-                }
             } else {
                 userListRepository.addFavorite(
                     SavedMovie(
@@ -86,12 +85,17 @@ fun SearchScreen(
                         mediaType = movie.mediaType,
                     ),
                 )
-                if (movie.mediaType == "tv") {
-                    recommendationRepository.recordTvFavorite(movie.id, movie.genreIds)
-                } else {
-                    recommendationRepository.recordFavorite(movie.id, movie.genreIds)
-                }
             }
+            result.fold(
+                onSuccess = {
+                    if (isFav) {
+                        if (movie.mediaType == "tv") recommendationRepository.removeTvFavoriteSignal(movie.id) else recommendationRepository.removeFavoriteSignal(movie.id)
+                    } else {
+                        if (movie.mediaType == "tv") recommendationRepository.recordTvFavorite(movie.id, movie.genreIds) else recommendationRepository.recordFavorite(movie.id, movie.genreIds)
+                    }
+                },
+                onFailure = { error -> offlineMessageState.handle(error) { revert() } },
+            )
         }
     }
 
@@ -208,5 +212,16 @@ fun SearchScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         )
+
+        offlineMessageState.message?.let {
+            OfflineActionSnackbar(
+                message = it,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 88.dp)
+                    .fillMaxWidth(),
+            )
+        }
     }
 }

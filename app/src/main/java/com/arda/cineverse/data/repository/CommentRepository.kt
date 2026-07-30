@@ -79,13 +79,16 @@ class CommentRepository(
 
         // Kendi yorumunuza yanıt veriyorsanız kendinize bildirim gitmesin
         if (parentCommentUserId != user.uid) {
+            val isTvShow = commentsRootCollection == "tv_shows"
             val notificationRepository = NotificationRepository(firestore, auth)
             notificationRepository.createNotification(
                 targetUserId = parentCommentUserId,
                 type = "comment_reply",
                 title = "$displayName yorumunuza yanıt verdi",
                 body = "\"$movieTitle\" filmindeki yorumunuza: ${text.take(80)}",
-                movieId = movieId.takeIf { commentsRootCollection == "movies" },
+                movieId = movieId.takeIf { !isTvShow },
+                tvId = movieId.takeIf { isTvShow },
+                mediaType = if (isTvShow) "tv" else "movie",
             )
         }
     }
@@ -133,10 +136,15 @@ class CommentRepository(
         movieYear: Int?,
         movieGenreIds: List<Int> = emptyList(),
     ): Result<Unit> = runCatching {
+        val uid = auth.currentUser?.uid ?: error("Bu işlem için giriş yapmalısınız")
         val docRef = commentsCollection(movieId).document(commentId)
         val existing = docRef.get().await()
-        val oldRating = existing.getLong("rating")?.toInt() ?: rating
         val userId = existing.getString("userId")
+        // Sahiplik kontrolü: bu, Firestore güvenlik kurallarının yerini TUTMAZ
+        // (kurallar zorunlu, bkz. firestore.rules) — burada erken ve net bir
+        // hata vermek için tekrarlanıyor.
+        if (userId != uid) error("Bu yorumu düzenleme yetkiniz yok")
+        val oldRating = existing.getLong("rating")?.toInt() ?: rating
 
         val updates = mapOf(
             "text" to text,
@@ -146,8 +154,8 @@ class CommentRepository(
         )
         docRef.update(updates).await()
 
-        if (userId != null && oldRating != rating) {
-            adjustUserRatingStats(userId, sumDelta = rating - oldRating, countDelta = 0)
+        if (oldRating != rating) {
+            adjustUserRatingStats(uid, sumDelta = rating - oldRating, countDelta = 0)
         }
         recalculateAggregate(movieId, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
     }
@@ -160,10 +168,15 @@ class CommentRepository(
         movieYear: Int?,
         movieGenreIds: List<Int> = emptyList(),
     ): Result<Unit> = runCatching {
+        val uid = auth.currentUser?.uid ?: error("Bu işlem için giriş yapmalısınız")
         val docRef = commentsCollection(movieId).document(commentId)
         val existing = docRef.get().await()
-        val oldRating = existing.getLong("rating")?.toInt()
         val userId = existing.getString("userId")
+        // Sahiplik kontrolü: bu, Firestore güvenlik kurallarının yerini TUTMAZ
+        // (kurallar zorunlu, bkz. firestore.rules) — burada erken ve net bir
+        // hata vermek için tekrarlanıyor.
+        if (userId != uid) error("Bu yorumu silme yetkiniz yok")
+        val oldRating = existing.getLong("rating")?.toInt()
         val isReply = existing.getString("replyToCommentId") != null
 
         docRef.delete().await()
@@ -171,8 +184,8 @@ class CommentRepository(
         // Yanıtların hiçbir zaman kullanıcı puan istatistiğine dahil edilmediği
         // için (addReply bunu güncellemiyor), silinirken de dokunmuyoruz —
         // aksi halde sayaç gerçek dışı şekilde eksiye düşerdi.
-        if (!isReply && userId != null && oldRating != null) {
-            adjustUserRatingStats(userId, sumDelta = -oldRating, countDelta = -1)
+        if (!isReply && oldRating != null) {
+            adjustUserRatingStats(uid, sumDelta = -oldRating, countDelta = -1)
         }
         recalculateAggregate(movieId, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
     }

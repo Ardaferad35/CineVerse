@@ -108,6 +108,7 @@ fun MovieDetailScreen(
     val recommendationRepository = remember { RecommendationRepository() }
 
     var favoriteMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    val offlineMessageState = rememberOfflineWriteMessageState()
 
     LaunchedEffect(Unit) {
         val favorites = userListRepository.getFavorites().getOrDefault(emptyList())
@@ -117,10 +118,12 @@ fun MovieDetailScreen(
     fun toggleSimilarFavorite(similar: Movie) {
         val isFav = similar.id in favoriteMovieIds
         favoriteMovieIds = if (isFav) favoriteMovieIds - similar.id else favoriteMovieIds + similar.id
+        fun revert() {
+            favoriteMovieIds = if (isFav) favoriteMovieIds + similar.id else favoriteMovieIds - similar.id
+        }
         scope.launch {
-            if (isFav) {
+            val result = if (isFav) {
                 userListRepository.removeFavorite(similar.id, mediaType = "movie")
-                recommendationRepository.removeFavoriteSignal(similar.id)
             } else {
                 userListRepository.addFavorite(
                     SavedMovie(
@@ -133,8 +136,13 @@ fun MovieDetailScreen(
                         mediaType = "movie",
                     ),
                 )
-                recommendationRepository.recordFavorite(similar.id, similar.genreIds)
             }
+            result.fold(
+                onSuccess = {
+                    if (isFav) recommendationRepository.removeFavoriteSignal(similar.id) else recommendationRepository.recordFavorite(similar.id, similar.genreIds)
+                },
+                onFailure = { error -> offlineMessageState.handle(error) { revert() } },
+            )
         }
     }
 
@@ -545,6 +553,18 @@ fun MovieDetailScreen(
                 videoKey = currentMovie.trailerKey,
                 onClose = { showTrailerPlayer = false },
                 onOpenInYouTube = { openInYouTubeApp(currentMovie.trailerKey) },
+            )
+        }
+
+        ClearOfflineMessageAfterDelay(detailState.offlineMessage) { movieDetailViewModel.clearOfflineMessage() }
+        (detailState.offlineMessage ?: offlineMessageState.message)?.let {
+            OfflineActionSnackbar(
+                message = it,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 88.dp)
+                    .fillMaxWidth(),
             )
         }
     }

@@ -2,6 +2,7 @@ package com.arda.cineverse.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.di.AppGraph
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -81,8 +82,18 @@ class AuthViewModel : ViewModel() {
 
     fun currentUserEmail(): String? = auth.currentUser?.email
 
-    fun signOut() {
-        auth.signOut()
+    /**
+     * Room'daki hesaba özel cache (favoriler/izleme geçmişi/kişisel öneriler)
+     * önce temizlenip ANCAK ONDAN SONRA [onComplete] çağrılır — aksi halde
+     * çağıran taraf hemen navigasyon yapıp bu ViewModel'i temizletirse,
+     * temizleme coroutine'i yarıda iptal edilebilir.
+     */
+    fun signOut(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            runCatching { AppGraph.clearUserScopedCache() }
+            auth.signOut()
+            onComplete()
+        }
     }
 
     private fun mapFirebaseError(e: Exception): String {

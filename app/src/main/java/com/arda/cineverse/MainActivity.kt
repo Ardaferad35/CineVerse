@@ -1,6 +1,8 @@
 package com.arda.cineverse
 
 import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,8 +13,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.arda.cineverse.navigation.CineVerseNavGraph
+import com.arda.cineverse.notifications.LocalNotificationHelper
 import com.arda.cineverse.notifications.NotificationScheduler
 import com.arda.cineverse.ui.screens.SplashScreen
 import com.arda.cineverse.ui.theme.CineVerseTheme
@@ -28,6 +32,10 @@ class MainActivity : Hilt_MainActivity() {
     private val requestNotificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { /* Kullanıcı ne seçerse seçsin (izin ver/verme), uygulama normal çalışmaya devam eder */ }
+
+    // Bildirime dokunularak açılan/öne getirilen hedef route — CineVerseNavGraph
+    // bunu okuyup navigasyonu tetikledikten sonra null'a çekiliyor.
+    private var pendingDeepLinkRoute by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // ÖNEMLİ SIRALAMA: Kayıtlı tema tercihi, installSplashScreen()'den ÖNCE
@@ -52,7 +60,11 @@ class MainActivity : Hilt_MainActivity() {
         enableEdgeToEdge()
 
         // Android 13+ (API 33) sistem bildirimleri için çalışma zamanı izni gerektiriyor.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        // Zaten verilmişse (ya da kalıcı reddedilmişse) her soğuk başlangıçta
+        // tekrar tekrar sistem dialogunu tetiklememek için önce kontrol ediyoruz.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
             requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
@@ -60,6 +72,8 @@ class MainActivity : Hilt_MainActivity() {
         // kontrolü — WorkManager zaten planlanmışsa tekrar planlamıyor,
         // bu yüzden her açılışta güvenle çağrılabilir.
         NotificationScheduler.scheduleAll(applicationContext)
+
+        pendingDeepLinkRoute = intent?.getStringExtra(LocalNotificationHelper.EXTRA_DEEP_LINK_ROUTE)
 
         setContent {
             CineVerseTheme(isDarkTheme = ThemeState.isDarkTheme) {
@@ -70,9 +84,21 @@ class MainActivity : Hilt_MainActivity() {
                 if (showSplash) {
                     SplashScreen(onFinished = { showSplash = false })
                 } else {
-                    CineVerseNavGraph()
+                    CineVerseNavGraph(
+                        pendingDeepLinkRoute = pendingDeepLinkRoute,
+                        onDeepLinkHandled = { pendingDeepLinkRoute = null },
+                    )
                 }
             }
         }
+    }
+
+    // launchMode="singleTask" sayesinde uygulama zaten açıkken bildirime
+    // dokunmak burayı tetikler — Activity'yi yok edip yeniden yaratmaz
+    // (splash tekrar oynamaz, mevcut nav state korunur).
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingDeepLinkRoute = intent.getStringExtra(LocalNotificationHelper.EXTRA_DEEP_LINK_ROUTE)
     }
 }

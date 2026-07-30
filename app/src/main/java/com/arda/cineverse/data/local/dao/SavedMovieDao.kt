@@ -16,6 +16,9 @@ interface SavedMovieDao {
     @Query("DELETE FROM saved_movies WHERE listType = :listType")
     suspend fun clear(listType: String)
 
+    @Query("DELETE FROM saved_movies")
+    suspend fun clearAll()
+
     @Upsert
     suspend fun upsertAll(items: List<SavedMovieEntity>)
 

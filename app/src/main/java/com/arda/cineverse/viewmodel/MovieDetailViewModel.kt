@@ -3,6 +3,7 @@ package com.arda.cineverse.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.MovieDetail
 import com.arda.cineverse.data.model.SavedMovie
@@ -22,6 +23,10 @@ data class MovieDetailUiState(
     // true ise `movie` TMDB'den tam çekilemedi, Home cache'inden (Room)
     // kurtarılan kısmi bir görünüm — kadro/fragman/benzer filmler eksik.
     val isOfflineFallback: Boolean = false,
+    // Offline'ken favori/izleme listesi yazma girişimi reddedildiğinde kısa
+    // süreliğine gösterilecek mesaj (errorMessage'dan farklı: o tam ekran
+    // yükleme hatası içindir, bu geçici bir bildirimdir).
+    val offlineMessage: String? = null,
 )
 
 /** Room'da cache'lenmiş temel film verisinden (kadro/fragman/benzer filmler olmadan) kısmi bir MovieDetail oluşturur. */
@@ -111,13 +116,21 @@ class MovieDetailViewModel(
         val newValue = !_uiState.value.isFavorite
         _uiState.value = _uiState.value.copy(isFavorite = newValue)
         viewModelScope.launch {
-            if (newValue) {
+            val result = if (newValue) {
                 userListRepository.addFavorite(movie.toSavedMovie())
-                recommendationRepository.recordFavorite(movie.id, movie.genreIds)
             } else {
                 userListRepository.removeFavorite(movie.id)
-                recommendationRepository.removeFavoriteSignal(movie.id)
             }
+            result.fold(
+                onSuccess = {
+                    if (newValue) {
+                        recommendationRepository.recordFavorite(movie.id, movie.genreIds)
+                    } else {
+                        recommendationRepository.removeFavoriteSignal(movie.id)
+                    }
+                },
+                onFailure = { error -> revertOnOfflineFailure(error) { _uiState.value = _uiState.value.copy(isFavorite = !newValue) } },
+            )
         }
     }
 
@@ -126,12 +139,27 @@ class MovieDetailViewModel(
         val newValue = !_uiState.value.isSaved
         _uiState.value = _uiState.value.copy(isSaved = newValue)
         viewModelScope.launch {
-            if (newValue) {
+            val result = if (newValue) {
                 userListRepository.addToWatchlist(movie.toSavedMovie())
             } else {
                 userListRepository.removeFromWatchlist(movie.id)
             }
+            result.onFailure { error ->
+                revertOnOfflineFailure(error) { _uiState.value = _uiState.value.copy(isSaved = !newValue) }
+            }
         }
+    }
+
+    /** Hata offline yazma hatasıysa iyimser UI değişikliğini geri alır ve kullanıcıya kısa süreli bir mesaj gösterir. */
+    private fun revertOnOfflineFailure(error: Throwable, revert: () -> Unit) {
+        if (error is OfflineWriteException) {
+            revert()
+            _uiState.value = _uiState.value.copy(offlineMessage = error.message)
+        }
+    }
+
+    fun clearOfflineMessage() {
+        _uiState.value = _uiState.value.copy(offlineMessage = null)
     }
 }
 

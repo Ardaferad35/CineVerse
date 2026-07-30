@@ -9,6 +9,7 @@ import com.arda.cineverse.data.local.dao.SavedMovieDao
 import com.arda.cineverse.data.local.dao.TvShowDao
 import com.arda.cineverse.data.local.dao.WatchHistoryDao
 import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
+import com.arda.cineverse.data.local.entity.SectionType
 import dagger.hilt.EntryPoint
 import dagger.hilt.EntryPoints
 import dagger.hilt.InstallIn
@@ -52,4 +53,18 @@ object AppGraph {
     val watchHistoryDao: WatchHistoryDao get() = entryPoint.watchHistoryDao()
     val connectivityObserver: ConnectivityObserver get() = entryPoint.connectivityObserver()
     val userPreferencesRepository: UserPreferencesRepository get() = entryPoint.userPreferencesRepository()
+
+    /**
+     * Çıkış yapıldığında çağrılır: Room'daki hesaba özel verileri (favoriler,
+     * izleme listesi, izleme geçmişi, kişiselleştirilmiş "Size Özel" önerileri)
+     * temizler. Aksi halde aynı cihazda farklı bir hesapla giriş yapan
+     * kullanıcı, senkron tamamlanana kadar önceki hesabın offline cache'ini
+     * görebilir (hesaplar arası veri sızıntısı).
+     */
+    suspend fun clearUserScopedCache() {
+        savedMovieDao.clearAll()
+        watchHistoryDao.clearAll()
+        movieDao.clearSection(SectionType.FOR_YOU)
+        tvShowDao.clearSection(SectionType.TV_FOR_YOU)
+    }
 }

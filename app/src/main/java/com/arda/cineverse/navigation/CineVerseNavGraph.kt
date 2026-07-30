@@ -1,6 +1,7 @@
 package com.arda.cineverse.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -53,9 +54,23 @@ object CVRoutes {
 }
 
 @Composable
-fun CineVerseNavGraph(navController: NavHostController = rememberNavController()) {
+fun CineVerseNavGraph(
+    navController: NavHostController = rememberNavController(),
+    pendingDeepLinkRoute: String? = null,
+    onDeepLinkHandled: () -> Unit = {},
+) {
     val startDestination = remember {
         if (FirebaseAuth.getInstance().currentUser != null) CVRoutes.HOME else CVRoutes.LOGIN
+    }
+
+    // Bildirime dokunularak açılışta (soğuk başlangıç) veya uygulama zaten
+    // açıkken (onNewIntent) tetiklenir. Giriş yapılmamışsa hedefe gitmenin
+    // anlamı yok — kullanıcı normal şekilde Login ekranında kalır.
+    LaunchedEffect(pendingDeepLinkRoute) {
+        if (pendingDeepLinkRoute != null && FirebaseAuth.getInstance().currentUser != null) {
+            navController.navigate(pendingDeepLinkRoute)
+        }
+        onDeepLinkHandled()
     }
 
     NavHost(navController = navController, startDestination = startDestination) {

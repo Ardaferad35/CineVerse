@@ -35,11 +35,20 @@ object LocalNotificationHelper {
         }
     }
 
-    fun show(context: Context, notificationId: Int, title: String, body: String) {
+    /** Bildirime dokunulduğunda [MainActivity]'nin bu extra'yı okuyup navigasyon yapması için route string'i. */
+    const val EXTRA_DEEP_LINK_ROUTE = "deep_link_route"
+
+    fun show(context: Context, notificationId: Int, title: String, body: String, deepLinkRoute: String? = null) {
         ensureChannel(context)
 
+        // NOT: FLAG_ACTIVITY_CLEAR_TOP kasıtlı olarak KULLANILMIYOR. MainActivity
+        // manifest'te launchMode="singleTask" — bu yüzden uygulama zaten açıkken
+        // bildirime dokunmak Activity'yi yok edip yeniden yaratmak (onCreate,
+        // splash'ın tekrar oynaması, nav state kaybı) yerine mevcut örneğe
+        // onNewIntent() ile ulaşır.
         val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            deepLinkRoute?.let { putExtra(EXTRA_DEEP_LINK_ROUTE, it) }
         }
         val pendingIntent = PendingIntent.getActivity(
             context,

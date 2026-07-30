@@ -76,13 +76,16 @@ import com.arda.cineverse.data.repository.CommentRepository
 import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CastMemberChip
+import com.arda.cineverse.ui.components.ClearOfflineMessageAfterDelay
 import com.arda.cineverse.ui.components.CommentInputBox
 import com.arda.cineverse.ui.components.CommentItem
 import com.arda.cineverse.ui.components.CVGradientButton
 import com.arda.cineverse.ui.components.ExpandableOverview
 import com.arda.cineverse.ui.components.MovieDetailStickyBar
+import com.arda.cineverse.ui.components.OfflineActionSnackbar
 import com.arda.cineverse.ui.components.PopularMovieCard
 import com.arda.cineverse.ui.components.RatingDistributionBar
+import com.arda.cineverse.ui.components.rememberOfflineWriteMessageState
 import com.arda.cineverse.ui.components.ReplyInputBox
 import com.arda.cineverse.ui.theme.Background
 import com.arda.cineverse.ui.theme.ErrorColor
@@ -133,6 +136,7 @@ fun TvShowDetailScreen(
     val recommendationRepository = remember { RecommendationRepository() }
 
     var favoriteTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    val offlineMessageState = rememberOfflineWriteMessageState()
 
     LaunchedEffect(Unit) {
         val favorites = userListRepository.getFavorites().getOrDefault(emptyList())
@@ -142,10 +146,12 @@ fun TvShowDetailScreen(
     fun toggleSimilarTvFavorite(similar: TvShow) {
         val isFav = similar.id in favoriteTvIds
         favoriteTvIds = if (isFav) favoriteTvIds - similar.id else favoriteTvIds + similar.id
+        fun revert() {
+            favoriteTvIds = if (isFav) favoriteTvIds + similar.id else favoriteTvIds - similar.id
+        }
         scope.launch {
-            if (isFav) {
+            val result = if (isFav) {
                 userListRepository.removeFavorite(similar.id, mediaType = "tv")
-                recommendationRepository.removeTvFavoriteSignal(similar.id)
             } else {
                 userListRepository.addFavorite(
                     SavedMovie(
@@ -158,8 +164,13 @@ fun TvShowDetailScreen(
                         mediaType = "tv",
                     ),
                 )
-                recommendationRepository.recordTvFavorite(similar.id, similar.genreIds)
             }
+            result.fold(
+                onSuccess = {
+                    if (isFav) recommendationRepository.removeTvFavoriteSignal(similar.id) else recommendationRepository.recordTvFavorite(similar.id, similar.genreIds)
+                },
+                onFailure = { error -> offlineMessageState.handle(error) { revert() } },
+            )
         }
     }
 
@@ -544,6 +555,18 @@ fun TvShowDetailScreen(
                     )
                 }
             }
+        }
+
+        ClearOfflineMessageAfterDelay(detailState.offlineMessage) { tvShowDetailViewModel.clearOfflineMessage() }
+        (detailState.offlineMessage ?: offlineMessageState.message)?.let {
+            OfflineActionSnackbar(
+                message = it,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 88.dp)
+                    .fillMaxWidth(),
+            )
         }
     }
 

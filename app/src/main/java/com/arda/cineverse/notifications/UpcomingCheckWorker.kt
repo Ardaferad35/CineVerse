@@ -5,7 +5,10 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.arda.cineverse.data.repository.MovieRepository
 import com.arda.cineverse.data.repository.NotificationRepository
+import com.arda.cineverse.di.AppGraph
+import com.arda.cineverse.navigation.CVRoutes
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.first
 
 /**
  * Periyodik olarak (yaklaşık her birkaç saatte bir) çalışır. İki şeyi
@@ -25,6 +28,10 @@ class UpcomingCheckWorker(
     override suspend fun doWork(): Result {
         // Sadece giriş yapmış kullanıcı için anlamlı
         if (FirebaseAuth.getInstance().currentUser == null) return Result.success()
+        // Kullanıcı Profil > Bildirimler'i kapattıysa hiç göstermiyoruz.
+        if (!AppGraph.userPreferencesRepository.userPreferences.first().notificationsEnabled) {
+            return Result.success()
+        }
 
         checkUpcomingMovies()
         checkUnreadNotifications()
@@ -44,16 +51,21 @@ class UpcomingCheckWorker(
         // sadece listeyi hafızaya alıyoruz, aksi halde ilk açılışta
         // onlarca film için bildirim yağardı.
         if (knownIds.isNotEmpty() && newMovies.isNotEmpty()) {
-            val body = if (newMovies.size == 1) {
-                "${newMovies.first().title} yakında vizyonda!"
+            val body: String
+            val deepLinkRoute: String
+            if (newMovies.size == 1) {
+                body = "${newMovies.first().title} yakında vizyonda!"
+                deepLinkRoute = CVRoutes.movieDetail(newMovies.first().id)
             } else {
-                "${newMovies.first().title} ve ${newMovies.size - 1} film daha yakında vizyonda!"
+                body = "${newMovies.first().title} ve ${newMovies.size - 1} film daha yakında vizyonda!"
+                deepLinkRoute = CVRoutes.movieList("upcoming")
             }
             LocalNotificationHelper.show(
                 context = applicationContext,
                 notificationId = 1002,
                 title = "Yakında Vizyona Girecekler",
                 body = body,
+                deepLinkRoute = deepLinkRoute,
             )
         }
 
@@ -71,6 +83,7 @@ class UpcomingCheckWorker(
                 notificationId = 1003,
                 title = "Yeni Bildiriminiz Var",
                 body = if (unreadCount == 1) "1 yeni bildiriminiz var" else "$unreadCount yeni bildiriminiz var",
+                deepLinkRoute = CVRoutes.NOTIFICATIONS,
             )
         }
         prefs.edit().putInt("last_unread_notified_count", unreadCount).apply()
