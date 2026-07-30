@@ -174,7 +174,8 @@ class TvRepository @Inject constructor(
                 .distinctBy { it.id }
                 .filter { it.id != tvId }
 
-            val targetTokens = tokenizeOverview(detail.overview)
+            val creatorTokens = detail.created_by.flatMap { it.name.lowercase(java.util.Locale.forLanguageTag("tr")).split(" ") }.filter { it.length > 2 }.toSet()
+            val targetTokens = tokenizeOverview(detail.overview) + creatorTokens
 
             val rankedSimilar = allCandidates
                 .map { candidate ->
