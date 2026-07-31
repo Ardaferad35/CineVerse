@@ -84,6 +84,7 @@ interface TmdbApiService {
         @Query("vote_average.gte") minVoteAverage: Double? = null,
         @Query("vote_count.gte") minVoteCount: Int? = null,
         @Query("with_genres") withGenres: String? = null,
+        @Query("primary_release_date.gte") primaryReleaseDateGte: String? = null,
         @Query("page") page: Int = 1,
     ): MoviesResponseDto
 
@@ -147,6 +148,7 @@ interface TmdbApiService {
         @Query("vote_average.gte") minVoteAverage: Double? = null,
         @Query("vote_count.gte") minVoteCount: Int? = null,
         @Query("with_genres") withGenres: String? = null,
+        @Query("first_air_date.gte") firstAirDateGte: String? = null,
         @Query("page") page: Int = 1,
     ): TvShowsResponseDto
 }

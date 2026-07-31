@@ -145,6 +145,12 @@ class MovieRepository @Inject constructor(
             .filter { movie -> movie.year != null && movie.year >= currentYear }
     }
 
+    /** "Yakında Vizyona Girecekler" için En Yüksek Puan sekmesi: bugünden itibaren vizyona girecek filmler, puana göre sıralı. */
+    suspend fun getUpcomingMoviesTopRated(page: Int = 1): Result<List<UpcomingMovie>> = runCatching {
+        api.discoverMovies(page = page, sortBy = "vote_average.desc", primaryReleaseDateGte = LocalDate.now().toString())
+            .results.map { it.toUpcomingMovie() }
+    }
+
     suspend fun searchMovies(query: String): Result<List<Movie>> = runCatching {
         api.searchMovies(query = query).results.map { it.toUiMovie() }
     }

@@ -6,6 +6,7 @@ import com.arda.cineverse.data.model.FeaturedTvShow
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.TvShow
 import com.arda.cineverse.data.model.TvShowDetail
+import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.remote.dto.CreditsResponseDto
 import com.arda.cineverse.data.remote.dto.TvShowDetailDto
 import com.arda.cineverse.data.remote.dto.TvShowDto
@@ -70,6 +71,14 @@ fun TvShowDto.toUiTvShow(): TvShow {
         posterUrl = TmdbNetworkModule.posterUrl(poster_path),
     )
 }
+
+fun TvShowDto.toUpcomingTvShow(): UpcomingMovie = UpcomingMovie(
+    id = id,
+    title = name,
+    releaseDateLabel = formatTmdbDateLabel(first_air_date),
+    year = first_air_date.extractYear(),
+    posterUrl = TmdbNetworkModule.posterUrl(poster_path),
+)
 
 fun buildTvShowDetail(
     detail: TvShowDetailDto,

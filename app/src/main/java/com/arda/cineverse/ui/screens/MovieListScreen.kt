@@ -57,12 +57,14 @@ import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.PaginatedMovieListViewModel
 import com.arda.cineverse.viewmodel.PaginatedMovieListViewModelFactory
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 sealed class MovieListSource {
     data object Popular : MovieListSource()
     data object Upcoming : MovieListSource()
     data object TvPopular : MovieListSource()
     data object TvOnAir : MovieListSource()
+    data object TvUpcoming : MovieListSource()
     data class Genre(val genreId: Int, val label: String) : MovieListSource()
     data class TvGenre(val genreId: Int, val label: String) : MovieListSource()
 }
@@ -75,6 +77,17 @@ private enum class SortMode(val label: String) {
 
 private fun Movie.toSavedMovie() = SavedMovie(id = id, title = title, posterUrl = posterUrl, rating = rating, year = year, genreIds = genreIds, mediaType = mediaType)
 private fun TvShow.toSavedMovie() = SavedMovie(id = id, title = name, posterUrl = posterUrl, rating = rating, year = year, genreIds = genreIds, mediaType = "tv")
+
+// "Uygulama İçi Puan" sıralaması CommentRepository.getTopRatedByAppUsers*() üzerinden
+// her zaman Movie şeklinde döner (koleksiyon adı repository örneğine göre film/dizi
+// arasında değişir) — dizi listelerinde göstermek için TvShow'a çeviriyoruz.
+private fun Movie.toTvShow() = TvShow(id = id, name = title, year = year, genre = genre, genreIds = genreIds, rating = rating, posterUrl = posterUrl, overview = overview)
+
+// Uygulama İçi Puan sekmesinde "Yakında" listeleri için — henüz vizyona/yayına
+// girmemiş içeriğin kesin çıkış tarihi bu kaynaktan bilinmediği için etiket boş kalır.
+private fun Movie.toUpcomingMovie() = UpcomingMovie(id = id, title = title, releaseDateLabel = "", year = year, posterUrl = posterUrl)
+
+private fun tvCommentRepository() = CommentRepository(commentsRootCollection = "tv_shows", ratingsRootCollection = "tv_show_ratings")
 
 /**
  * Favori toggle'ının offline-aware yazma + öneri sinyali güncelleme mantığı —
@@ -144,6 +157,7 @@ fun MovieListScreen(
                         MovieListSource.Upcoming -> "Yakında Vizyona Girecekler"
                         MovieListSource.TvPopular -> "Popüler Diziler"
                         MovieListSource.TvOnAir -> "Şu An Yayında"
+                        MovieListSource.TvUpcoming -> "Yakında Yayınlanacak Diziler"
                         is MovieListSource.Genre -> source.label
                         is MovieListSource.TvGenre -> source.label
                     },
@@ -157,7 +171,8 @@ fun MovieListScreen(
             }
 
             when (source) {
-                MovieListSource.Upcoming -> UpcomingMoviesGrid(onMovieClick = onMovieClick)
+                MovieListSource.Upcoming -> UpcomingGrid(isTv = false, onMovieClick = onMovieClick, onTvShowClick = onTvShowClick)
+                MovieListSource.TvUpcoming -> UpcomingGrid(isTv = true, onMovieClick = onMovieClick, onTvShowClick = onTvShowClick)
                 is MovieListSource.TvGenre -> TvGenreList(source = source, onTvShowClick = onTvShowClick, offlineMessageState = offlineMessageState)
                 MovieListSource.TvPopular -> TvPopularList(onTvShowClick = onTvShowClick, offlineMessageState = offlineMessageState)
                 MovieListSource.TvOnAir -> TvOnAirList(onTvShowClick = onTvShowClick, offlineMessageState = offlineMessageState)
@@ -207,6 +222,7 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit, 
             is MovieListSource.TvGenre -> { _ -> Result.success(emptyList()) }
             MovieListSource.TvPopular -> { _ -> Result.success(emptyList()) }
             MovieListSource.TvOnAir -> { _ -> Result.success(emptyList()) }
+            MovieListSource.TvUpcoming -> { _ -> Result.success(emptyList()) }
         }
     }
 
@@ -309,15 +325,61 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit, 
     }
 }
 
+/**
+ * "Yakında Vizyona Girecekler" (film) ve "Yakında Yayınlanacak Diziler" (dizi)
+ * ortak bileşeni — ikisi de aynı 3 sıralama sekmesini (Popüler/En Yüksek Puan/
+ * Uygulama İçi Puan) kullanır. Popüler/OnAir listelerinin aksine bu ekran
+ * Room'da offline-cache'lenmiş kalıcı bir bölüm değildir; her açılışta tek
+ * seferlik ağ çağrısıyla doldurulur.
+ */
 @Composable
-private fun UpcomingMoviesGrid(onMovieClick: (Int) -> Unit) {
+private fun UpcomingGrid(isTv: Boolean, onMovieClick: (Int) -> Unit, onTvShowClick: (Int) -> Unit) {
+    var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
+    val movieRepository = remember { MovieRepository() }
+    val tvRepository = remember { TvRepository() }
+    val commentRepository = remember { if (isTv) tvCommentRepository() else CommentRepository() }
+
+    val fetchPage: suspend (Int) -> Result<List<UpcomingMovie>> = remember(isTv, sortMode) {
+        { page ->
+            // Uygulama İçi Puan sekmesi tüm zamanların puanlanmış içeriğini döner;
+            // "Yakında" bağlamında anlamlı kalması için bu yılın ve sonrasının
+            // içeriğiyle sınırlıyoruz (henüz yayınlanmamışların yılı, TMDB'den
+            // gelen "year" alanı üzerinden yaklaşık olarak buradan geçer).
+            val currentYear = LocalDate.now().year
+            if (isTv) {
+                when (sortMode) {
+                    SortMode.POPULAR -> tvRepository.getUpcomingTvShows(page)
+                    SortMode.TOP_RATED -> tvRepository.getUpcomingTvShowsTopRated(page)
+                    SortMode.APP_RATING -> commentRepository.getTopRatedByAppUsers(page).map { list ->
+                        list.filter { it.year != null && it.year >= currentYear }.map { it.toUpcomingMovie() }
+                    }
+                }
+            } else {
+                when (sortMode) {
+                    SortMode.POPULAR -> movieRepository.getUpcomingMovies(page)
+                    SortMode.TOP_RATED -> movieRepository.getUpcomingMoviesTopRated(page)
+                    SortMode.APP_RATING -> commentRepository.getTopRatedByAppUsers(page).map { list ->
+                        list.filter { it.year != null && it.year >= currentYear }.map { it.toUpcomingMovie() }
+                    }
+                }
+            }
+        }
+    }
+
     val viewModel: PaginatedMovieListViewModel<UpcomingMovie> = viewModel(
-        factory = PaginatedMovieListViewModelFactory(
-            fetchPage = { page -> MovieRepository().getUpcomingMovies(page) },
-            idSelector = { it.id },
-        ),
+        key = "upcomingGrid_${isTv}_$sortMode",
+        factory = PaginatedMovieListViewModelFactory(fetchPage = fetchPage, idSelector = { it.id }),
     )
     val uiState by viewModel.uiState.collectAsState()
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SortChip(label = SortMode.POPULAR.label, selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
+        SortChip(label = SortMode.TOP_RATED.label, selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
+        SortChip(label = SortMode.APP_RATING.label, selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
+    }
 
     when {
         uiState.isLoading -> {
@@ -348,7 +410,7 @@ private fun UpcomingMoviesGrid(onMovieClick: (Int) -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(uiState.items, key = { it.id }) { movie ->
-                    UpcomingMovieCard(movie = movie, onClick = { onMovieClick(movie.id) })
+                    UpcomingMovieCard(movie = movie, onClick = { if (isTv) onTvShowClick(movie.id) else onMovieClick(movie.id) })
                 }
                 if (uiState.isLoadingMore) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -373,17 +435,26 @@ private fun UpcomingMoviesGrid(onMovieClick: (Int) -> Unit) {
 
 @Composable
 private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
+    var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
     val repository = remember { TvRepository() }
     val userListRepository = remember { UserListRepository() }
+    val commentRepository = remember { tvCommentRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
     val scope = rememberCoroutineScope()
 
+    val fetchPage: suspend (Int) -> Result<List<TvShow>> = remember(source, sortMode) {
+        { page ->
+            when (sortMode) {
+                SortMode.POPULAR -> repository.getTvShowsByGenre(source.genreId, page)
+                SortMode.TOP_RATED -> repository.getTvShowsByGenreTopRated(source.genreId, page)
+                SortMode.APP_RATING -> commentRepository.getTopRatedByAppUsersForGenre(source.genreId, page).map { list -> list.map { it.toTvShow() } }
+            }
+        }
+    }
+
     val viewModel: PaginatedMovieListViewModel<TvShow> = viewModel(
-        key = "tvGenre_${source.genreId}",
-        factory = PaginatedMovieListViewModelFactory(
-            fetchPage = { page -> repository.getTvShowsByGenre(source.genreId, page) },
-            idSelector = { it.id },
-        ),
+        key = "tvGenre_${source.genreId}_$sortMode",
+        factory = PaginatedMovieListViewModelFactory(fetchPage = fetchPage, idSelector = { it.id }),
     )
     val uiState by viewModel.uiState.collectAsState()
 
@@ -415,6 +486,15 @@ private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) ->
                 offlineMessageState.handle(error) { watchlistIds = if (isSaved) watchlistIds + show.id else watchlistIds - show.id }
             }
         }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SortChip(label = SortMode.POPULAR.label, selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
+        SortChip(label = SortMode.TOP_RATED.label, selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
+        SortChip(label = SortMode.APP_RATING.label, selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
     }
 
     when {
@@ -474,17 +554,26 @@ private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) ->
 }
 @Composable
 private fun TvPopularList(onTvShowClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
+    var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
     val repository = remember { TvRepository() }
     val userListRepository = remember { UserListRepository() }
+    val commentRepository = remember { tvCommentRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
     val scope = rememberCoroutineScope()
 
+    val fetchPage: suspend (Int) -> Result<List<TvShow>> = remember(sortMode) {
+        { page ->
+            when (sortMode) {
+                SortMode.POPULAR -> repository.getPopularTvShows(page)
+                SortMode.TOP_RATED -> repository.getTopRatedTvShows(page)
+                SortMode.APP_RATING -> commentRepository.getTopRatedByAppUsers(page).map { list -> list.map { it.toTvShow() } }
+            }
+        }
+    }
+
     val viewModel: PaginatedMovieListViewModel<TvShow> = viewModel(
-        key = "tvPopularList",
-        factory = PaginatedMovieListViewModelFactory(
-            fetchPage = { page -> repository.getPopularTvShows(page) },
-            idSelector = { it.id },
-        ),
+        key = "tvPopularList_$sortMode",
+        factory = PaginatedMovieListViewModelFactory(fetchPage = fetchPage, idSelector = { it.id }),
     )
     val uiState by viewModel.uiState.collectAsState()
 
@@ -516,6 +605,15 @@ private fun TvPopularList(onTvShowClick: (Int) -> Unit, offlineMessageState: Off
                 offlineMessageState.handle(error) { watchlistIds = if (isSaved) watchlistIds + show.id else watchlistIds - show.id }
             }
         }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SortChip(label = SortMode.POPULAR.label, selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
+        SortChip(label = SortMode.TOP_RATED.label, selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
+        SortChip(label = SortMode.APP_RATING.label, selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
     }
 
     when {
@@ -574,19 +672,45 @@ private fun TvPopularList(onTvShowClick: (Int) -> Unit, offlineMessageState: Off
 
 @Composable
 private fun TvOnAirList(onTvShowClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
+    var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
     val repository = remember { TvRepository() }
     val userListRepository = remember { UserListRepository() }
+    val commentRepository = remember { tvCommentRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
     val scope = rememberCoroutineScope()
 
     // Su An Yayinda: TMDB on_the_air endpoint tek seferlik buyuk bir havuz dondurur;
     // ilk sayfada hedef sayiya kadar cekip gosteriyoruz, ikinci sayfa bos donuyor.
+    // TMDB'de "yayında + en yüksek puan/uygulama içi puan" birleşik bir uç nokta
+    // olmadığından, o iki modda önce yayındaki havuzu çekip istemci tarafında
+    // sıralıyoruz/filtreliyoruz — böylece sekmeler arasında "hâlâ yayında olan
+    // diziler" anlamı korunuyor.
+    val fetchPage: suspend (Int) -> Result<List<TvShow>> = remember(sortMode) {
+        { page ->
+            when (sortMode) {
+                SortMode.POPULAR -> if (page == 1) repository.getOnTheAirTvShows(targetCount = 60) else Result.success(emptyList())
+                SortMode.TOP_RATED -> if (page == 1) {
+                    repository.getOnTheAirTvShows(targetCount = 60).map { list -> list.sortedByDescending { it.rating } }
+                } else {
+                    Result.success(emptyList())
+                }
+                SortMode.APP_RATING -> if (page == 1) {
+                    runCatching {
+                        val onAirIds = repository.getOnTheAirTvShows(targetCount = 60).getOrDefault(emptyList()).map { it.id }.toSet()
+                        commentRepository.getTopRatedByAppUsers(1).getOrDefault(emptyList())
+                            .map { it.toTvShow() }
+                            .filter { it.id in onAirIds }
+                    }
+                } else {
+                    Result.success(emptyList())
+                }
+            }
+        }
+    }
+
     val viewModel: PaginatedMovieListViewModel<TvShow> = viewModel(
-        key = "tvOnAirList",
-        factory = PaginatedMovieListViewModelFactory(
-            fetchPage = { page -> if (page == 1) repository.getOnTheAirTvShows(targetCount = 60) else Result.success(emptyList()) },
-            idSelector = { it.id },
-        ),
+        key = "tvOnAirList_$sortMode",
+        factory = PaginatedMovieListViewModelFactory(fetchPage = fetchPage, idSelector = { it.id }),
     )
     val uiState by viewModel.uiState.collectAsState()
 
@@ -618,6 +742,15 @@ private fun TvOnAirList(onTvShowClick: (Int) -> Unit, offlineMessageState: Offli
                 offlineMessageState.handle(error) { watchlistIds = if (isSaved) watchlistIds + show.id else watchlistIds - show.id }
             }
         }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SortChip(label = SortMode.POPULAR.label, selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
+        SortChip(label = SortMode.TOP_RATED.label, selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
+        SortChip(label = SortMode.APP_RATING.label, selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
     }
 
     when {

@@ -16,6 +16,10 @@ data class CommentUiState(
     val averageRating: Double = 0.0,
     val ratingCounts: Map<Int, Int> = emptyMap(),
     val errorMessage: String? = null,
+    // Yorum gönder/düzenle/sil/yanıtla işlemlerinden biri başarısız olduğunda
+    // kısa süreliğine gösterilecek mesaj — bu durumlarda liste sessizce
+    // yeniden yüklenmez, kullanıcı işlemin gerçekleşmediğini görür.
+    val mutationErrorMessage: String? = null,
 )
 
 class CommentViewModel(
@@ -59,8 +63,10 @@ class CommentViewModel(
 
     fun submitReply(parentCommentId: String, parentCommentUserId: String, text: String, movieTitle: String) {
         viewModelScope.launch {
-            repository.addReply(movieId, parentCommentId, parentCommentUserId, text, movieTitle)
-            loadComments()
+            repository.addReply(movieId, parentCommentId, parentCommentUserId, text, movieTitle).fold(
+                onSuccess = { loadComments() },
+                onFailure = { error -> _uiState.value = _uiState.value.copy(mutationErrorMessage = mutationErrorText(error)) },
+            )
         }
     }
 
@@ -74,8 +80,10 @@ class CommentViewModel(
         movieGenreIds: List<Int> = emptyList(),
     ) {
         viewModelScope.launch {
-            repository.addComment(movieId, text, rating, isSpoiler, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
-            loadComments()
+            repository.addComment(movieId, text, rating, isSpoiler, movieTitle, moviePosterUrl, movieYear, movieGenreIds).fold(
+                onSuccess = { loadComments() },
+                onFailure = { error -> _uiState.value = _uiState.value.copy(mutationErrorMessage = mutationErrorText(error)) },
+            )
         }
     }
 
@@ -90,8 +98,10 @@ class CommentViewModel(
         movieGenreIds: List<Int> = emptyList(),
     ) {
         viewModelScope.launch {
-            repository.updateComment(movieId, commentId, text, rating, isSpoiler, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
-            loadComments()
+            repository.updateComment(movieId, commentId, text, rating, isSpoiler, movieTitle, moviePosterUrl, movieYear, movieGenreIds).fold(
+                onSuccess = { loadComments() },
+                onFailure = { error -> _uiState.value = _uiState.value.copy(mutationErrorMessage = mutationErrorText(error)) },
+            )
         }
     }
 
@@ -103,10 +113,19 @@ class CommentViewModel(
         movieGenreIds: List<Int> = emptyList(),
     ) {
         viewModelScope.launch {
-            repository.deleteComment(movieId, commentId, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
-            loadComments()
+            repository.deleteComment(movieId, commentId, movieTitle, moviePosterUrl, movieYear, movieGenreIds).fold(
+                onSuccess = { loadComments() },
+                onFailure = { error -> _uiState.value = _uiState.value.copy(mutationErrorMessage = mutationErrorText(error)) },
+            )
         }
     }
+
+    fun clearMutationError() {
+        _uiState.value = _uiState.value.copy(mutationErrorMessage = null)
+    }
+
+    private fun mutationErrorText(error: Throwable): String =
+        error.message?.takeIf { it.isNotBlank() } ?: "İşlem gerçekleştirilemedi. Lütfen tekrar deneyin."
 }
 
 class CommentViewModelFactory(

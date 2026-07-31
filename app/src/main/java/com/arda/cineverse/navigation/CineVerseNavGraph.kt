@@ -127,6 +127,7 @@ fun CineVerseNavGraph(
                         "popular", "upcoming" -> navController.navigate(CVRoutes.movieList(section))
                         "popular_tv" -> navController.navigate(CVRoutes.movieList("popular_tv"))
                         "on_air_tv" -> navController.navigate(CVRoutes.movieList("on_air_tv"))
+                        "upcoming_tv" -> navController.navigate(CVRoutes.movieList("upcoming_tv"))
                         "categories_tv" -> navController.navigate(CVRoutes.allCategories(isTvMode = true))
                         "categories_movie", "categories" -> navController.navigate(CVRoutes.allCategories(isTvMode = false))
                     }
@@ -225,6 +226,11 @@ fun CineVerseNavGraph(
                 )
                 "on_air_tv" -> MovieListScreen(
                     source = MovieListSource.TvOnAir,
+                    onBack = { navController.popBackStack() },
+                    onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
+                )
+                "upcoming_tv" -> MovieListScreen(
+                    source = MovieListSource.TvUpcoming,
                     onBack = { navController.popBackStack() },
                     onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
                 )

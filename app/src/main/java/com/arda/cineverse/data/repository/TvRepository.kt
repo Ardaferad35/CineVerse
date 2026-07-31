@@ -14,12 +14,14 @@ import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedTvShow
 import com.arda.cineverse.data.model.TvShow
 import com.arda.cineverse.data.model.TvShowDetail
+import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.remote.TmdbApiService
 import com.arda.cineverse.data.remote.TmdbNetworkModule
 import com.arda.cineverse.data.remote.buildTvShowDetail
 import com.arda.cineverse.data.remote.simplifyTvGenreName
 import com.arda.cineverse.data.remote.toFeaturedTvShow
 import com.arda.cineverse.data.remote.toUiTvShow
+import com.arda.cineverse.data.remote.toUpcomingTvShow
 import com.arda.cineverse.di.AppGraph
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -151,6 +153,27 @@ class TvRepository @Inject constructor(
     suspend fun getTvShowsByGenre(genreId: Int, page: Int = 1): Result<List<TvShow>> = runCatching {
         api.discoverTvShows(page = page, withGenres = genreId.toString(), sortBy = "popularity.desc")
             .results.map { it.toUiTvShow() }
+    }
+
+    suspend fun getTvShowsByGenreTopRated(genreId: Int, page: Int = 1): Result<List<TvShow>> = runCatching {
+        api.discoverTvShows(page = page, withGenres = genreId.toString(), sortBy = "vote_average.desc", minVoteCount = 300)
+            .results.map { it.toUiTvShow() }
+    }
+
+    /**
+     * "Yakında Yayınlanacak Diziler": TMDB'nin filmlerdeki gibi ayrı bir
+     * "tv/upcoming" uç noktası yok — bugünden itibaren ilk yayın tarihi olan
+     * dizileri discover ile buluyoruz.
+     */
+    suspend fun getUpcomingTvShows(page: Int = 1): Result<List<UpcomingMovie>> = runCatching {
+        api.discoverTvShows(page = page, sortBy = "popularity.desc", firstAirDateGte = LocalDate.now().toString())
+            .results.map { it.toUpcomingTvShow() }
+    }
+
+    /** "Yakında Yayınlanacak Diziler" için En Yüksek Puan sekmesi. */
+    suspend fun getUpcomingTvShowsTopRated(page: Int = 1): Result<List<UpcomingMovie>> = runCatching {
+        api.discoverTvShows(page = page, sortBy = "vote_average.desc", firstAirDateGte = LocalDate.now().toString())
+            .results.map { it.toUpcomingTvShow() }
     }
 
     suspend fun getAllTvGenres(): Result<List<Category>> = runCatching {
