@@ -582,7 +582,8 @@ fun TvShowDetailScreen(
         }
 
         ClearOfflineMessageAfterDelay(detailState.offlineMessage) { tvShowDetailViewModel.clearOfflineMessage() }
-        (detailState.offlineMessage ?: offlineMessageState.message)?.let {
+        ClearOfflineMessageAfterDelay(commentState.mutationErrorMessage) { commentViewModel.clearMutationError() }
+        (detailState.offlineMessage ?: offlineMessageState.message ?: commentState.mutationErrorMessage)?.let {
             OfflineActionSnackbar(
                 message = it,
                 modifier = Modifier

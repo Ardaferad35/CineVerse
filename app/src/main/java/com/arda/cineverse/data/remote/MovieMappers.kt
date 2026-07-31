@@ -65,20 +65,21 @@ fun MovieDto.toUiMovie(): Movie {
     )
 }
 
-fun MovieDto.toUpcomingMovie(): UpcomingMovie {
-    val label = release_date?.takeIf { it.length >= 10 }?.let { date ->
+/** "2026-03-05" gibi bir ISO tarihi "05 MAR" şeklinde kısa bir Türkçe etikete çevirir. */
+internal fun formatTmdbDateLabel(dateStr: String?): String =
+    dateStr?.takeIf { it.length >= 10 }?.let { date ->
         val month = date.substring(5, 7).toIntOrNull()
         val day = date.substring(8, 10)
         if (month != null && month in 1..12) "$day ${turkishMonths[month - 1]}" else ""
     } ?: ""
-    return UpcomingMovie(
-        id = id,
-        title = title,
-        releaseDateLabel = label,
-        year = release_date.extractYear(),
-        posterUrl = TmdbNetworkModule.posterUrl(poster_path),
-    )
-}
+
+fun MovieDto.toUpcomingMovie(): UpcomingMovie = UpcomingMovie(
+    id = id,
+    title = title,
+    releaseDateLabel = formatTmdbDateLabel(release_date),
+    year = release_date.extractYear(),
+    posterUrl = TmdbNetworkModule.posterUrl(poster_path),
+)
 
 fun MovieDetailDto.toFeaturedMovie(): FeaturedMovie {
     val genreName = genres.firstOrNull()?.name ?: "Film"

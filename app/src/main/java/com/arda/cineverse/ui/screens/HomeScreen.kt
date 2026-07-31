@@ -49,8 +49,10 @@ import com.arda.cineverse.data.model.FeaturedMovie
 import com.arda.cineverse.data.model.FeaturedTvShow
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.SavedMovie
+import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.remote.toFeaturedMovie
 import com.arda.cineverse.data.repository.RecommendationRepository
+import com.arda.cineverse.data.repository.TvRepository
 import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CVBottomNavBar
 import com.arda.cineverse.ui.components.CVGradientButton
@@ -106,6 +108,7 @@ fun HomeScreen(
 
     val userListRepository = remember { UserListRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
+    val tvRepository = remember { TvRepository() }
     val scope = rememberCoroutineScope()
 
     var favoriteMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
@@ -113,11 +116,22 @@ fun HomeScreen(
     var watchlistMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var watchlistTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var offlineActionMessage by remember { mutableStateOf<String?>(null) }
+    var upcomingTvShows by remember { mutableStateOf<List<UpcomingMovie>>(emptyList()) }
 
     LaunchedEffect(offlineActionMessage) {
         if (offlineActionMessage != null) {
             delay(2500)
             offlineActionMessage = null
+        }
+    }
+
+    // "Yakında Yayınlanacak Diziler": Popüler Diziler/Şu An Yayında'nın aksine
+    // Room'da offline-cache'lenmiş kalıcı bir bölüm değil — TV moduna her
+    // girildiğinde tek seferlik ağ çağrısıyla dolduruluyor, bu yüzden offline'ken
+    // boş kalabilir.
+    LaunchedEffect(uiState.isTvMode) {
+        if (uiState.isTvMode) {
+            upcomingTvShows = tvRepository.getUpcomingTvShows().getOrDefault(emptyList())
         }
     }
 
@@ -497,6 +511,29 @@ fun HomeScreen(
                                                 onClick = { onTvShowClick(tvShow.id) },
                                                 onFavoriteClick = { toggleFavorite(tvShow, mediaType = "tv") },
                                             )
+                                        }
+                                    }
+                                }
+                            }
+                            if (upcomingTvShows.isNotEmpty()) {
+                                item {
+                                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        HomeSectionHeader(
+                                            icon = Icons.Filled.CalendarMonth,
+                                            iconTint = Accent,
+                                            title = "Yak\u0131nda Yay\u0131nlanacak Diziler",
+                                            onSeeAllClick = { onSeeAllClick("upcoming_tv") },
+                                        )
+                                        LazyRow(
+                                            contentPadding = PaddingValues(horizontal = 20.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        ) {
+                                            items(upcomingTvShows, key = { it.id }) { tvShow ->
+                                                UpcomingMovieCard(
+                                                    movie = tvShow,
+                                                    onClick = { onTvShowClick(tvShow.id) },
+                                                )
+                                            }
                                         }
                                     }
                                 }
