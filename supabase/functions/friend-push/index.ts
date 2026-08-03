@@ -185,7 +185,13 @@ async function listFcmTokens(uid: string): Promise<string[]> {
  */
 async function sendPush(uid: string, payload: { type: string; title: string; body: string; route: string }) {
   const tokens = await listFcmTokens(uid);
-  if (tokens.length === 0) return;
+  if (tokens.length === 0) {
+    // Sessizce dönmek, {ok:true} yanıtını bu kullanıcıya HİÇ push
+    // gitmediğini gizler — en azından fonksiyon loglarında görünür olsun
+    // (bkz. Supabase Dashboard > friend-push > Logs).
+    console.warn(`sendPush: uid=${uid} için kayıtlı fcmTokens yok, push atlanıyor`);
+    return;
+  }
   const accessToken = await getAccessToken();
 
   await Promise.all(

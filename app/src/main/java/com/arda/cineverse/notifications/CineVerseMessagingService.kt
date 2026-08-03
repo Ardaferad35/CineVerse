@@ -1,5 +1,6 @@
 package com.arda.cineverse.notifications
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
@@ -10,12 +11,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+private const val TAG = "CineVersePush"
+
 /**
- * FCM push bildirimlerini alır. Sunucu tarafı (functions/src/index.ts,
- * onNotificationCreated) HER ZAMAN data-only payload gönderir ("notification"
- * bloğu YOK) — aksi halde uygulama arka plandayken Android bildirimi kendi
- * kendine gösterirdi ve bu metot hiç çağrılmaz, deep-link verisi (route)
- * sessizce kaybolurdu.
+ * FCM push bildirimlerini alır. Sunucu tarafı (supabase/functions/friend-push)
+ * HER ZAMAN data-only payload gönderir ("notification" bloğu YOK) — aksi
+ * halde uygulama arka plandayken Android bildirimi kendi kendine gösterirdi
+ * ve bu metot hiç çağrılmaz, deep-link verisi (route) sessizce kaybolurdu.
  */
 @Suppress("DEPRECATION") // onNewToken/.token hâlâ Firebase'in resmi, çalışan FCM API'si — Kotlin derleyicisinin altta yatan Java uyarısı, işlevsel bir sorun değil.
 class CineVerseMessagingService : FirebaseMessagingService() {
@@ -24,17 +26,28 @@ class CineVerseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        scope.launch { runCatching { registerToken(token) } }
+        Log.d(TAG, "onNewToken: yeni FCM token alındı, Firestore'a yazılıyor")
+        scope.launch {
+            runCatching { registerToken(token) }
+                .onSuccess { Log.d(TAG, "onNewToken: fcmTokens'a yazma başarılı") }
+                .onFailure { Log.e(TAG, "onNewToken: fcmTokens'a yazma BAŞARISIZ", it) }
+        }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
+        Log.d(TAG, "onMessageReceived: veri=${message.data}")
         val data = message.data
-        val title = data["title"]?.takeIf { it.isNotBlank() } ?: return
+        val title = data["title"]?.takeIf { it.isNotBlank() }
+        if (title == null) {
+            Log.w(TAG, "onMessageReceived: 'title' alanı yok/boş, bildirim gösterilmiyor")
+            return
+        }
         val body = data["body"].orEmpty()
         val route = data["route"]
         val notificationId = data["notificationId"]?.hashCode() ?: System.currentTimeMillis().toInt()
         LocalNotificationHelper.show(applicationContext, notificationId, title, body, route)
+        Log.d(TAG, "onMessageReceived: bildirim gösterildi (id=$notificationId, route=$route)")
     }
 
     companion object {
@@ -45,12 +58,24 @@ class CineVerseMessagingService : FirebaseMessagingService() {
          * AKTİF olarak mevcut token çekilip yazılıyor (bkz. AuthViewModel).
          */
         suspend fun registerCurrentToken() {
-            val token = runCatching { FirebaseMessaging.getInstance().token.await() }.getOrNull() ?: return
-            registerToken(token)
+            val token = runCatching { FirebaseMessaging.getInstance().token.await() }
+                .onFailure { Log.e(TAG, "registerCurrentToken: FCM token alınamadı (Google Play Services eksik/emülatörde yok olabilir)", it) }
+                .getOrNull()
+            if (token == null) {
+                Log.w(TAG, "registerCurrentToken: token null, kayıt atlanıyor")
+                return
+            }
+            runCatching { registerToken(token) }
+                .onSuccess { Log.d(TAG, "registerCurrentToken: fcmTokens'a yazma başarılı") }
+                .onFailure { Log.e(TAG, "registerCurrentToken: fcmTokens'a yazma BAŞARISIZ", it) }
         }
 
         private suspend fun registerToken(token: String) {
-            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+            val uid = FirebaseAuth.getInstance().currentUser?.uid
+            if (uid == null) {
+                Log.w(TAG, "registerToken: giriş yapmış kullanıcı yok, atlanıyor")
+                return
+            }
             FirebaseFirestore.getInstance()
                 .collection("users").document(uid)
                 .collection("fcmTokens").document(token)
@@ -68,7 +93,7 @@ class CineVerseMessagingService : FirebaseMessagingService() {
                     .collection("fcmTokens").document(token)
                     .delete()
                     .await()
-            }
+            }.onFailure { Log.e(TAG, "deleteCurrentToken: token silinemedi", it) }
         }
     }
 }

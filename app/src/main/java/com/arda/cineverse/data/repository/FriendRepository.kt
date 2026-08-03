@@ -1,5 +1,6 @@
 package com.arda.cineverse.data.repository
 
+import android.util.Log
 import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.data.common.SyncResult
 import com.arda.cineverse.data.connectivity.ConnectivityObserver
@@ -19,6 +20,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
+
+private const val TAG = "CineVersePush"
 
 /** Kullanıcı adı alınmışsa fırlatılır (kayıt/isim değişikliği sırasında). */
 class UsernameTakenException : Exception("Bu kullanıcı adı zaten alınmış")
@@ -44,7 +47,9 @@ class FriendRepository @Inject constructor(
     private fun requireUid(): String = auth.currentUser?.uid ?: error("Giriş yapmalısınız")
 
     private suspend fun currentIdToken(): String? =
-        runCatching { auth.currentUser?.getIdToken(false)?.await()?.token }.getOrNull()
+        runCatching { auth.currentUser?.getIdToken(false)?.await()?.token }
+            .onFailure { Log.e(TAG, "currentIdToken: ID token alınamadı", it) }
+            .getOrNull()
 
     private fun userDoc(uid: String) = firestore.collection("users").document(uid)
     private fun usernameDoc(username: String) = firestore.collection("usernames").document(username)
@@ -142,7 +147,10 @@ class FriendRepository @Inject constructor(
                 throw e
             }
 
-            currentIdToken()?.let { idToken ->
+            val idToken = currentIdToken()
+            if (idToken == null) {
+                Log.w(TAG, "sendFriendRequest: ID token yok, Supabase push çağrısı ATLANIYOR")
+            } else {
                 runCatching {
                     SupabaseFriendPushClient.notifyFriendRequest(
                         idToken = idToken,
@@ -152,7 +160,7 @@ class FriendRepository @Inject constructor(
                         fromFullName = fromFullName,
                         fromAvatarId = fromAvatarId,
                     )
-                }
+                }.onFailure { Log.e(TAG, "sendFriendRequest: Supabase push çağrısı BAŞARISIZ", it) }
             }
             Unit
         }
@@ -188,14 +196,17 @@ class FriendRepository @Inject constructor(
         return runCatching {
             friendRequestsCollection(uid).document(request.fromUid).update("status", "accepted").await()
 
-            currentIdToken()?.let { idToken ->
+            val idToken = currentIdToken()
+            if (idToken == null) {
+                Log.w(TAG, "acceptFriendRequest: ID token yok, Supabase push çağrısı ATLANIYOR")
+            } else {
                 runCatching {
                     SupabaseFriendPushClient.notifyFriendRequestAccepted(
                         idToken = idToken,
                         uid = uid,
                         fromUid = request.fromUid,
                     )
-                }
+                }.onFailure { Log.e(TAG, "acceptFriendRequest: Supabase push çağrısı BAŞARISIZ", it) }
             }
             Unit
         }.onSuccess { syncFriends() }
