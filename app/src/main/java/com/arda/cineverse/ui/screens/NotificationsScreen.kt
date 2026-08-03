@@ -11,9 +11,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MovieFilter
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Recommend
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -134,5 +137,8 @@ private fun iconForType(type: String): ImageVector = when (type) {
     "comment_reply" -> Icons.Filled.ChatBubble
     "upcoming_movie" -> Icons.Filled.CalendarMonth
     "film_of_the_day" -> Icons.Filled.MovieFilter
+    "friend_request" -> Icons.Filled.PersonAdd
+    "friend_request_accepted" -> Icons.Filled.Group
+    "recommendation" -> Icons.Filled.Recommend
     else -> Icons.Filled.Notifications
 }

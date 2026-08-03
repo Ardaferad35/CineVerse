@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
@@ -75,6 +76,7 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
+    onNavigateToFriends: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -84,7 +86,7 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     var showSignOutConfirm by remember { mutableStateOf(false) }
-    var showEditNameDialog by remember { mutableStateOf(false) }
+    var showEditUsernameDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showComingSoonDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
@@ -141,7 +143,19 @@ fun ProfileScreen(
                         }
                         Spacer(Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(uiState.fullName, color = OnSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { showEditUsernameDialog = true },
+                            ) {
+                                Text(
+                                    if (uiState.username.isNotBlank()) "@${uiState.username}" else "…",
+                                    color = OnSurface,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Icon(Icons.Filled.Edit, contentDescription = "Kullanıcı adını düzenle", tint = Primary, modifier = Modifier.size(16.dp))
+                            }
                             Spacer(Modifier.height(2.dp))
                             Text(uiState.email, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                             Spacer(Modifier.height(8.dp))
@@ -154,21 +168,6 @@ fun ProfileScreen(
                                 Text("CineVerse Üyesi", color = Primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
                             }
                         }
-                    }
-                    Spacer(Modifier.height(14.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceVariant)
-                            .clickable { showEditNameDialog = true }
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(Icons.Filled.Edit, contentDescription = null, tint = OnSurface, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Profili Düzenle", color = OnSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
@@ -242,6 +241,13 @@ fun ProfileScreen(
                         .background(Surface)
                         .padding(horizontal = 8.dp),
                 ) {
+                    SettingsRow(
+                        icon = Icons.Filled.Group,
+                        title = "Arkadaşlar",
+                        subtitle = "Arkadaş ekle ve film/dizi öner",
+                        onClick = onNavigateToFriends,
+                    )
+                    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
                     SettingsRow(
                         icon = Icons.Filled.Lock,
                         title = "Şifre Değiştir",
@@ -322,27 +328,49 @@ fun ProfileScreen(
         )
     }
 
-    if (showEditNameDialog) {
-        var nameInput by remember { mutableStateOf(uiState.fullName) }
+    if (showEditUsernameDialog) {
+        var usernameInput by remember { mutableStateOf(uiState.username) }
+        var errorMessage by remember { mutableStateOf<String?>(null) }
+        var isSubmitting by remember { mutableStateOf(false) }
         AlertDialog(
-            onDismissRequest = { showEditNameDialog = false },
-            title = { Text("Adını düzenle") },
+            onDismissRequest = { if (!isSubmitting) showEditUsernameDialog = false },
+            title = { Text("Kullanıcı adını düzenle") },
             text = {
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = { nameInput = it },
-                    singleLine = true,
-                    placeholder = { Text("Adınız") },
-                )
+                Column {
+                    OutlinedTextField(
+                        value = usernameInput,
+                        onValueChange = { usernameInput = it.lowercase(); errorMessage = null },
+                        singleLine = true,
+                        placeholder = { Text("kullanici_adi") },
+                    )
+                    if (errorMessage != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(errorMessage!!, color = ErrorColor, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.updateFullName(nameInput.trim())
-                    showEditNameDialog = false
-                }) { Text("Kaydet", color = Primary) }
+                TextButton(
+                    enabled = !isSubmitting,
+                    onClick = {
+                        if (!usernameInput.matches(com.arda.cineverse.data.repository.FriendRepository.USERNAME_REGEX)) {
+                            errorMessage = "3-20 karakter, sadece küçük harf/rakam/_ kullanın"
+                            return@TextButton
+                        }
+                        isSubmitting = true
+                        viewModel.updateUsername(usernameInput) { success, error ->
+                            isSubmitting = false
+                            if (success) {
+                                showEditUsernameDialog = false
+                            } else {
+                                errorMessage = error
+                            }
+                        }
+                    },
+                ) { Text(if (isSubmitting) "Kaydediliyor..." else "Kaydet", color = Primary) }
             },
             dismissButton = {
-                TextButton(onClick = { showEditNameDialog = false }) { Text("Vazgeç") }
+                TextButton(onClick = { if (!isSubmitting) showEditUsernameDialog = false }) { Text("Vazgeç") }
             },
         )
     }

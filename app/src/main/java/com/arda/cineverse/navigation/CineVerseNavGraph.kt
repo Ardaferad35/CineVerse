@@ -12,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.arda.cineverse.ui.screens.AllCategoriesScreen
 import com.arda.cineverse.ui.screens.ForgotPasswordScreen
+import com.arda.cineverse.ui.screens.FriendsScreen
 import com.arda.cineverse.ui.screens.HomeScreen
 import com.arda.cineverse.ui.screens.LoginScreen
 import com.arda.cineverse.ui.screens.MovieDetailScreen
@@ -37,6 +38,7 @@ object CVRoutes {
     const val SEARCH = "search/{aiMode}"
     const val PROFILE = "profile"
     const val NOTIFICATIONS = "notifications"
+    const val FRIENDS = "friends"
     const val MOVIE_DETAIL = "movie_detail/{movieId}"
     const val TV_DETAIL = "tv_detail/{tvId}"
     const val MOVIE_LIST = "movie_list/{section}"
@@ -192,6 +194,7 @@ fun CineVerseNavGraph(
                         popUpTo(0) { inclusive = true }
                     }
                 },
+                onNavigateToFriends = { navController.navigate(CVRoutes.FRIENDS) },
             )
         }
         composable(CVRoutes.NOTIFICATIONS) {
@@ -199,14 +202,20 @@ fun CineVerseNavGraph(
                 viewModel = notificationViewModel,
                 onBack = { navController.popBackStack() },
                 onNotificationClick = { notification ->
-                    if (notification.tvId != null || notification.mediaType == "tv") {
-                        val id = notification.tvId ?: notification.movieId
-                        id?.let { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) }
-                    } else {
-                        notification.movieId?.let { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) }
+                    when {
+                        notification.type == "friend_request" || notification.type == "friend_request_accepted" ->
+                            navController.navigate(CVRoutes.FRIENDS)
+                        notification.tvId != null || notification.mediaType == "tv" -> {
+                            val id = notification.tvId ?: notification.movieId
+                            id?.let { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) }
+                        }
+                        else -> notification.movieId?.let { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) }
                     }
                 },
             )
+        }
+        composable(CVRoutes.FRIENDS) {
+            FriendsScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = CVRoutes.MOVIE_LIST,

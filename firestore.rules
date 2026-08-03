@@ -2,12 +2,18 @@ rules_version = '2';
 
 // CineVerse Firestore güvenlik kuralları.
 //
-// Bu proje sunucu tarafı kod (Cloud Functions) kullanmıyor; tüm yazımlar
-// doğrudan Android istemcisinden yapılıyor. Bu yüzden bu dosya kod içindeki
-// kontrollerin (ör. CommentRepository/NotificationRepository'deki sahiplik ve
-// alan doğrulamaları) TEK gerçek güvenlik sınırıdır — istemci tarafındaki
-// kontroller sadece erken/anlamlı hata mesajı içindir, atlanabilir
-// (reverse-engineer edilmiş bir istemci veya doğrudan REST/gRPC çağrısıyla).
+// Çoğu yazım hâlâ doğrudan Android istemcisinden yapılıyor; bu yüzden bu
+// dosya kod içindeki kontrollerin (ör. CommentRepository/NotificationRepository
+// 'deki sahiplik ve alan doğrulamaları) TEK gerçek güvenlik sınırıdır —
+// istemci tarafındaki kontroller sadece erken/anlamlı hata mesajı içindir,
+// atlanabilir (reverse-engineer edilmiş bir istemci veya doğrudan REST/gRPC
+// çağrısıyla).
+//
+// İSTİSNA: functions/ altındaki Cloud Functions, Admin SDK kullanır ve bu
+// kuralların TAMAMINI bypass eder (Admin SDK'ya rules uygulanmaz). Bu yüzden
+// "friends/" gibi bazı alt koleksiyonlarda client'a KAPALI olan bir işlem
+// (ör. create) yine de Cloud Function üzerinden çalışabiliyor — bkz. ilgili
+// yorum satırları.
 //
 // Deploy: `firebase deploy --only firestore:rules`
 
@@ -44,6 +50,49 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
+      // Arkadaşlık: gelen istekler. Belge ID'si GÖNDERENİN uid'i — bu yüzden
+      // aynı kişi ikinci kez istek atarsa bu "create" değil "update" sayılır
+      // ve create-only kural onu doğal olarak reddeder (üzerine yazma yok).
+      // "status" alanı sadece sahibi (alıcı) tarafından pending -> accepted
+      // olarak güncellenebilir; red = alıcının belgeyi silmesi.
+      match /friendRequests/{fromUid} {
+        allow read, delete: if isOwner(uid);
+        allow create: if isSignedIn() && request.auth.uid == fromUid
+          && isValidFriendRequest(request.resource.data);
+        allow update: if isOwner(uid)
+          && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status'])
+          && request.resource.data.status == 'accepted';
+      }
+
+      // Arkadaş listesi: kabul edilince HER İKİ tarafta da karşılıklı bir
+      // belge oluşur. Bu yazım artık SADECE onFriendRequestAccepted Cloud
+      // Function'ı (Admin SDK, bu kuralları bypass eder) tarafından yapılıyor
+      // — istemci artık "accept" işleminde friends/ belgesi yazmıyor, sadece
+      // friendRequests/{fromUid}.status'u "accepted" yapıyor (bkz. yukarısı).
+      // Bu yüzden client create'i tamamen kapalı: eskiden (Faz 1) client'ın
+      // karşı tarafın friends/ listesine kendini ekleyebildiği, gerçek bir
+      // "kabul" olmadan da çalışan bilinen açık böylece kapanıyor.
+      match /friends/{friendUid} {
+        allow read: if isOwner(uid);
+        allow create: if false;
+        // delete client'a AÇIK kalıyor (arkadaşlıktan çıkarma burada bir
+        // güvenlik riski değil — ya kendi belgenizi ya da SİZİ arkadaş
+        // listesine ekleyen tarafın belgesini siliyorsunuz, ikisi de zaten
+        // meşru; bkz. FriendRepository.removeFriend'in çift taraflı silmesi).
+        allow delete: if isSignedIn() && (isOwner(uid) || request.auth.uid == friendUid);
+      }
+
+      // FCM cihaz token'ları: sadece sahibi okuyabilir/yazabilir/silebilir.
+      // Belge ID'si token'ın kendisi (çoklu cihaz desteği — her cihaz kendi
+      // token'ını yazar/siler, başka bir cihazınkini etkilemez). Cloud
+      // Functions bu koleksiyonu SADECE okur (push göndermek için), hiç
+      // yazmaz; bayat token temizliği de Admin SDK ile yapıldığından rules'ı
+      // bypass eder.
+      match /fcmTokens/{token} {
+        allow read, write: if isOwner(uid);
+      }
+
       // Bildirimler: SADECE sahibi okuyabilir/silebilir. Ancak "create"
       // BAŞKA bir kullanıcı tarafından yapılabilmeli — biri sizin yorumunuza
       // yanıt verdiğinde KENDİ cihazından SİZİN bildirim kutunuza yazıyor
@@ -68,6 +117,39 @@ service cloud.firestore {
         && data.body is string && data.body.size() > 0 && data.body.size() <= 500
         && data.isRead == false
         && data.createdAt is int;
+    }
+
+    // --- usernames/{username} --------------------------------------------
+    // Kullanıcı adı tekliğini garanti eden "claim" belgeleri. "update" hiçbir
+    // zaman izinli değil — kullanıcı adı değişikliği eski claim'i silip yenisini
+    // oluşturmak şeklinde yapılır, böylece bir isim asla üzerine yazılamaz.
+    match /usernames/{username} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && username.matches('^[a-z0-9_]{3,20}$')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    function isValidFriendRequest(data) {
+      return data.keys().hasOnly(['fromUid', 'fromUsername', 'fromFullName', 'fromAvatarId', 'status', 'createdAt'])
+        && data.fromUid == request.auth.uid
+        && data.fromUsername is string && data.fromUsername.size() > 0 && data.fromUsername.size() <= 20
+        && data.fromFullName is string && data.fromFullName.size() <= 150
+        && data.fromAvatarId is string
+        && data.status == 'pending'
+        && data.createdAt is int;
+    }
+
+    function isValidFriendDoc(data) {
+      return data.keys().hasOnly(['friendUid', 'username', 'fullName', 'avatarId', 'since'])
+        && data.friendUid is string
+        && data.username is string && data.username.size() > 0 && data.username.size() <= 20
+        && data.fullName is string && data.fullName.size() <= 150
+        && data.avatarId is string
+        && data.since is int;
     }
 
     // --- movies/{movieId}/comments/{commentId} --------------------------
