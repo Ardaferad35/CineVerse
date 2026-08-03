@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.arda.cineverse.data.local.dao.CategoryDao
 import com.arda.cineverse.data.local.dao.FeaturedDao
+import com.arda.cineverse.data.local.dao.FriendDao
 import com.arda.cineverse.data.local.dao.MovieDao
 import com.arda.cineverse.data.local.dao.SavedMovieDao
 import com.arda.cineverse.data.local.dao.TvShowDao
@@ -23,7 +24,12 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): CineVerseDatabase =
-        Room.databaseBuilder(context, CineVerseDatabase::class.java, CineVerseDatabase.DATABASE_NAME).build()
+        Room.databaseBuilder(context, CineVerseDatabase::class.java, CineVerseDatabase.DATABASE_NAME)
+            // Proje henüz yayınlanmadı (gerçek kullanıcı yok), bu yüzden şema
+            // değişikliklerinde Migration yazmak yerine yeniden oluşturmak
+            // (mevcut kurulumlarda Room cache'ini silmek) kabul edilebilir.
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
 
     @Provides
     fun provideMovieDao(database: CineVerseDatabase): MovieDao = database.movieDao()
@@ -42,4 +48,7 @@ object DatabaseModule {
 
     @Provides
     fun provideWatchHistoryDao(database: CineVerseDatabase): WatchHistoryDao = database.watchHistoryDao()
+
+    @Provides
+    fun provideFriendDao(database: CineVerseDatabase): FriendDao = database.friendDao()
 }

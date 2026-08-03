@@ -2,7 +2,10 @@ package com.arda.cineverse.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.data.repository.FriendRepository
+import com.arda.cineverse.data.repository.UsernameTakenException
 import com.arda.cineverse.di.AppGraph
+import com.arda.cineverse.notifications.CineVerseMessagingService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -31,6 +34,7 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 auth.signInWithEmailAndPassword(email, password).await()
+                runCatching { CineVerseMessagingService.registerCurrentToken() }
                 _authState.value = AuthState.Success(email)
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(mapFirebaseError(e))
@@ -39,28 +43,64 @@ class AuthViewModel : ViewModel() {
     }
 
     /**
-     * Yeni kullanıcı oluşturur (Firebase Authentication) ve
-     * profil bilgilerini (isim, e-posta, kayıt tarihi) Firestore'daki
-     * "users" koleksiyonuna kaydeder.
+     * Yeni kullanıcı oluşturur (Firebase Authentication) ve profil bilgilerini
+     * (kullanıcı adı, e-posta, kayıt tarihi) Firestore'daki "users"
+     * koleksiyonuna kaydeder. Kullanıcı adı, "usernames/{username}" koleksiyonunda
+     * tek bir "claim" belgesiyle (bkz. FriendRepository) tekliği garanti edilerek
+     * AYNI transaction içinde alınır.
+     *
+     * Ayrı bir "ad soyad" alanı YOK — kullanıcının kimliği tamamen kullanıcı
+     * adı. "fullName" alanı yine de yazılıyor (değeri = username) çünkü
+     * CommentRepository/FriendRepository gibi mevcut kod hâlâ bu alanı okuyup
+     * görüntülüyor; ayrı bir şema değişikliği/geri uyumluluk işi çıkarmamak
+     * için alan adı korunuyor, sadece kullanıcıdan artık ayrıca istenmiyor.
+     *
+     * Auth hesabı oluşturma ile profil/kullanıcı-adı yazımı iki ayrı adım
+     * olduğundan (Firestore transaction Auth hesabını kapsayamıyor), kullanıcı
+     * adı alınmışsa ya da profil yazımı başka bir sebeple başarısız olursa az
+     * önce oluşturulan Auth hesabı GERİ ALINIR — aksi halde hesap yetim kalır
+     * ve kullanıcı aynı email ile tekrar kayıt olmaya çalıştığında "already in
+     * use" hatasına düşer.
      */
-    fun register(fullName: String, email: String, password: String) {
+    fun register(username: String, email: String, password: String) {
         _authState.value = AuthState.Loading
         viewModelScope.launch {
+            var accountCreated = false
             try {
+                require(username.matches(FriendRepository.USERNAME_REGEX)) {
+                    "Kullanıcı adı 3-20 karakter olmalı, sadece küçük harf/rakam/alt çizgi içerebilir"
+                }
+
                 val result = auth.createUserWithEmailAndPassword(email, password).await()
                 val uid = result.user?.uid ?: throw Exception("Kullanıcı oluşturulamadı")
+                accountCreated = true
 
-                val userProfile = hashMapOf(
-                    "uid" to uid,
-                    "fullName" to fullName,
-                    "email" to email,
-                    "createdAt" to FieldValue.serverTimestamp(),
-                )
-                firestore.collection("users").document(uid).set(userProfile).await()
+                firestore.runTransaction { txn ->
+                    val usernameRef = firestore.collection("usernames").document(username)
+                    if (txn.get(usernameRef).exists()) throw UsernameTakenException()
+                    txn.set(usernameRef, mapOf("uid" to uid))
+                    txn.set(
+                        firestore.collection("users").document(uid),
+                        hashMapOf(
+                            "uid" to uid,
+                            "username" to username,
+                            "fullName" to username,
+                            "email" to email,
+                            "createdAt" to FieldValue.serverTimestamp(),
+                        ),
+                    )
+                }.await()
 
+                runCatching { CineVerseMessagingService.registerCurrentToken() }
                 _authState.value = AuthState.Success(email)
             } catch (e: Exception) {
-                _authState.value = AuthState.Error(mapFirebaseError(e))
+                if (accountCreated) {
+                    runCatching { auth.currentUser?.delete()?.await() }
+                }
+                _authState.value = AuthState.Error(
+                    if (e is UsernameTakenException) e.message ?: "Bu kullanıcı adı zaten alınmış"
+                    else mapFirebaseError(e)
+                )
             }
         }
     }
@@ -87,9 +127,14 @@ class AuthViewModel : ViewModel() {
      * önce temizlenip ANCAK ONDAN SONRA [onComplete] çağrılır — aksi halde
      * çağıran taraf hemen navigasyon yapıp bu ViewModel'i temizletirse,
      * temizleme coroutine'i yarıda iptal edilebilir.
+     *
+     * FCM token'ının silinmesi MUTLAKA auth.signOut()'tan ÖNCE olmalı —
+     * silme işlemi firestore.rules'ta isOwner(uid) gerektiriyor, çıkış
+     * yapıldıktan sonra kimlik geçersiz olacağından silme izni reddedilir.
      */
     fun signOut(onComplete: () -> Unit = {}) {
         viewModelScope.launch {
+            runCatching { CineVerseMessagingService.deleteCurrentToken() }
             runCatching { AppGraph.clearUserScopedCache() }
             auth.signOut()
             onComplete()

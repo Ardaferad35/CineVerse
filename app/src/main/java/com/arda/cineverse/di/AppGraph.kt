@@ -4,6 +4,7 @@ import android.content.Context
 import com.arda.cineverse.data.connectivity.ConnectivityObserver
 import com.arda.cineverse.data.local.dao.CategoryDao
 import com.arda.cineverse.data.local.dao.FeaturedDao
+import com.arda.cineverse.data.local.dao.FriendDao
 import com.arda.cineverse.data.local.dao.MovieDao
 import com.arda.cineverse.data.local.dao.SavedMovieDao
 import com.arda.cineverse.data.local.dao.TvShowDao
@@ -34,6 +35,7 @@ interface AppEntryPoint {
     fun featuredDao(): FeaturedDao
     fun savedMovieDao(): SavedMovieDao
     fun watchHistoryDao(): WatchHistoryDao
+    fun friendDao(): FriendDao
     fun connectivityObserver(): ConnectivityObserver
     fun userPreferencesRepository(): UserPreferencesRepository
 }
@@ -51,6 +53,7 @@ object AppGraph {
     val featuredDao: FeaturedDao get() = entryPoint.featuredDao()
     val savedMovieDao: SavedMovieDao get() = entryPoint.savedMovieDao()
     val watchHistoryDao: WatchHistoryDao get() = entryPoint.watchHistoryDao()
+    val friendDao: FriendDao get() = entryPoint.friendDao()
     val connectivityObserver: ConnectivityObserver get() = entryPoint.connectivityObserver()
     val userPreferencesRepository: UserPreferencesRepository get() = entryPoint.userPreferencesRepository()
 
@@ -64,6 +67,7 @@ object AppGraph {
     suspend fun clearUserScopedCache() {
         savedMovieDao.clearAll()
         watchHistoryDao.clearAll()
+        friendDao.clearAll()
         movieDao.clearSection(SectionType.FOR_YOU)
         tvShowDao.clearSection(SectionType.TV_FOR_YOU)
     }

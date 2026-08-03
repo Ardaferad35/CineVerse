@@ -17,14 +17,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.arda.cineverse.data.repository.FriendRepository
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
 import com.arda.cineverse.viewmodel.AuthState
 import com.arda.cineverse.viewmodel.AuthViewModel
+import kotlinx.coroutines.delay
 
 private fun isValidEmail(email: String) = android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
 private fun hasNumberOrSymbol(s: String) = s.any { it.isDigit() || !it.isLetterOrDigit() }
 private fun hasUpperAndLower(s: String) = s.any { it.isUpperCase() } && s.any { it.isLowerCase() }
+private const val USERNAME_CHECK_DEBOUNCE_MS = 400L
 
 @Composable
 fun RegisterScreen(
@@ -33,7 +36,7 @@ fun RegisterScreen(
     onRegisterSuccess: (email: String) -> Unit = {},
     authViewModel: AuthViewModel = viewModel(),
 ) {
-    var fullName by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -41,9 +44,22 @@ fun RegisterScreen(
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var agreedToTerms by remember { mutableStateOf(false) }
 
-    var nameError by remember { mutableStateOf<String?>(null) }
+    var usernameError by remember { mutableStateOf<String?>(null) }
+    var usernameAvailable by remember { mutableStateOf<Boolean?>(null) }
     var emailError by remember { mutableStateOf<String?>(null) }
     var confirmError by remember { mutableStateOf<String?>(null) }
+
+    val friendRepository = remember { FriendRepository() }
+    val usernameFormatValid = username.matches(FriendRepository.USERNAME_REGEX)
+
+    LaunchedEffect(username) {
+        usernameAvailable = null
+        if (usernameFormatValid) {
+            delay(USERNAME_CHECK_DEBOUNCE_MS)
+            friendRepository.checkUsernameAvailable(username)
+                .onSuccess { usernameAvailable = it }
+        }
+    }
 
     val lengthOk = password.length >= 8
     val numberOrSymbolOk = hasNumberOrSymbol(password)
@@ -62,7 +78,12 @@ fun RegisterScreen(
     }
 
     fun validateAndSubmit() {
-        nameError = if (fullName.isBlank()) "İsim gerekli" else null
+        usernameError = when {
+            username.isBlank() -> "Kullanıcı adı gerekli"
+            !usernameFormatValid -> "3-20 karakter, sadece küçük harf/rakam/_ kullanın"
+            usernameAvailable == false -> "Bu kullanıcı adı alınmış"
+            else -> null
+        }
         emailError = when {
             email.isBlank() -> "E-posta gerekli"
             !isValidEmail(email) -> "Geçerli bir e-posta girin"
@@ -70,8 +91,10 @@ fun RegisterScreen(
         }
         confirmError = if (confirmPassword != password) "Şifreler eşleşmiyor" else null
 
-        if (nameError == null && emailError == null && confirmError == null && passwordStrongEnough && agreedToTerms) {
-            authViewModel.register(fullName, email, password)
+        if (usernameError == null && emailError == null && confirmError == null &&
+            passwordStrongEnough && agreedToTerms
+        ) {
+            authViewModel.register(username, email, password)
         }
     }
 
@@ -99,13 +122,25 @@ fun RegisterScreen(
             Spacer(Modifier.height(28.dp))
 
             CVTextField(
-                value = fullName,
-                onValueChange = { fullName = it; nameError = null },
-                placeholder = "Ad Soyad",
+                value = username,
+                onValueChange = { username = it.lowercase(); usernameError = null },
+                placeholder = "Kullanıcı adı",
                 leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary) },
-                isError = nameError != null,
-                errorText = nameError,
+                isError = usernameError != null,
+                errorText = usernameError,
             )
+            if (usernameError == null && username.isNotBlank() && usernameFormatValid) {
+                Text(
+                    text = when (usernameAvailable) {
+                        true -> "Kullanılabilir"
+                        false -> "Bu kullanıcı adı alınmış"
+                        null -> "Kontrol ediliyor..."
+                    },
+                    color = if (usernameAvailable == true) Primary else TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+                )
+            }
             Spacer(Modifier.height(14.dp))
             CVTextField(
                 value = email,

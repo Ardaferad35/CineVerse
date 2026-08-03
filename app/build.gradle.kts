@@ -48,6 +48,21 @@ android {
             "GEMINI_API_KEY",
             "\"${localProperties.getProperty("GEMINI_API_KEY", "")}\""
         )
+        // Arkadaşlık isteği/kabulü push bildirimleri için Supabase Edge
+        // Function'ı (bkz. supabase/functions/friend-push). SUPABASE_ANON_KEY
+        // client'a gömülmesi güvenli, herkese açık bir değerdir (Supabase'in
+        // kendi platform kapısını geçmek için kullanılır — asıl yetkilendirme
+        // fonksiyon içinde Firebase ID token doğrulamasıyla yapılıyor).
+        buildConfigField(
+            "String",
+            "SUPABASE_URL",
+            "\"${localProperties.getProperty("SUPABASE_URL", "")}\""
+        )
+        buildConfigField(
+            "String",
+            "SUPABASE_ANON_KEY",
+            "\"${localProperties.getProperty("SUPABASE_ANON_KEY", "")}\""
+        )
     }
 
     buildFeatures {

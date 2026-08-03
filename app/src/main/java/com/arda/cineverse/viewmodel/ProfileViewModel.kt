@@ -2,7 +2,9 @@ package com.arda.cineverse.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.data.repository.FriendRepository
 import com.arda.cineverse.di.AppGraph
+import com.arda.cineverse.notifications.CineVerseMessagingService
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -14,7 +16,7 @@ import kotlin.math.round
 
 data class ProfileUiState(
     val isLoading: Boolean = true,
-    val fullName: String = "",
+    val username: String = "",
     val email: String = "",
     val avatarId: String = "default",
     val favoritesCount: Int = 0,
@@ -26,6 +28,7 @@ data class ProfileUiState(
 class ProfileViewModel(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val friendRepository: FriendRepository = FriendRepository(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -46,7 +49,7 @@ class ProfileViewModel(
             val userDoc = uid?.let {
                 runCatching { firestore.collection("users").document(it).get().await() }.getOrNull()
             }
-            val fullName = userDoc?.getString("fullName") ?: email.substringBefore("@")
+            val username = userDoc?.getString("username") ?: ""
             val avatarId = userDoc?.getString("avatarId") ?: "default"
 
             val favoritesCount = uid?.let {
@@ -70,7 +73,7 @@ class ProfileViewModel(
 
             _uiState.value = ProfileUiState(
                 isLoading = false,
-                fullName = fullName,
+                username = username,
                 email = email,
                 avatarId = avatarId,
                 favoritesCount = favoritesCount,
@@ -89,12 +92,16 @@ class ProfileViewModel(
         }
     }
 
-    fun updateFullName(newName: String) {
-        val uid = auth.currentUser?.uid ?: return
-        if (newName.isBlank()) return
-        _uiState.value = _uiState.value.copy(fullName = newName)
+    /** Kullanıcı adını değiştirir (bkz. FriendRepository.changeUsername — tekliği "usernames" claim belgesiyle garanti eder). */
+    fun updateUsername(newUsername: String, onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
-            runCatching { firestore.collection("users").document(uid).update("fullName", newName).await() }
+            friendRepository.changeUsername(newUsername).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(username = newUsername)
+                    onResult(true, null)
+                },
+                onFailure = { error -> onResult(false, error.message ?: "Kullanıcı adı güncellenemedi") },
+            )
         }
     }
 
@@ -103,9 +110,14 @@ class ProfileViewModel(
      * önce temizlenip ANCAK ONDAN SONRA [onComplete] çağrılır — aksi halde
      * çağıran taraf hemen navigasyon yapıp bu ViewModel'i temizletirse,
      * temizleme coroutine'i yarıda iptal edilebilir.
+     *
+     * FCM token'ının silinmesi MUTLAKA auth.signOut()'tan ÖNCE olmalı —
+     * silme işlemi firestore.rules'ta isOwner(uid) gerektiriyor, çıkış
+     * yapıldıktan sonra kimlik geçersiz olacağından silme izni reddedilir.
      */
     fun signOut(onComplete: () -> Unit = {}) {
         viewModelScope.launch {
+            runCatching { CineVerseMessagingService.deleteCurrentToken() }
             runCatching { AppGraph.clearUserScopedCache() }
             auth.signOut()
             onComplete()
