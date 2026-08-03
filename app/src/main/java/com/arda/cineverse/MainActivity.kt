@@ -15,13 +15,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import com.arda.cineverse.navigation.CineVerseNavGraph
+import com.arda.cineverse.notifications.CineVerseMessagingService
 import com.arda.cineverse.notifications.LocalNotificationHelper
 import com.arda.cineverse.notifications.NotificationScheduler
 import com.arda.cineverse.ui.screens.SplashScreen
 import com.arda.cineverse.ui.theme.CineVerseTheme
 import com.arda.cineverse.ui.theme.ThemeState
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 // Hilt Gradle plugin'i uygulanmadığı için (bkz. root build.gradle.kts),
 // üretilen Hilt_MainActivity sınıfı doğrudan extend ediliyor. Plugin
@@ -72,6 +76,18 @@ class MainActivity : Hilt_MainActivity() {
         // kontrolü — WorkManager zaten planlanmışsa tekrar planlamıyor,
         // bu yüzden her açılışta güvenle çağrılabilir.
         NotificationScheduler.scheduleAll(applicationContext)
+
+        // FCM token kaydı sadece AuthViewModel.login()/register() içinde
+        // tetikleniyordu — ama Firebase Auth oturumu cihazda KALICI, yani
+        // uygulama zaten giriş yapılmış haldeyken yeniden açıldığında (soğuk
+        // başlangıç) o kod hiç çalışmıyor ve token asla Firestore'a yazılmıyor.
+        // Bu, önceden giriş yapılmış hesaplarda push'un HİÇ gelmemesine yol
+        // açan sessiz bir açıktı — burada her soğuk başlangıçta, giriş
+        // yapılmışsa token'ı (varsa zaten aynı değeri) tekrar yazarak
+        // garantiye alıyoruz.
+        if (FirebaseAuth.getInstance().currentUser != null) {
+            lifecycleScope.launch { CineVerseMessagingService.registerCurrentToken() }
+        }
 
         pendingDeepLinkRoute = intent?.getStringExtra(LocalNotificationHelper.EXTRA_DEEP_LINK_ROUTE)
 
