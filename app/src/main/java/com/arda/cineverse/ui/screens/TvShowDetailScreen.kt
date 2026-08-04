@@ -78,6 +78,7 @@ import com.arda.cineverse.data.repository.CommentRepository
 import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CastMemberChip
+import com.arda.cineverse.ui.components.CastSpotlightDialog
 import com.arda.cineverse.ui.components.ClearOfflineMessageAfterDelay
 import com.arda.cineverse.ui.components.CommentInputBox
 import com.arda.cineverse.ui.components.CommentItem
@@ -176,6 +177,7 @@ fun TvShowDetailScreen(
     var editingComment by remember { mutableStateOf<Comment?>(null) }
     var commentPendingDelete by remember { mutableStateOf<Comment?>(null) }
     var replyingToComment by remember { mutableStateOf<Comment?>(null) }
+    var selectedCast by remember { mutableStateOf<com.arda.cineverse.data.model.CastMember?>(null) }
     val commentBoxRequester = remember { BringIntoViewRequester() }
 
     val recommendShareViewModel: RecommendShareViewModel = viewModel()
@@ -420,7 +422,9 @@ fun TvShowDetailScreen(
                                     )
                                     Spacer(Modifier.height(12.dp))
                                     LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                        items(tvShow.cast, key = { it.id }) { cast -> CastMemberChip(cast) }
+                                        items(tvShow.cast, key = { it.id }) { cast ->
+                                            CastMemberChip(cast = cast, onClick = { selectedCast = cast })
+                                        }
                                     }
                                 }
                             }
@@ -640,6 +644,13 @@ fun TvShowDetailScreen(
                 onDismiss = { showShareSheet = false },
             )
         }
+    }
+
+    selectedCast?.let { cast ->
+        CastSpotlightDialog(
+            cast = cast,
+            onDismiss = { selectedCast = null },
+        )
     }
 
     commentPendingDelete?.let { comment ->

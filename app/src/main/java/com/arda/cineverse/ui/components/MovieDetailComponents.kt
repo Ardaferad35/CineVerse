@@ -1,6 +1,7 @@
 package com.arda.cineverse.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -9,6 +10,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +31,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.arda.cineverse.data.model.CastMember
 import com.arda.cineverse.data.model.Comment
@@ -61,10 +65,22 @@ fun ExpandableOverview(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun CastMemberChip(cast: CastMember, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.width(72.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+fun CastMemberChip(
+    cast: CastMember,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .width(72.dp)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Box(
-            modifier = Modifier.size(64.dp).clip(CircleShape).background(SurfaceVariant),
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(SurfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
             if (cast.profileUrl != null) {
@@ -81,6 +97,108 @@ fun CastMemberChip(cast: CastMember, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(6.dp))
         Text(cast.name, color = OnSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1, textAlign = TextAlign.Center)
         Text(cast.character, color = TextSecondary, style = MaterialTheme.typography.labelSmall, maxLines = 1, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+fun CastSpotlightDialog(
+    cast: CastMember,
+    onDismiss: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.86f)
+                .widthIn(max = 325.dp)
+                .clip(RoundedCornerShape(26.dp))
+                .background(Surface)
+                .border(
+                    width = 1.5.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(Primary.copy(alpha = 0.7f), Primary.copy(alpha = 0.15f)),
+                    ),
+                    shape = RoundedCornerShape(26.dp),
+                )
+                .padding(20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceVariant),
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = OnSurface, modifier = Modifier.size(16.dp))
+                    }
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(160.dp)
+                        .clip(CircleShape)
+                        .background(SurfaceVariant)
+                        .border(
+                            width = 3.dp,
+                            brush = Brush.sweepGradient(listOf(Primary, Color(0xFFE040FB), Primary)),
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (cast.profileUrl != null) {
+                        AsyncImage(
+                            model = cast.profileUrl,
+                            contentDescription = cast.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        )
+                    } else {
+                        Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(72.dp))
+                    }
+                }
+
+                Spacer(Modifier.height(18.dp))
+
+                Text(
+                    text = cast.name,
+                    color = OnSurface,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Primary.copy(alpha = 0.15f))
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.TheaterComedy, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = cast.character.ifBlank { "Oyuncu" },
+                            color = Primary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
