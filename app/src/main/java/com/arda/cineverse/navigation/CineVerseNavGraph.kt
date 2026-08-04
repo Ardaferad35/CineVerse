@@ -10,6 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.arda.cineverse.ui.screens.AiChatScreen
 import com.arda.cineverse.ui.screens.AllCategoriesScreen
 import com.arda.cineverse.ui.screens.ForgotPasswordScreen
 import com.arda.cineverse.ui.screens.FriendsScreen
@@ -22,8 +23,8 @@ import com.arda.cineverse.ui.screens.MyListScreen
 import com.arda.cineverse.ui.screens.NotificationsScreen
 import com.arda.cineverse.ui.screens.ProfileScreen
 import com.arda.cineverse.ui.screens.RegisterScreen
-import com.arda.cineverse.ui.screens.SearchScreen
 import com.arda.cineverse.ui.screens.TvShowDetailScreen
+import com.arda.cineverse.viewmodel.AiChatViewModel
 import com.arda.cineverse.viewmodel.NotificationViewModel
 import com.google.firebase.auth.FirebaseAuth
 import java.net.URLDecoder
@@ -35,7 +36,7 @@ object CVRoutes {
     const val FORGOT_PASSWORD = "forgot_password"
     const val HOME = "home"
     const val LISTEM = "my_list"
-    const val SEARCH = "search/{aiMode}"
+    const val AI_CHAT = "ai_chat?isTvMode={isTvMode}"
     const val PROFILE = "profile"
     const val NOTIFICATIONS = "notifications"
     const val FRIENDS = "friends"
@@ -48,7 +49,14 @@ object CVRoutes {
 
     fun movieDetail(movieId: Int) = "movie_detail/$movieId"
     fun tvDetail(tvId: Int) = "tv_detail/$tvId"
-    fun search(aiMode: Boolean) = "search/$aiMode"
+
+    /**
+     * [isTvMode] null bırakıldığında asistan son kaldığı modda açılıyor — Listem
+     * sekmesi gibi film/dizi ayrımı olmayan ekranlardan gelirken kullanılıyor.
+     */
+    fun aiChat(isTvMode: Boolean? = null) =
+        if (isTvMode == null) "ai_chat" else "ai_chat?isTvMode=$isTvMode"
+
     fun movieList(section: String) = "movie_list/$section"
     fun movieListGenre(genreId: Int, label: String) =
         "movie_list_genre/$genreId/${URLEncoder.encode(label, "UTF-8")}"
@@ -74,6 +82,12 @@ fun CineVerseNavGraph(
     // Home'daki tamamen farklı objeye ait rozeti hiç etkilemezdi (rozet eski
     // değerde donup kalırdı, tam da bu bug).
     val notificationViewModel: NotificationViewModel = viewModel()
+
+    // Sohbet geçmişi oturum boyunca korunsun diye ViewModel burada, NavHost'un
+    // dışında oluşturuluyor: composable(AI_CHAT) { } içinde yaratılsaydı örnek
+    // o backstack kaydına bağlı olurdu ve sekmeden çıkıp dönen kullanıcı her
+    // seferinde bomboş bir sohbete düşerdi.
+    val aiChatViewModel: AiChatViewModel = viewModel()
 
     // Bildirime dokunularak açılışta (soğuk başlangıç) veya uygulama zaten
     // açıkken (onNewIntent) tetiklenir. Giriş yapılmamışsa hedefe gitmenin
@@ -134,12 +148,11 @@ fun CineVerseNavGraph(
                         "categories_movie", "categories" -> navController.navigate(CVRoutes.allCategories(isTvMode = false))
                     }
                 },
-                onAiSearchClick = { navController.navigate(CVRoutes.search(aiMode = true)) },
+                onAiSearchClick = { isTvMode ->
+                    navController.navigate(CVRoutes.aiChat(isTvMode)) { launchSingleTop = true }
+                },
                 onNavigateTab = { index ->
-                    when (index) {
-                        1 -> navController.navigate(CVRoutes.search(aiMode = false))
-                        2 -> navController.navigate(CVRoutes.LISTEM) { launchSingleTop = true }
-                    }
+                    if (index == 2) navController.navigate(CVRoutes.LISTEM) { launchSingleTop = true }
                 },
                 onCategoryClick = { category ->
                     navController.navigate(CVRoutes.movieListGenre(category.genreId, category.label))
@@ -159,7 +172,7 @@ fun CineVerseNavGraph(
                 onNavigateTab = { index ->
                     when (index) {
                         0 -> navController.popBackStack(CVRoutes.HOME, inclusive = false)
-                        1 -> navController.navigate(CVRoutes.search(aiMode = false))
+                        1 -> navController.navigate(CVRoutes.aiChat()) { launchSingleTop = true }
                     }
                 },
                 onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
@@ -167,12 +180,12 @@ fun CineVerseNavGraph(
             )
         }
         composable(
-            route = CVRoutes.SEARCH,
-            arguments = listOf(navArgument("aiMode") { type = NavType.BoolType }),
+            route = CVRoutes.AI_CHAT,
+            arguments = listOf(navArgument("isTvMode") { type = NavType.StringType; defaultValue = "" }),
         ) { backStackEntry ->
-            val aiMode = backStackEntry.arguments?.getBoolean("aiMode") ?: false
-            SearchScreen(
-                startInAiMode = aiMode,
+            AiChatScreen(
+                viewModel = aiChatViewModel,
+                startInTvMode = backStackEntry.arguments?.getString("isTvMode")?.toBooleanStrictOrNull(),
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
                 onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
                 onNavigateTab = { index ->
@@ -182,8 +195,6 @@ fun CineVerseNavGraph(
                         navController.navigate(CVRoutes.LISTEM) { launchSingleTop = true }
                     }
                 },
-                onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
-                onNotificationsClick = { navController.navigate(CVRoutes.NOTIFICATIONS) },
             )
         }
         composable(CVRoutes.PROFILE) {

@@ -139,4 +139,5 @@ data class MultiSearchResultDto(
     val release_date: String? = null,
     val first_air_date: String? = null,
     val vote_average: Double? = null,
+    val genre_ids: List<Int> = emptyList(),
 )

@@ -27,8 +27,11 @@ object GeminiNetworkModule {
 
     private val okHttpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        // Yanıt tek seferde (stream'siz) geldiği için modelin tüm metni üretmesini
+        // bekliyoruz; düşünen modellerde bu 30 saniyeyi aşabiliyor ve istek boşuna
+        // zaman aşımına düşüyordu.
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .addInterceptor(authInterceptor)
         .addInterceptor(loggingInterceptor)
         .build()

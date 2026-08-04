@@ -86,7 +86,8 @@ fun HomeScreen(
     onMovieClick: (movieId: Int) -> Unit = {},
     onTvShowClick: (tvId: Int) -> Unit = {},
     onSeeAllClick: (section: String) -> Unit = {},
-    onAiSearchClick: () -> Unit = {},
+    /** Asistan sekmesi de buradan açılıyor; aktif Filmler/Diziler seçimi birlikte taşınıyor. */
+    onAiSearchClick: (isTvMode: Boolean) -> Unit = {},
     onNavigateTab: (Int) -> Unit = {},
     onCategoryClick: (Category) -> Unit = {},
     onTvCategoryClick: (Category) -> Unit = {},
@@ -301,7 +302,7 @@ fun HomeScreen(
             HomeSearchBar(
                 value = uiState.searchQuery,
                 onValueChange = { homeViewModel.onSearchQueryChange(it) },
-                onAiClick = onAiSearchClick,
+                onAiClick = { onAiSearchClick(uiState.isTvMode) },
                 onClear = { homeViewModel.clearSearch() },
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
@@ -608,7 +609,9 @@ fun HomeScreen(
         if (!uiState.isLoading && uiState.errorMessage == null) {
             CVBottomNavBar(
                 selectedIndex = 0,
-                onItemSelected = onNavigateTab,
+                onItemSelected = { index ->
+                    if (index == 1) onAiSearchClick(uiState.isTvMode) else onNavigateTab(index)
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
