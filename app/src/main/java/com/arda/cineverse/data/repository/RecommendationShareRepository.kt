@@ -50,6 +50,7 @@ class RecommendationShareRepository(
         mediaId: Int,
         mediaType: String,
         mediaTitle: String,
+        posterUrl: String? = null,
         note: String,
     ): Result<Unit> = runCatching {
         require(targetUids.isNotEmpty()) { "En az bir arkadaş seçmelisin" }
@@ -65,6 +66,24 @@ class RecommendationShareRepository(
                 mediaTitle = mediaTitle,
                 note = note,
             )
+
+            runCatching {
+                val now = System.currentTimeMillis()
+                val actId = "rec_${mediaType}_${mediaId}_${now}"
+                firestore.collection("users").document(requireUid())
+                    .collection("activities").document(actId).set(
+                        hashMapOf(
+                            "id" to actId,
+                            "type" to "RECOMMENDATION",
+                            "mediaId" to mediaId,
+                            "mediaTitle" to mediaTitle,
+                            "mediaType" to mediaType,
+                            "posterUrl" to posterUrl,
+                            "timestamp" to now,
+                            "note" to note,
+                        ),
+                    ).await()
+            }
         } catch (e: SupabasePushException) {
             if (e.code == 429) throw RecommendationQuotaException() else throw e
         }

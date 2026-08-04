@@ -31,6 +31,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.arda.cineverse.data.model.Friend
 import com.arda.cineverse.ui.theme.*
@@ -320,3 +322,93 @@ private fun EmptyState(
         Text(subtitle, color = TextSecondary, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
 }
+
+/**
+ * Film/dizi detay ekranında gösterilen dikkat çekici "Arkadaşlarına Tavsiye Et" banner kartı.
+ */
+@Composable
+fun RecommendShareBannerCard(
+    onRecommendClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = Brush.horizontalGradient(
+                    listOf(
+                        Primary.copy(alpha = 0.18f),
+                        Accent.copy(alpha = 0.14f)
+                    )
+                )
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.horizontalGradient(
+                    listOf(Primary.copy(alpha = 0.6f), Accent.copy(alpha = 0.6f))
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable { onRecommendClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(PrimaryGradient)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Send,
+                        contentDescription = null,
+                        tint = OnPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Arkadaşlarına Tavsiye Et",
+                        color = OnSurface,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "Özel notunla CineVerse arkadaşlarınla paylaş",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Primary)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "Öner",
+                    color = OnPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+

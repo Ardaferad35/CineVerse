@@ -226,7 +226,11 @@ fun CineVerseNavGraph(
             )
         }
         composable(CVRoutes.FRIENDS) {
-            FriendsScreen(onBack = { navController.popBackStack() })
+            FriendsScreen(
+                onBack = { navController.popBackStack() },
+                onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+                onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
+            )
         }
         composable(
             route = CVRoutes.MOVIE_LIST,

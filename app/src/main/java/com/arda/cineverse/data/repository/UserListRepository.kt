@@ -94,11 +94,31 @@ class UserListRepository @Inject constructor(
             .documents.mapNotNull { it.toObject(SavedMovie::class.java) }
     }
 
+    private fun activitiesCollection() =
+        firestore.collection("users").document(requireUid()).collection("activities")
+
     suspend fun addFavorite(movie: SavedMovie): Result<Unit> {
         if (!connectivityObserver.isCurrentlyOnline()) return Result.failure(OfflineWriteException())
         return runCatching {
+            val now = System.currentTimeMillis()
             favoritesCollection().document(documentId(movie.id, movie.mediaType))
-                .set(movie.copy(addedAt = System.currentTimeMillis())).await()
+                .set(movie.copy(addedAt = now)).await()
+
+            runCatching {
+                val actId = "fav_${movie.mediaType}_${movie.id}"
+                activitiesCollection().document(actId).set(
+                    hashMapOf(
+                        "id" to actId,
+                        "type" to "FAVORITE",
+                        "mediaId" to movie.id,
+                        "mediaTitle" to movie.title,
+                        "mediaType" to movie.mediaType,
+                        "posterUrl" to movie.posterUrl,
+                        "timestamp" to now,
+                        "rating" to movie.rating,
+                    ),
+                ).await()
+            }
             Unit
         }.onSuccess { syncFavoritesAndWatchlist() }
     }
@@ -109,6 +129,7 @@ class UserListRepository @Inject constructor(
         if (!connectivityObserver.isCurrentlyOnline()) return Result.failure(OfflineWriteException())
         return runCatching {
             favoritesCollection().document(documentId(mediaId, mediaType)).delete().await()
+            runCatching { activitiesCollection().document("fav_${mediaType}_${mediaId}").delete().await() }
             Unit
         }.onSuccess { syncFavoritesAndWatchlist() }
     }
@@ -116,8 +137,25 @@ class UserListRepository @Inject constructor(
     suspend fun addToWatchlist(movie: SavedMovie): Result<Unit> {
         if (!connectivityObserver.isCurrentlyOnline()) return Result.failure(OfflineWriteException())
         return runCatching {
+            val now = System.currentTimeMillis()
             watchlistCollection().document(documentId(movie.id, movie.mediaType))
-                .set(movie.copy(addedAt = System.currentTimeMillis())).await()
+                .set(movie.copy(addedAt = now)).await()
+
+            runCatching {
+                val actId = "watch_${movie.mediaType}_${movie.id}"
+                activitiesCollection().document(actId).set(
+                    hashMapOf(
+                        "id" to actId,
+                        "type" to "WATCHLIST",
+                        "mediaId" to movie.id,
+                        "mediaTitle" to movie.title,
+                        "mediaType" to movie.mediaType,
+                        "posterUrl" to movie.posterUrl,
+                        "timestamp" to now,
+                        "rating" to movie.rating,
+                    ),
+                ).await()
+            }
             Unit
         }.onSuccess { syncFavoritesAndWatchlist() }
     }
@@ -128,6 +166,7 @@ class UserListRepository @Inject constructor(
         if (!connectivityObserver.isCurrentlyOnline()) return Result.failure(OfflineWriteException())
         return runCatching {
             watchlistCollection().document(documentId(mediaId, mediaType)).delete().await()
+            runCatching { activitiesCollection().document("watch_${mediaType}_${mediaId}").delete().await() }
             Unit
         }.onSuccess { syncFavoritesAndWatchlist() }
     }

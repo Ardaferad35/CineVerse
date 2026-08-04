@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AlertDialog
@@ -332,6 +333,7 @@ fun MovieDetailScreen(
                             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                                 CVGradientButton(
                                     text = "Fragmanı İzle",
+                                    icon = Icons.Filled.PlayArrow,
                                     onClick = { playTrailer(movie.trailerKey) },
                                     enabled = movie.trailerKey != null,
                                 )
@@ -346,7 +348,12 @@ fun MovieDetailScreen(
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Icon(Icons.Filled.Add, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        imageVector = if (detailState.isSaved) Icons.Filled.Check else Icons.Filled.Add,
+                                        contentDescription = null,
+                                        tint = Primary,
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
                                         if (detailState.isSaved) "İzleme Listemde" else "İzleme Listeme Ekle",
@@ -366,6 +373,17 @@ fun MovieDetailScreen(
                                     Spacer(Modifier.height(10.dp))
                                     Text("Yönetmen: $it", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 }
+                            }
+                        }
+
+                        item {
+                            Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
+                                RecommendShareBannerCard(
+                                    onRecommendClick = {
+                                        recommendShareViewModel.reset()
+                                        showShareSheet = true
+                                    },
+                                )
                             }
                         }
 
@@ -595,6 +613,7 @@ fun MovieDetailScreen(
                         mediaId = movieId,
                         mediaType = "movie",
                         mediaTitle = movie.title,
+                        posterUrl = movie.posterUrl,
                     )
                 },
                 onDismiss = { showShareSheet = false },

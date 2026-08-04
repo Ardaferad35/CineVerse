@@ -33,9 +33,10 @@ data class FriendsUiState(
     // "Gönderildi" bilgisi bellekte tutuluyor — uygulama yeniden açılınca
     // sıfırlanır.
     val sentRequestUids: Set<String> = emptySet(),
-    // Kısa süreliğine gösterilecek toast benzeri mesaj (istek gönderildi,
-    // offline hatası, vb.) — bkz. MyListViewModel.offlineMessage deseni.
     val actionMessage: String? = null,
+    val selectedFriendForActivity: Friend? = null,
+    val friendActivities: List<com.arda.cineverse.data.model.FriendActivity> = emptyList(),
+    val isLoadingActivities: Boolean = false,
 ) {
     val isAlreadyFriend: Boolean
         get() = searchResult != null && friends.any { it.friendUid == searchResult.uid }
@@ -195,6 +196,40 @@ class FriendsViewModel(
 
     fun clearActionMessage() {
         _uiState.value = _uiState.value.copy(actionMessage = null)
+    }
+
+    fun selectFriendForActivity(friend: Friend?) {
+        if (friend == null) {
+            _uiState.value = _uiState.value.copy(
+                selectedFriendForActivity = null,
+                friendActivities = emptyList(),
+                isLoadingActivities = false,
+            )
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(
+            selectedFriendForActivity = friend,
+            friendActivities = emptyList(),
+            isLoadingActivities = true,
+        )
+
+        viewModelScope.launch {
+            repository.getFriendRecentActivities(friend.friendUid).fold(
+                onSuccess = { activities ->
+                    _uiState.value = _uiState.value.copy(
+                        friendActivities = activities,
+                        isLoadingActivities = false,
+                    )
+                },
+                onFailure = {
+                    _uiState.value = _uiState.value.copy(
+                        friendActivities = emptyList(),
+                        isLoadingActivities = false,
+                    )
+                },
+            )
+        }
     }
 
     private companion object {
