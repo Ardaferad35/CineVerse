@@ -1,23 +1,29 @@
 package com.arda.cineverse.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -246,11 +252,13 @@ fun HomeSearchBar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FeaturedMovieBanner(
     movie: FeaturedMovie,
     onDetailsClick: () -> Unit,
     onAddToListClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     label: String = "GÜNÜN FİLMİ",
     isInWatchlist: Boolean = false,
@@ -262,7 +270,17 @@ fun FeaturedMovieBanner(
             .fillMaxWidth()
             .height(340.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFF0B0B10)),
+            .background(Color(0xFF0B0B10))
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(
+                        onClick = { onDetailsClick() },
+                        onLongClick = onLongClick,
+                    )
+                } else {
+                    Modifier.clickable { onDetailsClick() }
+                },
+            ),
     ) {
         if (movie.backdropUrl != null) {
             AsyncImage(
@@ -474,10 +492,12 @@ private fun formatLastSyncedAt(timestampMillis: Long): String {
     return "$day $month, $hour:$minute"
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PopularMovieCard(
     movie: Movie,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -488,7 +508,16 @@ fun PopularMovieCard(
                 .aspectRatio(2f / 3f)
                 .clip(RoundedCornerShape(14.dp))
                 .background(brush = Brush.verticalGradient(listOf(SurfaceVariant, Surface)))
-                .clickable { onClick() },
+                .then(
+                    if (onLongClick != null) {
+                        Modifier.combinedClickable(
+                            onClick = { onClick() },
+                            onLongClick = onLongClick,
+                        )
+                    } else {
+                        Modifier.clickable { onClick() }
+                    },
+                ),
         ) {
             if (movie.posterUrl != null) {
                 AsyncImage(
@@ -539,10 +568,12 @@ fun PopularMovieCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun UpcomingMovieCard(
     movie: UpcomingMovie,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.width(140.dp)) {
@@ -552,7 +583,16 @@ fun UpcomingMovieCard(
                 .aspectRatio(2f / 3f)
                 .clip(RoundedCornerShape(14.dp))
                 .background(brush = Brush.verticalGradient(listOf(SurfaceVariant, Surface)))
-                .clickable { onClick() },
+                .then(
+                    if (onLongClick != null) {
+                        Modifier.combinedClickable(
+                            onClick = { onClick() },
+                            onLongClick = onLongClick,
+                        )
+                    } else {
+                        Modifier.clickable { onClick() }
+                    },
+                ),
         ) {
             if (movie.posterUrl != null) {
                 AsyncImage(
@@ -746,6 +786,222 @@ fun SearchSuggestionsList(
             }
             if (index != suggestions.lastIndex) {
                 HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+            }
+        }
+    }
+}
+
+data class QuickPreviewData(
+    val id: Int,
+    val title: String,
+    val overview: String = "",
+    val posterUrl: String? = null,
+    val backdropUrl: String? = null,
+    val rating: Double = 0.0,
+    val year: Int? = null,
+    val genre: String = "",
+    val mediaType: String = "movie",
+    val isFavorite: Boolean = false,
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuickPreviewSheet(
+    data: QuickPreviewData,
+    onNavigateDetail: () -> Unit,
+    onShareWithFriends: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Background,
+        dragHandle = null,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = 24.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(210.dp),
+            ) {
+                if (data.backdropUrl != null || data.posterUrl != null) {
+                    AsyncImage(
+                        model = data.backdropUrl ?: data.posterUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.verticalGradient(listOf(SurfaceVariant, Background))),
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.Black.copy(alpha = 0.2f),
+                                    Color.Black.copy(alpha = 0.7f),
+                                    Background,
+                                ),
+                            ),
+                        ),
+                )
+
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .clip(CircleShape)
+                        .background(Background.copy(alpha = 0.6f)),
+                ) {
+                    Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = OnSurface)
+                }
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    if (data.posterUrl != null) {
+                        AsyncImage(
+                            model = data.posterUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(width = 72.dp, height = 105.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.5.dp, Primary.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                        )
+                        Spacer(Modifier.width(14.dp))
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = data.title,
+                            color = OnSurface,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                        )
+
+                        Spacer(Modifier.height(6.dp))
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (data.rating > 0) {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Primary.copy(alpha = 0.2f))
+                                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(Icons.Filled.Star, contentDescription = null, tint = StarColor, modifier = Modifier.size(13.dp))
+                                    Spacer(Modifier.width(3.dp))
+                                    Text("${data.rating}", color = OnSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(Modifier.width(8.dp))
+                            }
+
+                            if (data.year != null && data.year > 0) {
+                                Text("${data.year}", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Spacer(Modifier.width(8.dp))
+                            }
+
+                            if (data.genre.isNotBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(SurfaceVariant)
+                                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                                ) {
+                                    Text(data.genre, color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                Text(
+                    text = "İçerik Özeti",
+                    color = OnSurface,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                Text(
+                    text = if (data.overview.isNotBlank()) data.overview else "Bu içerik için henüz özet eklenmemiş.",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    maxLines = 4,
+                )
+
+                Spacer(Modifier.height(22.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Brush.horizontalGradient(PrimaryGradient))
+                            .clickable {
+                                onDismiss()
+                                onShareWithFriends()
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Arkadaşına Öner", color = OnPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(SurfaceVariant)
+                            .border(1.dp, Primary.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .clickable {
+                                onDismiss()
+                                onNavigateDetail()
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Info, contentDescription = null, tint = OnSurface, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Detayları Gör", color = OnSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
         }
     }
