@@ -38,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
@@ -804,7 +806,6 @@ data class QuickPreviewData(
     val isFavorite: Boolean = false,
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuickPreviewSheet(
     data: QuickPreviewData,
@@ -812,193 +813,170 @@ fun QuickPreviewSheet(
     onShareWithFriends: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Background,
-        dragHandle = null,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(bottom = 24.dp),
+                .fillMaxWidth(0.85f)
+                .widthIn(max = 320.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(Surface)
+                .border(1.dp, Brush.verticalGradient(listOf(Primary.copy(alpha = 0.6f), Color.Transparent)), RoundedCornerShape(22.dp)),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(210.dp),
-            ) {
-                if (data.backdropUrl != null || data.posterUrl != null) {
-                    AsyncImage(
-                        model = data.backdropUrl ?: data.posterUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
+            Column {
+                // Header Image Banner
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(110.dp),
+                ) {
+                    if (data.backdropUrl != null || data.posterUrl != null) {
+                        AsyncImage(
+                            model = data.backdropUrl ?: data.posterUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Brush.verticalGradient(listOf(SurfaceVariant, Surface))),
+                        )
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Brush.verticalGradient(listOf(SurfaceVariant, Background))),
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.Black.copy(alpha = 0.2f),
-                                    Color.Black.copy(alpha = 0.7f),
-                                    Background,
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.Black.copy(alpha = 0.2f),
+                                        Color.Black.copy(alpha = 0.85f),
+                                    ),
                                 ),
                             ),
-                        ),
-                )
+                    )
 
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp)
-                        .clip(CircleShape)
-                        .background(Background.copy(alpha = 0.6f)),
-                ) {
-                    Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = OnSurface)
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.5f)),
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
                 }
 
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.Bottom,
+                // Info Section
+                Column(
+                    modifier = Modifier.padding(14.dp),
                 ) {
-                    if (data.posterUrl != null) {
-                        AsyncImage(
-                            model = data.posterUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(width = 72.dp, height = 105.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .border(1.5.dp, Primary.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
-                        )
-                        Spacer(Modifier.width(14.dp))
-                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (data.posterUrl != null) {
+                            AsyncImage(
+                                model = data.posterUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(width = 46.dp, height = 66.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(1.dp, Primary.copy(alpha = 0.4f), RoundedCornerShape(8.dp)),
+                            )
+                            Spacer(Modifier.width(10.dp))
+                        }
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = data.title,
-                            color = OnSurface,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = data.title,
+                                color = OnSurface,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                            )
 
-                        Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(4.dp))
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (data.rating > 0) {
-                                Row(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Primary.copy(alpha = 0.2f))
-                                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(Icons.Filled.Star, contentDescription = null, tint = StarColor, modifier = Modifier.size(13.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (data.rating > 0) {
+                                    Icon(Icons.Filled.Star, contentDescription = null, tint = StarColor, modifier = Modifier.size(12.dp))
                                     Spacer(Modifier.width(3.dp))
-                                    Text("${data.rating}", color = OnSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text("${data.rating}", color = OnSurface, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.width(6.dp))
                                 }
-                                Spacer(Modifier.width(8.dp))
-                            }
 
-                            if (data.year != null && data.year > 0) {
-                                Text("${data.year}", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                Spacer(Modifier.width(8.dp))
-                            }
+                                if (data.year != null && data.year > 0) {
+                                    Text("${data.year}", color = TextSecondary, fontSize = 11.sp)
+                                    Spacer(Modifier.width(6.dp))
+                                }
 
-                            if (data.genre.isNotBlank()) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(SurfaceVariant)
-                                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                                ) {
-                                    Text(data.genre, color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                if (data.genre.isNotBlank()) {
+                                    Text(data.genre, color = TextSecondary, fontSize = 11.sp, maxLines = 1)
                                 }
                             }
                         }
                     }
-                }
-            }
 
-            Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(10.dp))
 
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                Text(
-                    text = "İçerik Özeti",
-                    color = OnSurface,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                    Text(
+                        text = if (data.overview.isNotBlank()) data.overview else "Bu içerik için henüz özet bulunmuyor.",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 3,
+                    )
 
-                Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(14.dp))
 
-                Text(
-                    text = if (data.overview.isNotBlank()) data.overview else "Bu içerik için henüz özet eklenmemiş.",
-                    color = TextSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 19.sp,
-                    maxLines = 4,
-                )
-
-                Spacer(Modifier.height(22.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Brush.horizontalGradient(PrimaryGradient))
-                            .clickable {
-                                onDismiss()
-                                onShareWithFriends()
-                            },
-                        contentAlignment = Alignment.Center,
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Arkadaşına Öner", color = OnPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Brush.horizontalGradient(PrimaryGradient))
+                                .clickable {
+                                    onDismiss()
+                                    onShareWithFriends()
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Öner", color = OnPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
-                    }
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(SurfaceVariant)
-                            .border(1.dp, Primary.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
-                            .clickable {
-                                onDismiss()
-                                onNavigateDetail()
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Info, contentDescription = null, tint = OnSurface, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Detayları Gör", color = OnSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(SurfaceVariant)
+                                .border(1.dp, Primary.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                                .clickable {
+                                    onDismiss()
+                                    onNavigateDetail()
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Info, contentDescription = null, tint = OnSurface, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Detaylar", color = OnSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

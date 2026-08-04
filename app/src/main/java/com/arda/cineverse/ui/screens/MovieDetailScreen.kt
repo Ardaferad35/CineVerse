@@ -152,6 +152,7 @@ fun MovieDetailScreen(
     var commentPendingDelete by remember { mutableStateOf<Comment?>(null) }
     var replyingToComment by remember { mutableStateOf<Comment?>(null) }
     var showTrailerPlayer by remember { mutableStateOf(false) }
+    var selectedCast by remember { mutableStateOf<com.arda.cineverse.data.model.CastMember?>(null) }
     val commentBoxRequester = remember { BringIntoViewRequester() }
 
     val recommendShareViewModel: RecommendShareViewModel = viewModel()
@@ -399,7 +400,9 @@ fun MovieDetailScreen(
                                     )
                                     Spacer(Modifier.height(12.dp))
                                     LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                        items(movie.cast, key = { it.id }) { cast -> CastMemberChip(cast) }
+                                        items(movie.cast, key = { it.id }) { cast ->
+                                            CastMemberChip(cast = cast, onClick = { selectedCast = cast })
+                                        }
                                     }
                                 }
                             }
@@ -619,6 +622,13 @@ fun MovieDetailScreen(
                 onDismiss = { showShareSheet = false },
             )
         }
+    }
+
+    selectedCast?.let { cast ->
+        CastSpotlightDialog(
+            cast = cast,
+            onDismiss = { selectedCast = null },
+        )
     }
 
     commentPendingDelete?.let { comment ->
