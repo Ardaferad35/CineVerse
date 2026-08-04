@@ -1,6 +1,7 @@
 package com.arda.cineverse.ui.screens
 
 import android.content.Intent
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -193,7 +194,15 @@ fun TvShowDetailScreen(
 
     fun playTrailer(key: String?) {
         if (key.isNullOrBlank()) return
-        context.startActivity(Intent(Intent.ACTION_VIEW, "https://www.youtube.com/watch?v=$key".toUri()))
+        val uri = "https://www.youtube.com/watch?v=$key".toUri()
+        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("TvShowDetailScreen", "Could not launch trailer intent", e)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {

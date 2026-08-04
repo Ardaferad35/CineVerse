@@ -2,12 +2,6 @@ package com.arda.cineverse.ui.screens
 
 import android.content.Intent
 import android.util.Log
-import android.webkit.ConsoleMessage
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -151,7 +145,6 @@ fun MovieDetailScreen(
     var editingComment by remember { mutableStateOf<Comment?>(null) }
     var commentPendingDelete by remember { mutableStateOf<Comment?>(null) }
     var replyingToComment by remember { mutableStateOf<Comment?>(null) }
-    var showTrailerPlayer by remember { mutableStateOf(false) }
     var selectedCast by remember { mutableStateOf<com.arda.cineverse.data.model.CastMember?>(null) }
     val commentBoxRequester = remember { BringIntoViewRequester() }
 
@@ -169,12 +162,14 @@ fun MovieDetailScreen(
     fun playTrailer(key: String?) {
         if (key.isNullOrBlank()) return
         val uri = "https://www.youtube.com/watch?v=$key".toUri()
-        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-    }
-
-    fun openInYouTubeApp(key: String) {
-        val uri = "https://www.youtube.com/watch?v=$key".toUri()
-        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("MovieDetailScreen", "Could not launch trailer intent", e)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
@@ -578,15 +573,6 @@ fun MovieDetailScreen(
             }
         }
 
-        val currentMovie = detailState.movie
-        if (showTrailerPlayer && currentMovie?.trailerKey != null) {
-            TrailerPlayerOverlay(
-                videoKey = currentMovie.trailerKey,
-                onClose = { showTrailerPlayer = false },
-                onOpenInYouTube = { openInYouTubeApp(currentMovie.trailerKey) },
-            )
-        }
-
         ClearOfflineMessageAfterDelay(detailState.offlineMessage) { movieDetailViewModel.clearOfflineMessage() }
         ClearOfflineMessageAfterDelay(commentState.mutationErrorMessage) { commentViewModel.clearMutationError() }
         ClearOfflineMessageAfterDelay(shareSentMessage) { shareSentMessage = null }
@@ -665,91 +651,4 @@ private fun CircleIconButton(icon: ImageVector, tint: Color = OverlayIconColor, 
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
     }
 }
-
-@Composable
-private fun TrailerPlayerOverlay(
-    videoKey: String,
-    onClose: () -> Unit,
-    onOpenInYouTube: () -> Unit,
-) {
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
-
-    DisposableEffect(Unit) {
-        onDispose { webViewRef?.destroy() }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.97f))
-            .pointerInput(Unit) { detectTapGestures { } },
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                CircleIconButton(icon = Icons.Filled.Close, onClick = onClose)
-            }
-
-            AndroidView(
-                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.mediaPlaybackRequiresUserGesture = false
-                        settings.loadWithOverviewMode = true
-                        settings.useWideViewPort = true
-                        webChromeClient = object : WebChromeClient() {
-                            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
-                                Log.d(
-                                    "CVTrailerWebView",
-                                    "JS console [${message.messageLevel()}] ${message.message()} " +
-                                            "(${message.sourceId()}:${message.lineNumber()})",
-                                )
-                                return true
-                            }
-                        }
-                        webViewClient = object : WebViewClient() {
-                            override fun onReceivedError(
-                                view: WebView?,
-                                request: WebResourceRequest?,
-                                error: WebResourceError?,
-                            ) {
-                                super.onReceivedError(view, request, error)
-                                Log.e(
-                                    "CVTrailerWebView",
-                                    "onReceivedError: code=${error?.errorCode} desc=${error?.description} url=${request?.url}",
-                                )
-                            }
-
-                            override fun onPageFinished(view: WebView?, url: String?) {
-                                super.onPageFinished(view, url)
-                                Log.d("CVTrailerWebView", "onPageFinished: $url")
-                            }
-                        }
-                        loadUrl("https://www.youtube.com/embed/$videoKey?autoplay=1&playsinline=1&modestbranding=1&rel=0")
-                        webViewRef = this
-                    }
-                },
-            )
-
-            Spacer(Modifier.height(20.dp))
-            Text(
-                "YouTube uygulamasında aç",
-                color = Primary,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .clickable { onOpenInYouTube() },
-            )
-        }
-    }
-}
+
