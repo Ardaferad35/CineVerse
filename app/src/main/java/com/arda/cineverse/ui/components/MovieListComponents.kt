@@ -73,7 +73,7 @@ fun MovieListItemCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(Surface)
-            .padding(12.dp),
+            .padding(8.dp),
     ) {
         Box(
             modifier = Modifier
@@ -103,7 +103,7 @@ fun MovieListItemCard(
             }
         }
 
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(10.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -114,7 +114,7 @@ fun MovieListItemCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(3.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(12.dp))
@@ -134,7 +134,7 @@ fun MovieListItemCard(
                 }
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Star, contentDescription = null, tint = StarColorList, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(4.dp))
@@ -142,34 +142,41 @@ fun MovieListItemCard(
             }
 
             if (movie.overview.isNotBlank()) {
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     movie.overview,
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .border(1.dp, Primary, RoundedCornerShape(20.dp))
                         .clickable { onDetailsClick() }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Detaylar", color = Primary, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Detaylar",
+                        color = Primary,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(30.dp)
                         .clip(CircleShape)
                         .background(SurfaceVariant)
                         .clickable { onAddToListClick() },

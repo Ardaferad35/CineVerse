@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -117,8 +118,8 @@ fun SavedMovieCard(
                 Icon(badgeIcon, contentDescription = "Listeden çıkar", tint = badgeTint, modifier = Modifier.size(15.dp))
             }
         }
-        Spacer(Modifier.height(6.dp))
-        Text(movie.title, color = OnSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 2)
+        Spacer(Modifier.height(4.dp))
+        Text(movie.title, color = OnSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text("${movie.year ?: ""}", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
     }
 }
