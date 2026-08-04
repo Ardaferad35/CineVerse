@@ -5,9 +5,13 @@ import com.arda.cineverse.data.model.Comment
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.remote.SupabasePushClient
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 import kotlin.math.round
 
@@ -36,15 +40,35 @@ class CommentRepository(
 
         // Her yorum sahibinin O ANKİ güncel avatarını canlı olarak çekiyoruz
         // (yorumun içine gömmüyoruz) — böylece kullanıcı avatarını
-        // değiştirdiğinde geçmiş yorumlarında da otomatik yansır. Aynı
-        // kullanıcının birden fazla yorumu varsa tek bir okuma yeterli.
-        val avatarByUserId = comments.map { it.userId }.distinct().associateWith { userId ->
-            runCatching {
-                firestore.collection("users").document(userId).get().await().getString("avatarId")
-            }.getOrNull() ?: "default"
+        // değiştirdiğinde geçmiş yorumlarında da otomatik yansır.
+        //
+        // Kullanıcı başına AYRI bir belge okuması yapmıyoruz: 20 farklı kişinin
+        // yorumladığı bir film 20 ardışık gidiş-dönüş demekti. Bunun yerine
+        // whereIn ile toplu çekiyoruz; "in" filtresinin 30 değer sınırı olduğu
+        // için gruplara bölüp o grupları paralel çalıştırıyoruz.
+        val userIds = comments.map { it.userId }.filter { it.isNotBlank() }.distinct()
+        val avatarByUserId = coroutineScope {
+            userIds.chunked(30)
+                .map { chunk ->
+                    async {
+                        runCatching {
+                            firestore.collection("users")
+                                .whereIn(FieldPath.documentId(), chunk)
+                                .get()
+                                .await()
+                                .documents
+                                .associate { doc -> doc.id to doc.getString("avatarId").orEmpty() }
+                        }.getOrElse { emptyMap() }
+                    }
+                }
+                .awaitAll()
+                .fold(emptyMap<String, String>()) { acc, chunkResult -> acc + chunkResult }
         }
 
-        comments.map { comment -> comment.copy(avatarId = avatarByUserId[comment.userId] ?: "default") }
+        comments.map { comment ->
+            val avatarId = avatarByUserId[comment.userId]?.takeIf { it.isNotBlank() } ?: "default"
+            comment.copy(avatarId = avatarId)
+        }
     }
 
     /**

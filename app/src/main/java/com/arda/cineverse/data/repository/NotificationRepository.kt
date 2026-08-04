@@ -45,9 +45,18 @@ class NotificationRepository(
         notificationsCollection(uid).document(notificationId).update("isRead", true).await()
     }
 
+    /**
+     * Okunmamışları tek tek değil TEK batch'te işaretler — eskiden her belge
+     * için ayrı bir gidiş-dönüş yapılıyordu, 50 bildirimde 50 ardışık yazma
+     * demekti. Batch sınırı 500 olduğu için yine de parçalıyoruz.
+     */
     suspend fun markAllAsRead(): Result<Unit> = runCatching {
         val uid = auth.currentUser?.uid ?: return@runCatching
         val unread = notificationsCollection(uid).whereEqualTo("isRead", false).get().await()
-        unread.documents.forEach { doc -> doc.reference.update("isRead", true).await() }
+        unread.documents.chunked(500).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { doc -> batch.update(doc.reference, "isRead", true) }
+            batch.commit().await()
+        }
     }
 }

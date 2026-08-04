@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -15,7 +14,7 @@ import javax.inject.Singleton
 private val Context.dataStore by preferencesDataStore(name = "cineverse_preferences")
 
 /**
- * Tema/dil ve son senkronizasyon zamanı gibi kullanıcı tercihlerini saklar.
+ * Tema ve son senkronizasyon zamanı gibi kullanıcı tercihlerini saklar.
  * Tek DataStore dosyasını (`cineverse_preferences`) hem Hilt üzerinden
  * enjekte edilen yerlerde hem de [com.arda.cineverse.ui.theme.ThemeState]
  * gibi Hilt-dışı çağıranlarda aynı örnekle (Context.applicationContext'e
@@ -28,7 +27,6 @@ class UserPreferencesRepository @Inject constructor(
 ) {
     private object Keys {
         val IS_DARK_THEME = booleanPreferencesKey("is_dark_theme")
-        val LANGUAGE = stringPreferencesKey("language")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val HOME_LAST_SYNCED_AT = longPreferencesKey("home_last_synced_at")
     }
@@ -36,7 +34,6 @@ class UserPreferencesRepository @Inject constructor(
     val userPreferences: Flow<UserPreferences> = context.dataStore.data.map { prefs ->
         UserPreferences(
             isDarkTheme = prefs[Keys.IS_DARK_THEME] ?: true,
-            language = prefs[Keys.LANGUAGE] ?: "tr",
             notificationsEnabled = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
             homeLastSyncedAt = prefs[Keys.HOME_LAST_SYNCED_AT],
         )
@@ -44,10 +41,6 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setDarkTheme(isDark: Boolean) {
         context.dataStore.edit { it[Keys.IS_DARK_THEME] = isDark }
-    }
-
-    suspend fun setLanguage(language: String) {
-        context.dataStore.edit { it[Keys.LANGUAGE] = language }
     }
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {
