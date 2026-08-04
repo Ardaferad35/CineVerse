@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,9 +59,15 @@ class MainActivity : Hilt_MainActivity() {
         // Android 12+'ta sistemin gösterdiği ÇOK KISA (yüz milisaniyelik) açılış
         // splash'ını devreye sokar — yukarıda setTheme() ile seçilen, temaya göre
         // doğru arka plan/ikonu kullanır.
-        installSplashScreen()
-
+        val splashScreen = installSplashScreen()
+        
         super.onCreate(savedInstanceState)
+
+        // Splash ekranını Compose içeriği hazır olana kadar ekranda tut.
+        // Bu, bazı cihazlarda/emülatörlerde siyah ekran parlamasını önler.
+        var isReady = false
+        splashScreen.setKeepOnScreenCondition { !isReady }
+
         enableEdgeToEdge()
 
         // Android 13+ (API 33) sistem bildirimleri için çalışma zamanı izni gerektiriyor.
@@ -97,6 +104,12 @@ class MainActivity : Hilt_MainActivity() {
                 // tasarımdaki zengin görseli (logo + yazı + süsleme) ~1.5sn
                 // gösteren özel Compose ekranı devreye giriyor.
                 var showSplash by remember { mutableStateOf(true) }
+                
+                // İçerik hazır olduğunda native splash'i serbest bırak
+                LaunchedEffect(Unit) {
+                    isReady = true
+                }
+
                 if (showSplash) {
                     SplashScreen(onFinished = { showSplash = false })
                 } else {

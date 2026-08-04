@@ -52,8 +52,10 @@ fun SplashScreen(onFinished: () -> Unit) {
     )
 
     LaunchedEffect(Unit) {
+        // Render hatalarını önlemek için animasyonun başlamasından önce çok kısa bir bekleme
+        delay(100) 
         startAnimation = true
-        delay(2500) 
+        delay(2200) 
         onFinished()
     }
 
@@ -62,28 +64,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             .fillMaxSize()
             .background(backgroundColor)
     ) {
-        // Decorative background elements
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.4f)
-                .align(Alignment.BottomCenter)
-                .alpha(0.2f * alphaAnim)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                accentColor.copy(alpha = 0.05f),
-                                accentColor.copy(alpha = 0.2f)
-                            )
-                        )
-                    )
-            )
-        }
+        // Decorative background elements kaldırıldı - Bazı emülatörlerde render sorununa yol açabiliyor.
 
         // Main Content
         Column(
