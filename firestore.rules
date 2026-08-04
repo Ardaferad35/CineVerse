@@ -137,15 +137,6 @@ service cloud.firestore {
         && data.createdAt is int;
     }
 
-    function isValidFriendDoc(data) {
-      return data.keys().hasOnly(['friendUid', 'username', 'fullName', 'avatarId', 'since'])
-        && data.friendUid is string
-        && data.username is string && data.username.size() > 0 && data.username.size() <= 20
-        && data.fullName is string && data.fullName.size() <= 150
-        && data.avatarId is string
-        && data.since is int;
-    }
-
     // --- movies/{movieId}/comments/{commentId} --------------------------
     // --- tv_shows/{tvId}/comments/{commentId} ---------------------------
     // Yorumlar herkese (giriş yapmış herkese) okunabilir; oluşturma sadece
