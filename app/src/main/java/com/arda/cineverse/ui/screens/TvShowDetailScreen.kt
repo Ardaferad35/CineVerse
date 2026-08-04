@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -86,16 +87,11 @@ import com.arda.cineverse.ui.components.MovieDetailStickyBar
 import com.arda.cineverse.ui.components.OfflineActionSnackbar
 import com.arda.cineverse.ui.components.PopularMovieCard
 import com.arda.cineverse.ui.components.RatingDistributionBar
+import com.arda.cineverse.ui.components.RecommendShareBannerCard
 import com.arda.cineverse.ui.components.RecommendShareSheet
 import com.arda.cineverse.ui.components.rememberOfflineWriteMessageState
 import com.arda.cineverse.ui.components.ReplyInputBox
-import com.arda.cineverse.ui.theme.Background
-import com.arda.cineverse.ui.theme.ErrorColor
-import com.arda.cineverse.ui.theme.OnSurface
-import com.arda.cineverse.ui.theme.Primary
-import com.arda.cineverse.ui.theme.Surface
-import com.arda.cineverse.ui.theme.SurfaceVariant
-import com.arda.cineverse.ui.theme.TextSecondary
+import com.arda.cineverse.ui.theme.*
 import com.arda.cineverse.viewmodel.CommentViewModel
 import com.arda.cineverse.viewmodel.CommentViewModelFactory
 import com.arda.cineverse.viewmodel.RecommendShareViewModel
@@ -357,7 +353,8 @@ fun TvShowDetailScreen(
                         item {
                             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                                 CVGradientButton(
-                                    text = "Fragmani Izle",
+                                    text = "Fragmanı İzle",
+                                    icon = Icons.Filled.PlayArrow,
                                     onClick = { playTrailer(tvShow.trailerKey) },
                                     enabled = tvShow.trailerKey != null,
                                 )
@@ -372,10 +369,15 @@ fun TvShowDetailScreen(
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Icon(Icons.Filled.Add, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        imageVector = if (detailState.isSaved) Icons.Filled.Check else Icons.Filled.Add,
+                                        contentDescription = null,
+                                        tint = Primary,
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        if (detailState.isSaved) "Izleme Listemde" else "Izleme Listeme Ekle",
+                                        if (detailState.isSaved) "İzleme Listemde" else "İzleme Listeme Ekle",
                                         color = Primary,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -385,13 +387,24 @@ fun TvShowDetailScreen(
 
                         item {
                             Column(Modifier.padding(horizontal = 20.dp)) {
-                                Text("Ozet", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text("Özet", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(8.dp))
-                                ExpandableOverview(text = tvShow.overview.ifBlank { "Bu dizi icin ozet bulunamadi." })
+                                ExpandableOverview(text = tvShow.overview.ifBlank { "Bu dizi için özet bulunamadı." })
                                 tvShow.createdBy?.let {
                                     Spacer(Modifier.height(10.dp))
-                                    Text("Olusturan: $it", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    Text("Oluşturan: $it", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 }
+                            }
+                        }
+
+                        item {
+                            Column(Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
+                                RecommendShareBannerCard(
+                                    onRecommendClick = {
+                                        recommendShareViewModel.reset()
+                                        showShareSheet = true
+                                    },
+                                )
                             }
                         }
 
@@ -621,6 +634,7 @@ fun TvShowDetailScreen(
                         mediaId = tvId,
                         mediaType = "tv",
                         mediaTitle = tvShow.name,
+                        posterUrl = tvShow.posterUrl,
                     )
                 },
                 onDismiss = { showShareSheet = false },

@@ -6,9 +6,13 @@ import com.arda.cineverse.data.common.SyncResult
 import com.arda.cineverse.data.connectivity.ConnectivityObserver
 import com.arda.cineverse.data.local.dao.FriendDao
 import com.arda.cineverse.data.local.entity.FriendEntity
+import com.arda.cineverse.data.model.Comment
 import com.arda.cineverse.data.model.Friend
+import com.arda.cineverse.data.model.FriendActivity
+import com.arda.cineverse.data.model.FriendActivityType
 import com.arda.cineverse.data.model.FriendRequest
 import com.arda.cineverse.data.model.FriendSearchResult
+import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.remote.SupabasePushClient
 import com.arda.cineverse.di.AppGraph
 import com.google.firebase.auth.FirebaseAuth
@@ -16,6 +20,8 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
@@ -248,6 +254,186 @@ class FriendRepository @Inject constructor(
                 .documents.mapNotNull { it.toObject(Friend::class.java) }
             friendDao.replaceAll(friends.map { it.toEntity() })
         }.fold(onSuccess = { SyncResult.Success }, onFailure = { SyncResult.Error(it) })
+    }
+
+    /**
+     * Seçilen arkadaşın son favoriye alma, izleme listesine ekleme ve yorum yapma gibi
+     * son 20 etkileşimini getirir.
+     */
+    suspend fun getFriendRecentActivities(friendUid: String): Result<List<FriendActivity>> = runCatching {
+        // 1. Doğrudan 'activities' koleksiyonunu sorgulayalım (En Hızlı & Kesin Yöntem)
+        val directActivities = runCatching {
+            userDoc(friendUid).collection("activities")
+                .get().await()
+                .documents.mapNotNull { doc ->
+                    val typeStr = doc.getString("type") ?: return@mapNotNull null
+                    val type = runCatching { FriendActivityType.valueOf(typeStr) }.getOrNull() ?: return@mapNotNull null
+                    val mediaId = doc.getLong("mediaId")?.toInt() ?: 0
+                    val mediaTitle = doc.getString("mediaTitle") ?: ""
+                    val mediaType = doc.getString("mediaType") ?: "movie"
+                    val posterUrl = doc.getString("posterUrl")
+                    val timestamp = doc.getLong("timestamp") ?: 0L
+                    val rating = doc.getDouble("rating")
+                    val commentText = doc.getString("commentText")
+                    val note = doc.getString("note")
+
+                    FriendActivity(
+                        id = doc.id,
+                        type = type,
+                        mediaId = mediaId,
+                        mediaTitle = mediaTitle,
+                        mediaType = mediaType,
+                        posterUrl = posterUrl,
+                        timestamp = timestamp,
+                        rating = rating,
+                        commentText = commentText,
+                        note = note,
+                    )
+                }
+        }.onFailure { Log.e(TAG, "getFriendRecentActivities: Direk aktiviteler okunamadı ($friendUid)", it) }
+            .getOrDefault(emptyList())
+
+        if (directActivities.isNotEmpty()) {
+            val resolvedActivities = directActivities.map { activity ->
+                if (activity.posterUrl.isNullOrBlank() && activity.mediaId > 0) {
+                    val ratingsCollection = if (activity.mediaType == "tv") "tv_show_ratings" else "movie_ratings"
+                    val ratingDoc = runCatching {
+                        firestore.collection(ratingsCollection).document(activity.mediaId.toString()).get().await()
+                    }.getOrNull()
+                    val poster = ratingDoc?.getString("posterUrl")
+                    if (!poster.isNullOrBlank()) {
+                        activity.copy(posterUrl = poster)
+                    } else activity
+                } else activity
+            }
+            return@runCatching resolvedActivities.sortedByDescending { it.timestamp }.take(20)
+        }
+
+        // 2. Geriye Dönük Uyumluluk (Legacy Fallback): Eski veriler için favoriler, watchlist & yorumları tara
+        val rawActivities = mutableListOf<FriendActivity>()
+
+        coroutineScope {
+            // 1. Favoriler
+            val favTask = async {
+                runCatching {
+                    userDoc(friendUid).collection("favorites")
+                        .get().await()
+                        .documents.mapNotNull { it.toObject(SavedMovie::class.java) }
+                }.onFailure { Log.e(TAG, "getFriendRecentActivities: Favoriler okunamadı ($friendUid)", it) }
+                    .getOrDefault(emptyList())
+            }
+
+            // 2. İzleme Listesi
+            val watchTask = async {
+                runCatching {
+                    userDoc(friendUid).collection("watchlist")
+                        .get().await()
+                        .documents.mapNotNull { it.toObject(SavedMovie::class.java) }
+                }.onFailure { Log.e(TAG, "getFriendRecentActivities: İzleme listesi okunamadı ($friendUid)", it) }
+                    .getOrDefault(emptyList())
+            }
+
+            // 3. Yorumlar / Puanlar
+            val commentsTask = async {
+                runCatching {
+                    firestore.collectionGroup("comments")
+                        .whereEqualTo("userId", friendUid)
+                        .limit(20)
+                        .get().await()
+                        .documents.mapNotNull { doc ->
+                            val comment = doc.toObject(Comment::class.java)?.copy(id = doc.id) ?: return@mapNotNull null
+                            val path = doc.reference.path
+                            val mediaType = if (path.contains("tv_shows")) "tv" else "movie"
+                            Pair(comment, mediaType)
+                        }
+                }.onFailure { Log.e(TAG, "getFriendRecentActivities: Yorumlar okunamadı ($friendUid)", it) }
+                    .getOrDefault(emptyList())
+            }
+
+            val favs = favTask.await()
+            val watchlist = watchTask.await()
+            val commentsWithMediaType = commentsTask.await()
+
+            // Favorilerden başlık ve poster haritası hazırlayalım
+            val mediaTitleMap = mutableMapOf<String, String>()
+            val mediaPosterMap = mutableMapOf<String, String?>()
+
+            favs.forEach { item ->
+                val key = "${item.mediaType}_${item.id}"
+                mediaTitleMap[key] = item.title
+                mediaPosterMap[key] = item.posterUrl
+
+                rawActivities.add(
+                    FriendActivity(
+                        id = "fav_${item.mediaType}_${item.id}",
+                        type = FriendActivityType.FAVORITE,
+                        mediaId = item.id,
+                        mediaTitle = item.title,
+                        mediaType = item.mediaType,
+                        posterUrl = item.posterUrl,
+                        timestamp = if (item.addedAt > 0) item.addedAt else System.currentTimeMillis(),
+                        rating = item.rating,
+                    ),
+                )
+            }
+
+            watchlist.forEach { item ->
+                val key = "${item.mediaType}_${item.id}"
+                if (!mediaTitleMap.containsKey(key)) {
+                    mediaTitleMap[key] = item.title
+                    mediaPosterMap[key] = item.posterUrl
+                }
+
+                rawActivities.add(
+                    FriendActivity(
+                        id = "watch_${item.mediaType}_${item.id}",
+                        type = FriendActivityType.WATCHLIST,
+                        mediaId = item.id,
+                        mediaTitle = item.title,
+                        mediaType = item.mediaType,
+                        posterUrl = item.posterUrl,
+                        timestamp = if (item.addedAt > 0) item.addedAt else System.currentTimeMillis(),
+                        rating = item.rating,
+                    ),
+                )
+            }
+
+            commentsWithMediaType.forEach { (comment, mediaType) ->
+                val key = "${mediaType}_${comment.movieId}"
+                var title = mediaTitleMap[key]
+                var poster = mediaPosterMap[key]
+
+                if (title == null) {
+                    val ratingsCollection = if (mediaType == "tv") "tv_show_ratings" else "movie_ratings"
+                    val ratingDoc = runCatching {
+                        firestore.collection(ratingsCollection).document(comment.movieId.toString()).get().await()
+                    }.getOrNull()
+
+                    if (ratingDoc != null && ratingDoc.exists()) {
+                        title = ratingDoc.getString("title")
+                        poster = ratingDoc.getString("posterUrl")
+                    }
+                }
+
+                val finalTitle = title ?: if (mediaType == "tv") "Dizi #${comment.movieId}" else "Film #${comment.movieId}"
+
+                rawActivities.add(
+                    FriendActivity(
+                        id = "comment_${comment.id}",
+                        type = FriendActivityType.COMMENT,
+                        mediaId = comment.movieId,
+                        mediaTitle = finalTitle,
+                        mediaType = mediaType,
+                        posterUrl = poster,
+                        timestamp = if (comment.createdAt > 0) comment.createdAt else System.currentTimeMillis(),
+                        rating = comment.rating.toDouble(),
+                        commentText = comment.text,
+                    ),
+                )
+            }
+        }
+
+        rawActivities.sortedByDescending { it.timestamp }.take(20)
     }
 
     companion object {

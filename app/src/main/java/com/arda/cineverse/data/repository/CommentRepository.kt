@@ -3,6 +3,7 @@ package com.arda.cineverse.data.repository
 import android.util.Log
 import com.arda.cineverse.data.model.Comment
 import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.remote.SupabasePushClient
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldPath
@@ -153,6 +154,7 @@ class CommentRepository(
             ?: user.email?.substringBefore("@")
             ?: "Kullanıcı"
 
+        val now = System.currentTimeMillis()
         val comment = hashMapOf(
             "movieId" to movieId,
             "userId" to user.uid,
@@ -160,10 +162,29 @@ class CommentRepository(
             "text" to text,
             "rating" to rating,
             "isSpoiler" to isSpoiler,
-            "createdAt" to System.currentTimeMillis(),
+            "createdAt" to now,
             "editedAt" to null,
         )
         commentsCollection(movieId).add(comment).await()
+
+        runCatching {
+            val actId = "comment_${commentsRootCollection}_${movieId}_${now}"
+            firestore.collection("users").document(user.uid)
+                .collection("activities").document(actId).set(
+                    hashMapOf(
+                        "id" to actId,
+                        "type" to "COMMENT",
+                        "mediaId" to movieId,
+                        "mediaTitle" to movieTitle,
+                        "mediaType" to if (commentsRootCollection == "tv_shows") "tv" else "movie",
+                        "posterUrl" to moviePosterUrl,
+                        "timestamp" to now,
+                        "rating" to rating.toDouble(),
+                        "commentText" to text,
+                    ),
+                ).await()
+        }
+
         adjustUserRatingStats(user.uid, sumDelta = rating, countDelta = 1)
         recalculateAggregate(movieId, movieTitle, moviePosterUrl, movieYear, movieGenreIds)
     }
@@ -329,4 +350,61 @@ class CommentRepository(
             posterUrl = doc.getString("posterUrl"),
         )
     }
+
+    /**
+     * Verilen kaydedilmiş içerikler listesi için uygulama içi kullanıcı puanlarını getirir.
+     * Dönüş haritası: "${mediaType}_${id}" -> averageRating
+     */
+    suspend fun getAppRatingsForMediaList(items: List<SavedMovie>): Map<String, Double> = runCatching {
+        if (items.isEmpty()) return emptyMap()
+
+        val movieIds = items.filter { it.mediaType == "movie" }.map { it.id }.distinct()
+        val tvIds = items.filter { it.mediaType == "tv" }.map { it.id }.distinct()
+        val resultMap = mutableMapOf<String, Double>()
+
+        coroutineScope {
+            val movieTask = async {
+                if (movieIds.isNotEmpty()) {
+                    movieIds.chunked(30).forEach { chunk ->
+                        runCatching {
+                            firestore.collection("movie_ratings")
+                                .whereIn(FieldPath.documentId(), chunk.map { it.toString() })
+                                .get()
+                                .await()
+                                .documents
+                                .forEach { doc ->
+                                    val id = doc.getLong("movieId")?.toInt() ?: doc.id.toIntOrNull()
+                                    val rating = doc.getDouble("averageRating") ?: 0.0
+                                    if (id != null) resultMap["movie_$id"] = rating
+                                }
+                        }
+                    }
+                }
+            }
+
+            val tvTask = async {
+                if (tvIds.isNotEmpty()) {
+                    tvIds.chunked(30).forEach { chunk ->
+                        runCatching {
+                            firestore.collection("tv_show_ratings")
+                                .whereIn(FieldPath.documentId(), chunk.map { it.toString() })
+                                .get()
+                                .await()
+                                .documents
+                                .forEach { doc ->
+                                    val id = doc.getLong("movieId")?.toInt() ?: doc.getLong("tvId")?.toInt() ?: doc.id.toIntOrNull()
+                                    val rating = doc.getDouble("averageRating") ?: 0.0
+                                    if (id != null) resultMap["tv_$id"] = rating
+                                }
+                        }
+                    }
+                }
+            }
+
+            movieTask.await()
+            tvTask.await()
+        }
+
+        resultMap
+    }.getOrDefault(emptyMap())
 }

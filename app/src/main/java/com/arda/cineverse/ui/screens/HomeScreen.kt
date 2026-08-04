@@ -639,6 +639,8 @@ fun HomeScreen(
         FriendsPanel(
             visible = showFriendsPanel,
             onDismiss = { showFriendsPanel = false },
+            onMovieClick = onMovieClick,
+            onTvShowClick = onTvShowClick,
         )
     }
 }

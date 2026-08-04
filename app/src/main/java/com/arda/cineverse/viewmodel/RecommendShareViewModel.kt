@@ -69,7 +69,7 @@ class RecommendShareViewModel(
         _uiState.update { it.copy(note = note.take(MAX_NOTE_LENGTH)) }
     }
 
-    fun send(mediaId: Int, mediaType: String, mediaTitle: String) {
+    fun send(mediaId: Int, mediaType: String, mediaTitle: String, posterUrl: String? = null) {
         val state = _uiState.value
         if (!state.canSend) return
         _uiState.update { it.copy(isSending = true, errorMessage = null) }
@@ -80,6 +80,7 @@ class RecommendShareViewModel(
                 mediaId = mediaId,
                 mediaType = mediaType,
                 mediaTitle = mediaTitle,
+                posterUrl = posterUrl,
                 note = state.note.trim(),
             ).fold(
                 onSuccess = {
