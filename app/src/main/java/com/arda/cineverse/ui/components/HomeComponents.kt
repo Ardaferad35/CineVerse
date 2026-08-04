@@ -47,6 +47,7 @@ private val StarColor = Color(0xFFFFC857)
 fun HomeTopBar(
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
+    onFriendsClick: () -> Unit = {},
     unreadNotificationCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
@@ -79,6 +80,17 @@ fun HomeTopBar(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceVariant)
+                    .clickable { onFriendsClick() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Group, contentDescription = "Arkadaşlar", tint = TextSecondary, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(10.dp))
             Box(
                 modifier = Modifier
                     .size(38.dp)

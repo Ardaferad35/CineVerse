@@ -1,7 +1,14 @@
 package com.arda.cineverse.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,18 +22,20 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.PersonSearch
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -48,24 +57,120 @@ import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.FriendsTab
 import com.arda.cineverse.viewmodel.FriendsViewModel
 
+/**
+ * Tam ekran arkadaşlar rotası. Ana sayfadaki kişiler butonu artık bunun
+ * yerine [FriendsPanel]'i açıyor; bu rota, arkadaşlık isteği push bildirimine
+ * tıklanınca (route = "friends", bkz. supabase/functions/friend-push) ve
+ * Profil ekranındaki girişten geliniyor — o yüzden duruyor. İkisi de aynı
+ * [FriendsContent]'i gösteriyor.
+ */
 @Composable
 fun FriendsScreen(
     onBack: () -> Unit = {},
     viewModel: FriendsViewModel = viewModel(),
 ) {
+    Box(modifier = Modifier.fillMaxSize().background(Background)) {
+        FriendsContent(isPanel = false, onClose = onBack, viewModel = viewModel)
+    }
+}
+
+/**
+ * Ana sayfanın üzerine sağdan kayarak gelen arkadaşlar paneli. Genişlik
+ * [PANEL_WIDTH_FRACTION] — yarım ekranda arkadaş satırları (40dp avatar +
+ * isim + @kullanıcı adı + aksiyon butonu) sığmıyor, isimler kesiliyordu.
+ * Arkada kalan ana sayfa karartılıyor ve karartıya dokunmak paneli kapatıyor.
+ */
+@Composable
+fun FriendsPanel(
+    visible: Boolean,
+    onDismiss: () -> Unit,
+) {
+    if (visible) BackHandler(onBack = onDismiss)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.matchParentSize(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    ),
+            )
+        }
+
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInHorizontally(initialOffsetX = { it }),
+            exit = slideOutHorizontally(targetOffsetX = { it }),
+            modifier = Modifier.align(Alignment.CenterEnd),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(PANEL_WIDTH_FRACTION)
+                    .fillMaxHeight()
+                    .background(Background)
+                    // Panelin kendi üstüne yapılan dokunuşlar karartıya
+                    // (dolayısıyla kapatmaya) geçmesin.
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                    ),
+            ) {
+                FriendsContent(isPanel = true, onClose = onDismiss)
+            }
+        }
+    }
+}
+
+private const val PANEL_WIDTH_FRACTION = 0.85f
+
+@Composable
+private fun FriendsContent(
+    isPanel: Boolean,
+    onClose: () -> Unit,
+    viewModel: FriendsViewModel = viewModel(),
+) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize().background(Background)) {
+    // Panel her açıldığında yeniden composition'a girer; ViewModel ana sayfa
+    // giriş noktasına bağlı olduğu için hayatta kalır, bu yüzden gelen
+    // istekleri burada tazeliyoruz.
+    LaunchedEffect(Unit) { viewModel.refresh() }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                if (isPanel) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Arkadaşlar",
+                        color = OnSurface,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = OnSurface)
+                    }
+                } else {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text("Arkadaşlar", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.width(8.dp))
-                Text("Arkadaşlar", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
 
             Spacer(Modifier.height(8.dp))
@@ -77,23 +182,25 @@ fun FriendsScreen(
                     leadingIcon = { Icon(Icons.Filled.PersonSearch, contentDescription = null, tint = TextSecondary) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 )
+                // Arama yazdıkça otomatik yapılıyor (bkz.
+                // FriendsViewModel.onSearchQueryChange) — ayrı bir "Ara"
+                // butonu yok.
                 if (uiState.searchQuery.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
                     when {
                         uiState.isSearching -> CircularProgressIndicator(color = Primary, modifier = Modifier.size(20.dp))
+                        uiState.searchResult != null -> SearchResultRow(
+                            result = uiState.searchResult!!,
+                            alreadyFriend = uiState.isAlreadyFriend,
+                            requestSent = uiState.isRequestSentToResult,
+                            isSending = uiState.sendingRequestUid == uiState.searchResult!!.uid,
+                            onSendRequest = { viewModel.sendFriendRequest(uiState.searchResult!!) },
+                        )
                         uiState.searchError != null -> Text(
                             uiState.searchError!!,
                             color = ErrorColor,
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        uiState.searchResult != null -> SearchResultRow(
-                            result = uiState.searchResult!!,
-                            alreadyFriend = uiState.isAlreadyFriend,
-                            onSendRequest = { viewModel.sendFriendRequest(uiState.searchResult!!) },
-                        )
-                        else -> IconButton(onClick = viewModel::search) {
-                            Icon(Icons.Filled.Search, contentDescription = "Ara", tint = Primary)
-                        }
                     }
                 }
             }
@@ -188,7 +295,13 @@ private fun EmptyState(text: String) {
 }
 
 @Composable
-private fun SearchResultRow(result: FriendSearchResult, alreadyFriend: Boolean, onSendRequest: () -> Unit) {
+private fun SearchResultRow(
+    result: FriendSearchResult,
+    alreadyFriend: Boolean,
+    requestSent: Boolean,
+    isSending: Boolean,
+    onSendRequest: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -209,10 +322,29 @@ private fun SearchResultRow(result: FriendSearchResult, alreadyFriend: Boolean, 
             Text(result.fullName, color = OnSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text("@${result.username}", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
-        if (alreadyFriend) {
-            Text("Arkadaşsınız", color = Primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-        } else {
-            IconButton(onClick = onSendRequest) {
+        when {
+            alreadyFriend -> Text(
+                "Arkadaşsınız",
+                color = Primary,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            isSending -> CircularProgressIndicator(
+                color = Primary,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(20.dp),
+            )
+            requestSent -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Check, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "Gönderildi",
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            else -> IconButton(onClick = onSendRequest) {
                 Icon(Icons.Filled.PersonAdd, contentDescription = "İstek gönder", tint = Primary)
             }
         }
