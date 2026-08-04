@@ -160,4 +160,5 @@ fun TvShow.toHomeMovie(): Movie = Movie(
     rating = rating,
     posterUrl = posterUrl,
     overview = overview,
+    mediaType = "tv",
 )

@@ -114,6 +114,7 @@ fun HomeScreen(
     var showFriendsPanel by rememberSaveable { mutableStateOf(false) }
 
     var quickPreviewData by remember { mutableStateOf<QuickPreviewData?>(null) }
+    var showDiceDialog by remember { mutableStateOf(false) }
     var shareMediaId by remember { mutableStateOf<Int?>(null) }
     var shareMediaType by remember { mutableStateOf<String>("movie") }
     var shareMediaTitle by remember { mutableStateOf<String>("") }
@@ -739,6 +740,25 @@ fun HomeScreen(
             ) {
                 Text(message, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
+        }
+
+        FloatingDiceButton(
+            onClick = { showDiceDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(end = 20.dp, bottom = 80.dp),
+        )
+
+        if (showDiceDialog) {
+            DicePickerDialog(
+                popularMovies = uiState.popularMovies,
+                popularTvShows = uiState.popularTvShows,
+                topRatedMovies = uiState.topRatedMovies,
+                onMovieClick = onMovieClick,
+                onTvShowClick = onTvShowClick,
+                onDismiss = { showDiceDialog = false },
+            )
         }
 
         quickPreviewData?.let { data ->

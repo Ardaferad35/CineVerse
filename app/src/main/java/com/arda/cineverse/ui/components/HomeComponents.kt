@@ -24,7 +24,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -788,6 +796,312 @@ fun SearchSuggestionsList(
             }
             if (index != suggestions.lastIndex) {
                 HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+            }
+        }
+    }
+}
+
+@Composable
+fun FloatingDiceButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(62.dp)
+            .clip(CircleShape)
+            .background(Brush.horizontalGradient(listOf(Color(0xFF7C4DFF), Color(0xFFE040FB))))
+            .border(2.dp, Color.White.copy(alpha = 0.6f), CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Filled.Casino,
+            contentDescription = "Ne İzlesem? Zarı",
+            tint = Color.White,
+            modifier = Modifier.size(32.dp),
+        )
+    }
+}
+
+@Composable
+fun DicePickerDialog(
+    popularMovies: List<Movie>,
+    popularTvShows: List<Movie>,
+    topRatedMovies: List<Movie>,
+    onMovieClick: (Int) -> Unit,
+    onTvShowClick: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var selectedFilter by remember { mutableStateOf("all") }
+    var resultMovie by remember { mutableStateOf<Movie?>(null) }
+    var isSpinning by remember { mutableStateOf(false) }
+
+    val rotation = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val rolledHistory = remember { mutableSetOf<Pair<Int, String>>() }
+
+    fun rollDice() {
+        if (isSpinning) return
+        isSpinning = true
+        resultMovie = null
+
+        scope.launch {
+            rotation.snapTo(0f)
+            rotation.animateTo(
+                targetValue = 1440f,
+                animationSpec = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+            )
+
+            val rawCandidates = mutableListOf<Movie>()
+            when (selectedFilter) {
+                "movie" -> {
+                    rawCandidates.addAll(popularMovies.map { it.copy(mediaType = "movie") })
+                    rawCandidates.addAll(topRatedMovies.map { it.copy(mediaType = "movie") })
+                }
+                "tv" -> {
+                    rawCandidates.addAll(popularTvShows.map { it.copy(mediaType = "tv") })
+                }
+                else -> {
+                    rawCandidates.addAll(popularMovies.map { it.copy(mediaType = "movie") })
+                    rawCandidates.addAll(topRatedMovies.map { it.copy(mediaType = "movie") })
+                    rawCandidates.addAll(popularTvShows.map { it.copy(mediaType = "tv") })
+                }
+            }
+
+            val distinctCandidates = rawCandidates.distinctBy { Pair(it.id, it.mediaType) }
+            var unrolled = distinctCandidates.filterNot { Pair(it.id, it.mediaType) in rolledHistory }
+            if (unrolled.isEmpty() && distinctCandidates.isNotEmpty()) {
+                rolledHistory.clear()
+                unrolled = distinctCandidates
+            }
+
+            val picked = if (unrolled.isNotEmpty()) unrolled.random() else null
+            picked?.let { rolledHistory.add(Pair(it.id, it.mediaType)) }
+            resultMovie = picked
+            isSpinning = false
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.88f)
+                .widthIn(max = 335.dp)
+                .clip(RoundedCornerShape(26.dp))
+                .background(Color(0xFF161224))
+                .border(
+                    width = 1.5.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color(0xFFAB47BC),
+                            Color(0xFF7C4DFF),
+                            Color(0xFFAB47BC).copy(alpha = 0.3f),
+                        ),
+                    ),
+                    shape = RoundedCornerShape(26.dp),
+                )
+                .padding(20.dp),
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.align(Alignment.CenterStart),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Filled.Casino,
+                            contentDescription = null,
+                            tint = StarColor,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .graphicsLayer { rotationZ = rotation.value },
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Ne İzlesem? Zarı 🎲",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF2C2443)),
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("all" to "Hepsi 🌟", "movie" to "Film 🎬", "tv" to "Dizi 📺").forEach { (type, label) ->
+                            val isSelected = selectedFilter == type
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isSelected) Color(0xFF7C4DFF) else Color(0xFF29213D))
+                                    .clickable { selectedFilter = type }
+                                    .padding(horizontal = 13.dp, vertical = 8.dp),
+                            ) {
+                                Text(
+                                    label,
+                                    color = if (isSelected) Color.White else Color(0xFFC0C0E0),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(82.dp)
+                        .clip(CircleShape)
+                        .background(Brush.horizontalGradient(listOf(Color(0xFF7C4DFF), Color(0xFFE040FB))))
+                        .clickable(enabled = !isSpinning) { rollDice() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Filled.Casino,
+                        contentDescription = "Zar At",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .graphicsLayer { rotationZ = rotation.value },
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    if (isSpinning) "Zar Dönüyor..." else "Zarı Çevirmek İçin Bas! 🎲",
+                    color = Color(0xFFE0E0FF),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                resultMovie?.let { movie ->
+                    Spacer(Modifier.height(16.dp))
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn() + scaleIn(),
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF231C38))
+                                .border(1.5.dp, Color(0xFF7C4DFF).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                                .padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (movie.posterUrl != null) {
+                                    AsyncImage(
+                                        model = movie.posterUrl,
+                                        contentDescription = movie.title,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(width = 54.dp, height = 78.dp)
+                                            .clip(RoundedCornerShape(10.dp)),
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(Color(0xFF7C4DFF))
+                                                .padding(horizontal = 7.dp, vertical = 2.5.dp),
+                                        ) {
+                                            Text(
+                                                if (movie.mediaType == "tv") "DİZİ" else "FİLM",
+                                                color = Color.White,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                            )
+                                        }
+                                        Spacer(Modifier.width(6.dp))
+                                        Icon(Icons.Filled.Star, contentDescription = null, tint = StarColor, modifier = Modifier.size(13.dp))
+                                        Spacer(Modifier.width(3.dp))
+                                        Text("${movie.rating}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        movie.year?.let { y ->
+                                            Spacer(Modifier.width(6.dp))
+                                            Text("• $y", color = Color(0xFFB0B0D0), fontSize = 11.sp)
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(5.dp))
+
+                                    Text(
+                                        movie.title,
+                                        color = Color.White,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFF7C4DFF))
+                                        .clickable {
+                                            onDismiss()
+                                            if (movie.mediaType == "tv") onTvShowClick(movie.id) else onMovieClick(movie.id)
+                                        }
+                                        .padding(vertical = 9.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text("Detayları Gör 🎬", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFF352B52))
+                                        .clickable { rollDice() }
+                                        .padding(vertical = 9.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text("Tekrar At 🎲", color = Color(0xFFE0E0FF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
