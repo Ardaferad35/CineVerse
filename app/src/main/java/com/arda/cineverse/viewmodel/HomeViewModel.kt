@@ -38,6 +38,7 @@ data class HomeUiState(
     val featuredMovie: FeaturedMovie? = null,
     val featuredTvShow: FeaturedTvShow? = null,
     val popularMovies: List<Movie> = emptyList(),
+    val popularTvShows: List<Movie> = emptyList(),
     val topRatedMovies: List<Movie> = emptyList(),
     val upcomingMovies: List<UpcomingMovie> = emptyList(),
     val onAirTvShows: List<Movie> = emptyList(),
@@ -96,6 +97,7 @@ class HomeViewModel @Inject constructor(
     init {
         observeCache()
         observeLastSyncedAt()
+        observeTvShowsForDice()
         // İlk açılışta (ve her yeniden bağlantı kurulduğunda) taze veri çek.
         // Offline'ken observeCache() zaten Room'daki son senkronize veriyi
         // anında gösteriyor, bu yüzden burada beklemeye gerek yok.
@@ -169,6 +171,14 @@ class HomeViewModel @Inject constructor(
         }.launchIn(viewModelScope)
     }
 
+    private fun observeTvShowsForDice() {
+        combine(tvRepository.observePopularTvShows(), tvRepository.observeOnAirTvShows()) { popular, onAir ->
+            (popular + onAir).map { it.toHomeMovie() }.distinctBy { it.id }
+        }.onEach { tvList ->
+            _uiState.value = _uiState.value.copy(popularTvShows = tvList)
+        }.launchIn(viewModelScope)
+    }
+
     private fun movieCacheFlow(): kotlinx.coroutines.flow.Flow<HomeCacheSnapshot> {
         val core = combine(
             repository.observePopularMovies(),
@@ -219,6 +229,7 @@ class HomeViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isSyncing = true)
         val results = if (isTvModeFlow.value) {
             coroutineScope {
+                launch { repository.refreshPopularMovies() }
                 listOf(
                     async { tvRepository.refreshPopularTvShows() },
                     async { tvRepository.refreshOnAirTvShows() },
@@ -229,6 +240,8 @@ class HomeViewModel @Inject constructor(
             }
         } else {
             coroutineScope {
+                launch { tvRepository.refreshPopularTvShows() }
+                launch { tvRepository.refreshOnAirTvShows() }
                 listOf(
                     async { repository.refreshPopularMovies() },
                     async { repository.refreshTopRatedMovies() },
