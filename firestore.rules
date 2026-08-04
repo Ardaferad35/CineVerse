@@ -9,11 +9,12 @@ rules_version = '2';
 // atlanabilir (reverse-engineer edilmiş bir istemci veya doğrudan REST/gRPC
 // çağrısıyla).
 //
-// İSTİSNA: functions/ altındaki Cloud Functions, Admin SDK kullanır ve bu
-// kuralların TAMAMINI bypass eder (Admin SDK'ya rules uygulanmaz). Bu yüzden
-// "friends/" gibi bazı alt koleksiyonlarda client'a KAPALI olan bir işlem
-// (ör. create) yine de Cloud Function üzerinden çalışabiliyor — bkz. ilgili
-// yorum satırları.
+// İSTİSNA: sunucu tarafı kod bu kuralların TAMAMINI bypass eder — hem
+// functions/ altındaki Cloud Functions (Admin SDK) hem de asıl kullanılan
+// supabase/functions/friend-push Edge Function'ı (Firebase servis hesabıyla
+// Firestore REST). Bu yüzden "friends/" ve "notifications/" gibi bazı alt
+// koleksiyonlarda client'a TAMAMEN KAPALI olan create işlemleri yine de
+// sunucu üzerinden çalışıyor — bkz. ilgili yorum satırları.
 //
 // Deploy: `firebase deploy --only firestore:rules`
 
@@ -93,30 +94,23 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
-      // Bildirimler: SADECE sahibi okuyabilir/silebilir. Ancak "create"
-      // BAŞKA bir kullanıcı tarafından yapılabilmeli — biri sizin yorumunuza
-      // yanıt verdiğinde KENDİ cihazından SİZİN bildirim kutunuza yazıyor
-      // (bkz. NotificationRepository.createNotification). Bu yüzden yazma
-      // izni sahiplikle değil, isValidNotification() ile (dar bir alan/tip
-      // doğrulamasıyla) sınırlanıyor.
+      // Bildirimler: SADECE sahibi okuyabilir/silebilir. "create" HİÇBİR
+      // istemciye açık değil — bildirim belgelerini artık yalnızca
+      // supabase/functions/friend-push Edge Function'ı bir servis hesabıyla
+      // (bu kuralları bypass ederek) yazıyor; arkadaşlık isteği/kabulü VE
+      // yorum yanıtı için. Eskiden create, dar bir alan doğrulamasıyla her
+      // giriş yapmış kullanıcıya açıktı (yorum yanıtı bildirimini yanıtı
+      // yazanın cihazı yazıyordu) — bu, herkesin herkesin bildirim kutusuna
+      // istediği başlık/metni yazabilmesi anlamına geliyordu; kapatıldı.
       match /notifications/{notificationId} {
         allow read, delete: if isOwner(uid);
-        allow create: if isSignedIn() && isValidNotification(request.resource.data);
+        allow create: if false;
         // Güncelleme sadece bildirim sahibine ve sadece isRead alanına açık
         // (markAsRead/markAllAsRead) — içerik sonradan değiştirilemez.
         allow update: if isOwner(uid)
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead'])
           && request.resource.data.isRead is bool;
       }
-    }
-
-    function isValidNotification(data) {
-      return data.keys().hasOnly(['type', 'title', 'body', 'movieId', 'tvId', 'mediaType', 'isRead', 'createdAt'])
-        && data.type in ['comment_reply']
-        && data.title is string && data.title.size() > 0 && data.title.size() <= 150
-        && data.body is string && data.body.size() > 0 && data.body.size() <= 500
-        && data.isRead == false
-        && data.createdAt is int;
     }
 
     // --- usernames/{username} --------------------------------------------

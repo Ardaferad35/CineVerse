@@ -1,4 +1,8 @@
-// CineVerse: arkadaşlık isteği/kabulü bildirimleri + FCM push.
+// CineVerse: arkadaşlık isteği/kabulü + yorum yanıtı bildirimleri + FCM push.
+//
+// NOT: fonksiyonun adı ("friend-push") tarihsel — ilk olarak sadece arkadaşlık
+// için yazıldı, sonra yorum yanıtları da buraya taşındı. Deploy edilmiş URL'i
+// kırmamak için adı değiştirilmedi.
 //
 // Firestore, Google'a özel bir tetikleyici mekanizmasına (Cloud Functions)
 // sahip; Supabase bunu göremez — bu yüzden mimari burada Cloud
@@ -39,14 +43,19 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-/** Çağıranın Firebase ID token'ını doğrular, doğrulanmış uid'i (sub) döner. */
-async function verifyFirebaseIdToken(idToken: string): Promise<string> {
+interface VerifiedCaller {
+  uid: string;
+  email: string | null;
+}
+
+/** Çağıranın Firebase ID token'ını doğrular, doğrulanmış kimliğini döner. */
+async function verifyFirebaseIdToken(idToken: string): Promise<VerifiedCaller> {
   const { payload } = await jwtVerify(idToken, idTokenJwks, {
     issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
     audience: FIREBASE_PROJECT_ID,
   });
   if (!payload.sub) throw new Error("Token içinde sub (uid) yok");
-  return payload.sub;
+  return { uid: payload.sub, email: typeof payload.email === "string" ? payload.email : null };
 }
 
 // --- Google servis hesabı OAuth2 access token'ı (Firestore REST + FCM için) ---
@@ -242,7 +251,21 @@ interface AcceptPayload {
   fromUid: string;
 }
 
-type Payload = RequestPayload | AcceptPayload;
+/**
+ * Yorum yanıtı. Bildirimin KİME gideceği (targetUid) istemciden ALINMIYOR —
+ * sunucu yanıtlanan yorumu Firestore'dan okuyup sahibini kendisi buluyor,
+ * aksi halde herkes herkesin bildirim kutusuna istediği metni yazdırabilirdi.
+ */
+interface CommentReplyPayload {
+  action: "comment_reply";
+  rootCollection: string; // "movies" | "tv_shows"
+  mediaId: number;
+  mediaTitle: string;
+  parentCommentId: string;
+  text: string;
+}
+
+type Payload = RequestPayload | AcceptPayload | CommentReplyPayload;
 
 async function handleRequest(payload: RequestPayload, verifiedUid: string): Promise<Response> {
   if (verifiedUid !== payload.fromUid) {
@@ -308,6 +331,70 @@ async function handleAccept(payload: AcceptPayload, verifiedUid: string): Promis
   return jsonResponse({ ok: true });
 }
 
+const MAX_TITLE_LENGTH = 150;
+const MAX_BODY_LENGTH = 500;
+const COMMENT_ROOT_COLLECTIONS = ["movies", "tv_shows"];
+// Firestore'un otomatik ürettiği belge ID'leri 20 karakter alfanümeriktir;
+// kalıp aynı zamanda REST yoluna "/" veya ".." enjekte edilmesini engelliyor.
+const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+async function handleCommentReply(
+  payload: CommentReplyPayload,
+  caller: VerifiedCaller,
+): Promise<Response> {
+  if (!COMMENT_ROOT_COLLECTIONS.includes(payload.rootCollection)) {
+    return jsonResponse({ ok: false, error: "Geçersiz rootCollection" }, 400);
+  }
+  if (!Number.isInteger(payload.mediaId) || payload.mediaId <= 0) {
+    return jsonResponse({ ok: false, error: "Geçersiz mediaId" }, 400);
+  }
+  if (!DOCUMENT_ID_PATTERN.test(payload.parentCommentId ?? "")) {
+    return jsonResponse({ ok: false, error: "Geçersiz parentCommentId" }, 400);
+  }
+  const text = (payload.text ?? "").trim();
+  if (text.length === 0) {
+    return jsonResponse({ ok: false, error: "Yanıt metni boş" }, 400);
+  }
+
+  const parentComment = await firestoreGet(
+    `${payload.rootCollection}/${payload.mediaId}/comments/${payload.parentCommentId}`,
+  );
+  if (!parentComment) {
+    return jsonResponse({ ok: false, error: "Yanıtlanan yorum bulunamadı" }, 404);
+  }
+  const targetUid = parentComment.userId;
+  if (!targetUid) {
+    return jsonResponse({ ok: false, error: "Yorumda userId yok" }, 400);
+  }
+  // Kendi yorumuna yanıt verene bildirim gitmez. İstemci de bunu kontrol
+  // ediyor (bkz. CommentRepository.addReply) ama asıl karar burada.
+  if (targetUid === caller.uid) {
+    return jsonResponse({ ok: true, skipped: "self_reply" });
+  }
+
+  const me = await firestoreGet(`users/${caller.uid}`);
+  const displayName = me?.fullName || me?.username || caller.email?.split("@")[0] || "Kullanıcı";
+  const isTvShow = payload.rootCollection === "tv_shows";
+  const mediaTitle = (payload.mediaTitle ?? "").slice(0, 100);
+  const title = `${displayName} yorumunuza yanıt verdi`.slice(0, MAX_TITLE_LENGTH);
+  const body = `"${mediaTitle}" ${isTvShow ? "dizisindeki" : "filmindeki"} yorumunuza: ${text.slice(0, 80)}`
+    .slice(0, MAX_BODY_LENGTH);
+  const route = isTvShow ? `tv_detail/${payload.mediaId}` : `movie_detail/${payload.mediaId}`;
+
+  await firestoreAdd(`users/${targetUid}/notifications`, {
+    type: "comment_reply",
+    title,
+    body,
+    movieId: isTvShow ? null : payload.mediaId,
+    tvId: isTvShow ? payload.mediaId : null,
+    mediaType: isTvShow ? "tv" : "movie",
+    isRead: false,
+    createdAt: Date.now(),
+  });
+  await sendPush(targetUid, { type: "comment_reply", title, body, route });
+  return jsonResponse({ ok: true });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -318,17 +405,18 @@ Deno.serve(async (req) => {
     if (!idToken) {
       return jsonResponse({ ok: false, error: "X-Firebase-Id-Token eksik" }, 401);
     }
-    let verifiedUid: string;
+    let caller: VerifiedCaller;
     try {
-      verifiedUid = await verifyFirebaseIdToken(idToken);
+      caller = await verifyFirebaseIdToken(idToken);
     } catch (error) {
       console.warn("Firebase ID token doğrulaması başarısız:", error);
       return jsonResponse({ ok: false, error: "Geçersiz veya süresi dolmuş token" }, 401);
     }
     const payload = (await req.json()) as Payload;
 
-    if (payload.action === "request") return await handleRequest(payload, verifiedUid);
-    if (payload.action === "accept") return await handleAccept(payload, verifiedUid);
+    if (payload.action === "request") return await handleRequest(payload, caller.uid);
+    if (payload.action === "accept") return await handleAccept(payload, caller.uid);
+    if (payload.action === "comment_reply") return await handleCommentReply(payload, caller);
     return jsonResponse({ ok: false, error: "Bilinmeyen action" }, 400);
   } catch (error) {
     console.error("friend-push hata:", error);
