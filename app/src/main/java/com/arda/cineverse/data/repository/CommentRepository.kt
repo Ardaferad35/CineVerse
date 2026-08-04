@@ -1,13 +1,17 @@
 package com.arda.cineverse.data.repository
 
+import android.util.Log
 import com.arda.cineverse.data.model.Comment
 import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.remote.SupabasePushClient
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import kotlin.math.round
+
+private const val TAG = "CineVersePush"
 
 class CommentRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -47,8 +51,15 @@ class CommentRepository(
      * Bir yoruma yanıt yazar. Asıl yorumlardan farklı olarak film puanını
      * ETKİLEMEZ (movie_ratings'e dahil edilmez, kullanıcının kendi puan
      * istatistiğini de değiştirmez) — sadece bir sohbet cevabıdır.
-     * Yanıt, o yorumun sahibine (kendi yorumunuza yanıt vermiyorsanız)
-     * bir bildirim gönderir.
+     *
+     * Yanıt, o yorumun sahibine (kendi yorumunuza yanıt vermiyorsanız) hem
+     * uygulama içi bildirim hem FCM push gönderir. İkisini de Supabase Edge
+     * Function yazıyor/gönderiyor (bkz. supabase/functions/friend-push,
+     * [SupabasePushClient]) — istemcinin "notifications" koleksiyonuna
+     * doğrudan yazma izni YOK (bkz. firestore.rules), çünkü eskiden herkes
+     * herkesin bildirim kutusuna dilediği metni yazabiliyordu. Bu çağrı
+     * başarısız olsa bile yanıtın kendisi zaten kaydedilmiştir, bu yüzden
+     * hata yutulup loglanıyor.
      */
     suspend fun addReply(
         movieId: Int,
@@ -77,20 +88,28 @@ class CommentRepository(
         )
         commentsCollection(movieId).add(reply).await()
 
-        // Kendi yorumunuza yanıt veriyorsanız kendinize bildirim gitmesin
-        if (parentCommentUserId != user.uid) {
-            val isTvShow = commentsRootCollection == "tv_shows"
-            val notificationRepository = NotificationRepository(firestore, auth)
-            notificationRepository.createNotification(
-                targetUserId = parentCommentUserId,
-                type = "comment_reply",
-                title = "$displayName yorumunuza yanıt verdi",
-                body = "\"$movieTitle\" filmindeki yorumunuza: ${text.take(80)}",
-                movieId = movieId.takeIf { !isTvShow },
-                tvId = movieId.takeIf { isTvShow },
-                mediaType = if (isTvShow) "tv" else "movie",
-            )
+        // Kendi yorumunuza yanıt veriyorsanız kendinize bildirim gitmesin.
+        // (Sunucu bunu ayrıca kendi de eliyor — burada sadece gereksiz bir
+        // HTTP çağrısından kaçınıyoruz.)
+        if (parentCommentUserId == user.uid) return@runCatching
+
+        val idToken = runCatching { user.getIdToken(false).await()?.token }
+            .onFailure { Log.e(TAG, "addReply: ID token alınamadı", it) }
+            .getOrNull()
+        if (idToken == null) {
+            Log.w(TAG, "addReply: ID token yok, yorum yanıtı bildirimi ATLANIYOR")
+            return@runCatching
         }
+        runCatching {
+            SupabasePushClient.notifyCommentReply(
+                idToken = idToken,
+                rootCollection = commentsRootCollection,
+                mediaId = movieId,
+                mediaTitle = movieTitle,
+                parentCommentId = parentCommentId,
+                text = text,
+            )
+        }.onFailure { Log.e(TAG, "addReply: yorum yanıtı bildirimi BAŞARISIZ", it) }
     }
 
     suspend fun addComment(

@@ -17,14 +17,20 @@ private const val TAG = "CineVersePush"
  * Firestore, Cloud Functions gibi Google'a özel bir tetikleyici mekanizmasına
  * sahip; Blaze'e geçmeden ücretsiz kalabilmek için bu proje onun yerine
  * Supabase Edge Functions kullanıyor (bkz. supabase/functions/friend-push).
- * Bu yüzden mimari FARKLI: otomatik tetiklenmiyor — Firestore'a yazdıktan
- * HEMEN SONRA bu istemci fonksiyonu KENDİSİ, açıkça çağırıyor (bkz.
- * FriendRepository.sendFriendRequest / acceptFriendRequest). Çağrı
- * başarısız olsa bile ana işlem (Firestore yazımı) zaten tamamlanmış olur —
- * bu sadece push bildiriminin gönderilmesini sağlar, başarısızlığı sessizce
- * yutulur (bkz. çağıran taraftaki runCatching).
+ * Bu yüzden mimari FARKLI: otomatik tetiklenmiyor — asıl işlem (arkadaşlık
+ * isteği, yorum yanıtı) Firestore'a yazıldıktan HEMEN SONRA bu istemci
+ * fonksiyonu KENDİSİ, açıkça çağırıyor.
+ *
+ * Fonksiyonun uzaktaki adı hâlâ "friend-push" — tarihsel, ilk olarak sadece
+ * arkadaşlık için yazılmıştı; deploy edilmiş URL'i kırmamak için değiştirilmedi.
+ *
+ * DİKKAT: Bu çağrı artık best-effort DEĞİL — bildirim belgesini de Edge
+ * Function yazıyor (client'ın "notifications" koleksiyonuna yazma izni yok,
+ * bkz. firestore.rules). Çağrı başarısız olursa karşı taraf ne push ne de
+ * uygulama içi bildirim görür; asıl işlem (yorum/istek) yine de kaydedilmiş
+ * olur, bu yüzden çağıranlar hatayı yutup logluyor.
  */
-object SupabaseFriendPushClient {
+object SupabasePushClient {
 
     private val client = OkHttpClient()
     private val gson = Gson()
@@ -55,7 +61,33 @@ object SupabaseFriendPushClient {
         send(idToken, mapOf("action" to "accept", "uid" to uid, "fromUid" to fromUid))
     }
 
-    private suspend fun send(idToken: String, body: Map<String, String>) {
+    /**
+     * Yanıtın KİME gideceği bilerek gönderilmiyor — Edge Function
+     * [parentCommentId]'yi Firestore'dan okuyup yorumun sahibini kendisi
+     * buluyor. Kendi yorumuna yanıt verme durumunu da sunucu ayrıca eliyor.
+     */
+    suspend fun notifyCommentReply(
+        idToken: String,
+        rootCollection: String,
+        mediaId: Int,
+        mediaTitle: String,
+        parentCommentId: String,
+        text: String,
+    ) {
+        send(
+            idToken,
+            mapOf(
+                "action" to "comment_reply",
+                "rootCollection" to rootCollection,
+                "mediaId" to mediaId,
+                "mediaTitle" to mediaTitle,
+                "parentCommentId" to parentCommentId,
+                "text" to text,
+            ),
+        )
+    }
+
+    private suspend fun send(idToken: String, body: Map<String, Any?>) {
         if (BuildConfig.SUPABASE_URL.isBlank()) {
             // BuildConfig.SUPABASE_URL boşsa, ya local.properties'e SUPABASE_URL
             // hiç eklenmemiş ya da eklendikten SONRA uygulama temiz bir şekilde

@@ -9,7 +9,7 @@ import com.arda.cineverse.data.local.entity.FriendEntity
 import com.arda.cineverse.data.model.Friend
 import com.arda.cineverse.data.model.FriendRequest
 import com.arda.cineverse.data.model.FriendSearchResult
-import com.arda.cineverse.data.remote.SupabaseFriendPushClient
+import com.arda.cineverse.data.remote.SupabasePushClient
 import com.arda.cineverse.di.AppGraph
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -32,7 +32,7 @@ class UsernameTakenException : Exception("Bu kullanıcı adı zaten alınmış")
  * kaynak, Room ("friends") SALT-OKUNUR bir çevrimdışı ayna.
  *
  * Push bildirimi: arkadaşlık isteği/kabulü sonrası Supabase Edge Function'ı
- * (bkz. supabase/functions/friend-push, [SupabaseFriendPushClient]) HTTP ile
+ * (bkz. supabase/functions/friend-push, [SupabasePushClient]) HTTP ile
  * çağrılır — Firestore'un Cloud Functions gibi otomatik bir tetikleyicisi
  * Supabase'e görünmediği için bu çağrı burada AÇIKÇA yapılıyor. Bu çağrı
  * başarısız olsa bile asıl işlem (Firestore yazımı) zaten tamamlanmıştır,
@@ -152,7 +152,7 @@ class FriendRepository @Inject constructor(
                 Log.w(TAG, "sendFriendRequest: ID token yok, Supabase push çağrısı ATLANIYOR")
             } else {
                 runCatching {
-                    SupabaseFriendPushClient.notifyFriendRequest(
+                    SupabasePushClient.notifyFriendRequest(
                         idToken = idToken,
                         targetUid = target.uid,
                         fromUid = uid,
@@ -201,7 +201,7 @@ class FriendRepository @Inject constructor(
                 Log.w(TAG, "acceptFriendRequest: ID token yok, Supabase push çağrısı ATLANIYOR")
             } else {
                 runCatching {
-                    SupabaseFriendPushClient.notifyFriendRequestAccepted(
+                    SupabasePushClient.notifyFriendRequestAccepted(
                         idToken = idToken,
                         uid = uid,
                         fromUid = request.fromUid,
