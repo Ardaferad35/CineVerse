@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,6 +106,11 @@ fun HomeScreen(
     // koruyor ve seçici ile gösterilen içerik birbirinden kopuyordu.
     val selectedHomeMode = if (uiState.isTvMode) HomeMode.TV_SHOWS else HomeMode.MOVIES
     val unreadCount by notificationViewModel.unreadCount.collectAsState()
+
+    // Arkadaşlar artık ayrı bir sayfaya gitmek yerine ana sayfanın üstünde
+    // sağdan açılan bir panelde (bkz. FriendsPanel). Tam ekran "friends"
+    // rotası duruyor — push bildirimi ve Profil girişi oraya gidiyor.
+    var showFriendsPanel by rememberSaveable { mutableStateOf(false) }
 
     val userListRepository = remember { UserListRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
@@ -274,6 +280,7 @@ fun HomeScreen(
             HomeTopBar(
                 onProfileClick = onProfileClick,
                 onNotificationsClick = onNotificationsClick,
+                onFriendsClick = { showFriendsPanel = true },
                 unreadNotificationCount = unreadCount,
             )
             Spacer(Modifier.height(12.dp))
@@ -624,5 +631,11 @@ fun HomeScreen(
                 Text(message, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
+
+        // En üstte: alt navigasyon çubuğunu ve mesajları da örtmeli.
+        FriendsPanel(
+            visible = showFriendsPanel,
+            onDismiss = { showFriendsPanel = false },
+        )
     }
 }

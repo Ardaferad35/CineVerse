@@ -6,6 +6,8 @@ import com.arda.cineverse.data.model.Friend
 import com.arda.cineverse.data.model.FriendRequest
 import com.arda.cineverse.data.model.FriendSearchResult
 import com.arda.cineverse.data.repository.FriendRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -21,12 +23,25 @@ data class FriendsUiState(
     val searchResult: FriendSearchResult? = null,
     val searchError: String? = null,
     val isSearching: Boolean = false,
+    // İsteği gönderilmekte olan kullanıcı — buton bu sırada kilitli kalır ki
+    // arka arkaya basılıp aynı kişiye ikinci bir istek denenmesin (ikincisi
+    // firestore.rules'ta create-only kuralına takılıp hata döndürürdü).
+    val sendingRequestUid: String? = null,
+    // Bu oturumda istek gönderilen kullanıcılar. Firestore'dan okunamıyor:
+    // friendRequests/{fromUid} belgesini SADECE alıcı okuyabiliyor (bkz.
+    // firestore.rules), gönderen kendi gönderdiği isteği göremiyor. Bu yüzden
+    // "Gönderildi" bilgisi bellekte tutuluyor — uygulama yeniden açılınca
+    // sıfırlanır.
+    val sentRequestUids: Set<String> = emptySet(),
     // Kısa süreliğine gösterilecek toast benzeri mesaj (istek gönderildi,
     // offline hatası, vb.) — bkz. MyListViewModel.offlineMessage deseni.
     val actionMessage: String? = null,
 ) {
     val isAlreadyFriend: Boolean
         get() = searchResult != null && friends.any { it.friendUid == searchResult.uid }
+
+    val isRequestSentToResult: Boolean
+        get() = searchResult != null && searchResult.uid in sentRequestUids
 }
 
 class FriendsViewModel(
@@ -35,6 +50,8 @@ class FriendsViewModel(
 
     private val _uiState = MutableStateFlow(FriendsUiState())
     val uiState: StateFlow<FriendsUiState> = _uiState
+
+    private var searchJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -71,12 +88,28 @@ class FriendsViewModel(
         }
     }
 
+    /**
+     * Yazdıkça arar — ayrı bir "Ara" butonuna basmaya gerek yok. Her tuş
+     * vuruşunda sorgu atmamak için önceki bekleyen arama iptal edilip
+     * [SEARCH_DEBOUNCE_MS] kadar bekleniyor. Kullanıcı adları en az 3 karakter
+     * olduğundan (bkz. FriendRepository.USERNAME_REGEX) daha kısa girdilerde
+     * hiç sorgu atılmıyor — aksi halde her "a" harfinde boşuna bir Firestore
+     * okuması ve anlık "Kullanıcı bulunamadı" hatası görünürdü.
+     */
     fun onSearchQueryChange(query: String) {
+        val normalized = query.lowercase()
         _uiState.value = _uiState.value.copy(
-            searchQuery = query.lowercase(),
+            searchQuery = normalized,
             searchResult = null,
             searchError = null,
+            isSearching = false,
         )
+        searchJob?.cancel()
+        if (normalized.trim().length < MIN_SEARCH_LENGTH) return
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            search()
+        }
     }
 
     fun search() {
@@ -102,18 +135,28 @@ class FriendsViewModel(
         }
     }
 
+    /**
+     * Sonucu ekrandan KALDIRMIYORUZ — kart yerinde kalıp butonu "Gönderildi"ye
+     * dönüşüyor. Eskiden arama kutusu da temizlendiğinden kart bir anda yok
+     * oluyordu ve isteğin gerçekten gidip gitmediği belirsiz kalıyordu.
+     */
     fun sendFriendRequest(target: FriendSearchResult) {
+        if (_uiState.value.sendingRequestUid != null) return
+        _uiState.value = _uiState.value.copy(sendingRequestUid = target.uid)
         viewModelScope.launch {
             repository.sendFriendRequest(target).fold(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(
-                        actionMessage = "İstek gönderildi",
-                        searchResult = null,
-                        searchQuery = "",
+                        sendingRequestUid = null,
+                        sentRequestUids = _uiState.value.sentRequestUids + target.uid,
+                        actionMessage = "@${target.username} kullanıcısına istek gönderildi",
                     )
                 },
                 onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(actionMessage = error.message ?: "İstek gönderilemedi")
+                    _uiState.value = _uiState.value.copy(
+                        sendingRequestUid = null,
+                        actionMessage = error.message ?: "İstek gönderilemedi",
+                    )
                 },
             )
         }
@@ -152,5 +195,10 @@ class FriendsViewModel(
 
     fun clearActionMessage() {
         _uiState.value = _uiState.value.copy(actionMessage = null)
+    }
+
+    private companion object {
+        const val SEARCH_DEBOUNCE_MS = 400L
+        const val MIN_SEARCH_LENGTH = 3
     }
 }
