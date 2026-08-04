@@ -86,6 +86,7 @@ import com.arda.cineverse.ui.components.MovieDetailStickyBar
 import com.arda.cineverse.ui.components.OfflineActionSnackbar
 import com.arda.cineverse.ui.components.PopularMovieCard
 import com.arda.cineverse.ui.components.RatingDistributionBar
+import com.arda.cineverse.ui.components.RecommendShareSheet
 import com.arda.cineverse.ui.components.rememberOfflineWriteMessageState
 import com.arda.cineverse.ui.components.ReplyInputBox
 import com.arda.cineverse.ui.theme.Background
@@ -97,6 +98,7 @@ import com.arda.cineverse.ui.theme.SurfaceVariant
 import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.CommentViewModel
 import com.arda.cineverse.viewmodel.CommentViewModelFactory
+import com.arda.cineverse.viewmodel.RecommendShareViewModel
 import com.arda.cineverse.viewmodel.TvShowDetailViewModel
 import com.arda.cineverse.viewmodel.TvShowDetailViewModelFactory
 import kotlinx.coroutines.launch
@@ -180,17 +182,20 @@ fun TvShowDetailScreen(
     var replyingToComment by remember { mutableStateOf<Comment?>(null) }
     val commentBoxRequester = remember { BringIntoViewRequester() }
 
+    val recommendShareViewModel: RecommendShareViewModel = viewModel()
+    val shareState by recommendShareViewModel.uiState.collectAsState()
+    var showShareSheet by remember { mutableStateOf(false) }
+    var shareSentMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(shareState.sentCount) {
+        val count = shareState.sentCount ?: return@LaunchedEffect
+        showShareSheet = false
+        shareSentMessage = if (count == 1) "Önerin gönderildi" else "$count arkadaşına önerin gönderildi"
+    }
+
     fun playTrailer(key: String?) {
         if (key.isNullOrBlank()) return
         context.startActivity(Intent(Intent.ACTION_VIEW, "https://www.youtube.com/watch?v=$key".toUri()))
-    }
-
-    fun shareTvShow(name: String) {
-        val sendIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "CineVerse'de \"$name\" dizisine göz at!")
-        }
-        context.startActivity(Intent.createChooser(sendIntent, "Paylaş"))
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
@@ -276,7 +281,13 @@ fun TvShowDetailScreen(
                                             tint = if (detailState.isSaved) Primary else OverlayIconColor,
                                             onClick = { tvShowDetailViewModel.toggleWatchlist() },
                                         )
-                                        CircleIconButton(icon = Icons.Filled.Share, onClick = { shareTvShow(tvShow.name) })
+                                        CircleIconButton(
+                                            icon = Icons.Filled.Share,
+                                            onClick = {
+                                                recommendShareViewModel.reset()
+                                                showShareSheet = true
+                                            },
+                                        )
                                     }
                                 }
 
@@ -583,7 +594,8 @@ fun TvShowDetailScreen(
 
         ClearOfflineMessageAfterDelay(detailState.offlineMessage) { tvShowDetailViewModel.clearOfflineMessage() }
         ClearOfflineMessageAfterDelay(commentState.mutationErrorMessage) { commentViewModel.clearMutationError() }
-        (detailState.offlineMessage ?: offlineMessageState.message ?: commentState.mutationErrorMessage)?.let {
+        ClearOfflineMessageAfterDelay(shareSentMessage) { shareSentMessage = null }
+        (detailState.offlineMessage ?: offlineMessageState.message ?: commentState.mutationErrorMessage ?: shareSentMessage)?.let {
             OfflineActionSnackbar(
                 message = it,
                 modifier = Modifier
@@ -591,6 +603,27 @@ fun TvShowDetailScreen(
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 88.dp)
                     .fillMaxWidth(),
+            )
+        }
+    }
+
+    if (showShareSheet) {
+        detailState.tvShow?.let { tvShow ->
+            RecommendShareSheet(
+                state = shareState,
+                mediaTitle = tvShow.name,
+                posterUrl = tvShow.posterUrl,
+                isTvShow = true,
+                onToggleFriend = recommendShareViewModel::toggleFriend,
+                onNoteChange = recommendShareViewModel::onNoteChange,
+                onSend = {
+                    recommendShareViewModel.send(
+                        mediaId = tvId,
+                        mediaType = "tv",
+                        mediaTitle = tvShow.name,
+                    )
+                },
+                onDismiss = { showShareSheet = false },
             )
         }
     }

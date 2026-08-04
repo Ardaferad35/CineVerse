@@ -111,6 +111,15 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead'])
           && request.resource.data.isRead is bool;
       }
+
+      // Günlük kotalar (şimdilik sadece "recommendations"). Sahibi OKUYABİLİR
+      // — uygulama kalan hakkı gösterip butonu ona göre kilitliyor. Yazma
+      // hiçbir istemciye açık değil: sayacı yazan tek yer friend-push Edge
+      // Function'ı, aksi halde limit istemciden sıfırlanabilirdi.
+      match /limits/{limitId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
     }
 
     // --- usernames/{username} --------------------------------------------

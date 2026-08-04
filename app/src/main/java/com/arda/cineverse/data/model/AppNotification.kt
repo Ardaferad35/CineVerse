@@ -5,7 +5,9 @@ package com.arda.cineverse.data.model
  */
 data class AppNotification(
     val id: String = "",
-    val type: String = "", // "comment_reply", "upcoming_movie", "film_of_the_day"
+    // "comment_reply", "upcoming_movie", "film_of_the_day", "friend_request",
+    // "friend_request_accepted", "recommendation"
+    val type: String = "",
     val title: String = "",
     val body: String = "",
     val movieId: Int? = null,
