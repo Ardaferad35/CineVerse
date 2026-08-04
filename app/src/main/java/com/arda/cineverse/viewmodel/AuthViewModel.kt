@@ -79,13 +79,17 @@ class AuthViewModel : ViewModel() {
                     val usernameRef = firestore.collection("usernames").document(username)
                     if (txn.get(usernameRef).exists()) throw UsernameTakenException()
                     txn.set(usernameRef, mapOf("uid" to uid))
+                    // "email" alanı BİLEREK yazılmıyor: users/{uid} belgesi
+                    // firestore.rules gereği giriş yapmış HERKESE okunabilir
+                    // (yorum avatarları için gerekli) — e-posta buraya yazılsaydı
+                    // tüm kullanıcıların e-postası birbirine sızardı. E-postayı
+                    // okuyan tüm kod zaten auth.currentUser.email kullanıyor.
                     txn.set(
                         firestore.collection("users").document(uid),
                         hashMapOf(
                             "uid" to uid,
                             "username" to username,
                             "fullName" to username,
-                            "email" to email,
                             "createdAt" to FieldValue.serverTimestamp(),
                         ),
                     )

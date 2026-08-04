@@ -187,9 +187,22 @@ service cloud.firestore {
       allow write: if isSignedIn() && isValidRatingAggregate(request.resource.data);
     }
 
+    // Şekil doğrulaması bilinçli olarak sıkı: bu belgeler "Uygulama İçi Puan"
+    // listelerinde HERKESE gösteriliyor ve herhangi bir giriş yapmış kullanıcı
+    // yazabiliyor. Alan listesi CommentRepository.recalculateAggregate'in
+    // yazdığıyla birebir aynı — fazladan alan, absürt sayaç (ör. ratingCount
+    // 9999999) veya dev metin enjekte edilemesin diye üst sınırlar var.
+    // Kötü niyetli ama "şekli geçerli" yazımlara karşı kalıcı çözüm yine de
+    // sunucu tarafı yeniden hesaplama (Cloud Function) olur.
     function isValidRatingAggregate(data) {
-      return data.averageRating is number && data.averageRating >= 0 && data.averageRating <= 5
-        && data.ratingCount is int && data.ratingCount >= 0;
+      return data.keys().hasOnly(['movieId', 'title', 'posterUrl', 'year', 'averageRating', 'ratingCount', 'genreIds'])
+        && data.movieId is int
+        && data.title is string && data.title.size() <= 500
+        && (data.posterUrl == null || (data.posterUrl is string && data.posterUrl.size() <= 500))
+        && (data.year == null || data.year is int)
+        && data.averageRating is number && data.averageRating >= 0 && data.averageRating <= 5
+        && data.ratingCount is int && data.ratingCount >= 1 && data.ratingCount <= 100000
+        && data.genreIds is list && data.genreIds.size() <= 20;
     }
   }
 }

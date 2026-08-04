@@ -15,6 +15,9 @@ import com.arda.cineverse.di.AppGraph
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
@@ -323,12 +326,15 @@ class RecommendationRepository @Inject constructor(
 
         val excludeIds = (recentlyViewed.map { it.movieId } + recentFavorites.map { it.movieId } + activeFavorites.map { it.id }).toSet()
 
-        val candidateList = mutableListOf<Movie>()
-        for (genreId in topGenreIds) {
-            for (page in 1..3) {
-                val items = movieRepository.getMoviesByGenre(genreId, page = page).getOrDefault(emptyList())
-                candidateList.addAll(items)
-            }
+        // 2 tür x 3 sayfa = 6 TMDB çağrısı paralel atılıyor — sırayla
+        // beklemek öneri yenilemesini (her Home senkronunda çalışıyor)
+        // gereksiz yere 6 gidiş-dönüş süresine uzatıyordu.
+        val candidateList = coroutineScope {
+            topGenreIds.flatMap { genreId ->
+                (1..3).map { page ->
+                    async { movieRepository.getMoviesByGenre(genreId, page = page).getOrDefault(emptyList()) }
+                }
+            }.awaitAll().flatten()
         }
 
         // 1. Kullanıcının Pozitif İlgi Gösterdiği Türler Kümesi
@@ -405,12 +411,13 @@ class RecommendationRepository @Inject constructor(
 
         val excludeIds = (recentlyViewed.map { it.movieId } + recentFavorites.map { it.movieId } + activeFavorites.map { it.id }).toSet()
 
-        val candidateList = mutableListOf<TvShow>()
-        for (genreId in topGenreIds) {
-            for (page in 1..3) {
-                val items = tvRepository.getTvShowsByGenre(genreId, page = page).getOrDefault(emptyList())
-                candidateList.addAll(items)
-            }
+        // Film tarafıyla aynı gerekçe: 6 TMDB çağrısı paralel.
+        val candidateList = coroutineScope {
+            topGenreIds.flatMap { genreId ->
+                (1..3).map { page ->
+                    async { tvRepository.getTvShowsByGenre(genreId, page = page).getOrDefault(emptyList()) }
+                }
+            }.awaitAll().flatten()
         }
 
         val preferredGenreSet = topGenreIds.toSet()
