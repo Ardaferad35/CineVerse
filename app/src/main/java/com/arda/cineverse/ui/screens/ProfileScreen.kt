@@ -4,12 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -114,199 +113,205 @@ fun ProfileScreen(
                 CircularProgressIndicator(color = Primary)
             }
         } else {
-            Column(
+            LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp),
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Spacer(Modifier.height(8.dp))
-
                 // Profil kartı
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Surface)
-                        .padding(20.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val preset = avatarPresetById(uiState.avatarId)
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(preset.color.copy(alpha = 0.18f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(preset.icon, contentDescription = null, tint = preset.color, modifier = Modifier.size(34.dp))
-                        }
-                        Spacer(Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable { showEditUsernameDialog = true },
-                            ) {
-                                Text(
-                                    if (uiState.username.isNotBlank()) "@${uiState.username}" else "…",
-                                    color = OnSurface,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Icon(Icons.Filled.Edit, contentDescription = "Kullanıcı adını düzenle", tint = Primary, modifier = Modifier.size(16.dp))
-                            }
-                            Spacer(Modifier.height(2.dp))
-                            Text(uiState.email, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                            Spacer(Modifier.height(8.dp))
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Surface)
+                            .padding(20.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val preset = avatarPresetById(uiState.avatarId)
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(Primary.copy(alpha = 0.18f))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(preset.color.copy(alpha = 0.18f)),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Text("CineVerse Üyesi", color = Primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                                Icon(preset.icon, contentDescription = null, tint = preset.color, modifier = Modifier.size(34.dp))
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { showEditUsernameDialog = true },
+                                ) {
+                                    Text(
+                                        if (uiState.username.isNotBlank()) "@${uiState.username}" else "…",
+                                        color = OnSurface,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Icon(Icons.Filled.Edit, contentDescription = "Kullanıcı adını düzenle", tint = Primary, modifier = Modifier.size(16.dp))
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                Text(uiState.email, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                Spacer(Modifier.height(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(Primary.copy(alpha = 0.18f))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                                ) {
+                                    Text("CineVerse Üyesi", color = Primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                                }
                             }
                         }
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
-
                 // İstatistikler
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Surface)
-                        .padding(vertical = 16.dp),
-                ) {
-                    ProfileStat(
-                        icon = Icons.Filled.Favorite,
-                        iconTint = ErrorColor,
-                        value = "${uiState.favoritesCount}",
-                        label = "Favoriler",
-                        modifier = Modifier.weight(1f),
-                    )
-                    ProfileStat(
-                        icon = Icons.Filled.Bookmark,
-                        iconTint = Primary,
-                        value = "${uiState.watchlistCount}",
-                        label = "İzleme Listem",
-                        modifier = Modifier.weight(1f),
-                    )
-                    ProfileStat(
-                        icon = Icons.Filled.Star,
-                        iconTint = Color(0xFFFFC857),
-                        value = if (uiState.ratingsGivenCount > 0) "${uiState.averageRatingGiven}" else "—",
-                        label = "Ortalama Puanım",
-                        modifier = Modifier.weight(1f),
-                    )
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Surface)
+                            .padding(vertical = 16.dp),
+                    ) {
+                        ProfileStat(
+                            icon = Icons.Filled.Favorite,
+                            iconTint = ErrorColor,
+                            value = "${uiState.favoritesCount}",
+                            label = "Favoriler",
+                            modifier = Modifier.weight(1f),
+                        )
+                        ProfileStat(
+                            icon = Icons.Filled.Bookmark,
+                            iconTint = Primary,
+                            value = "${uiState.watchlistCount}",
+                            label = "İzleme Listem",
+                            modifier = Modifier.weight(1f),
+                        )
+                        ProfileStat(
+                            icon = Icons.Filled.Star,
+                            iconTint = Color(0xFFFFC857),
+                            value = if (uiState.ratingsGivenCount > 0) "${uiState.averageRatingGiven}" else "—",
+                            label = "Ortalama Puanım",
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(20.dp))
-
-                Text("Avatar Seç", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(12.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    items(avatarPresets, key = { it.id }) { preset ->
-                        val isSelected = preset.id == uiState.avatarId
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(preset.color.copy(alpha = 0.18f))
-                                .then(
-                                    if (isSelected) {
-                                        Modifier.border(2.dp, preset.color, CircleShape)
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                                .clickable { viewModel.updateAvatar(preset.id) },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(preset.icon, contentDescription = null, tint = preset.color, modifier = Modifier.size(26.dp))
+                // Avatar Seç
+                item {
+                    Column {
+                        Text("Avatar Seç", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(12.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            items(avatarPresets, key = { it.id }) { preset ->
+                                val isSelected = preset.id == uiState.avatarId
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .background(preset.color.copy(alpha = 0.18f))
+                                        .then(
+                                            if (isSelected) {
+                                                Modifier.border(2.dp, preset.color, CircleShape)
+                                            } else {
+                                                Modifier
+                                            },
+                                        )
+                                        .clickable { viewModel.updateAvatar(preset.id) },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(preset.icon, contentDescription = null, tint = preset.color, modifier = Modifier.size(26.dp))
+                                }
+                            }
                         }
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
-
                 // Ayarlar listesi
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Surface)
-                        .padding(horizontal = 8.dp),
-                ) {
-                    SettingsRow(
-                        icon = Icons.Filled.Group,
-                        title = "Arkadaşlar",
-                        subtitle = "Arkadaş ekle ve film/dizi öner",
-                        onClick = onNavigateToFriends,
-                    )
-                    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
-                    SettingsRow(
-                        icon = Icons.Filled.Lock,
-                        title = "Şifre Değiştir",
-                        subtitle = "Hesap şifrenizi güncelleyin",
-                        onClick = { showChangePasswordDialog = true },
-                    )
-                    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
-                    SettingsRow(
-                        icon = Icons.Filled.Palette,
-                        title = "Görünüm",
-                        subtitle = "Tema ve görünüm seçimi",
-                        trailingText = if (ThemeState.isDarkTheme) "Koyu" else "Açık",
-                        onClick = { showThemeDialog = true },
-                    )
-                    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
-                    SettingsRowWithSwitch(
-                        icon = Icons.Filled.Info,
-                        title = "Bildirimler",
-                        subtitle = "Bildirim tercihlerinizi yönetin",
-                        checked = userPreferences.notificationsEnabled,
-                        onCheckedChange = { enabled ->
-                            scope.launch { userPreferencesRepository.setNotificationsEnabled(enabled) }
-                        },
-                    )
-                    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
-                    SettingsRow(
-                        icon = Icons.Filled.Help,
-                        title = "Yardım & Destek",
-                        subtitle = "Yardım alın ve bizimle iletişime geçin",
-                        onClick = { showComingSoonDialog = true },
-                    )
-                    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
-                    SettingsRow(
-                        icon = Icons.Filled.Info,
-                        title = "CineVerse Hakkında",
-                        subtitle = "Uygulama sürümü ve bilgileri",
-                        onClick = { showAboutDialog = true },
-                    )
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Surface)
+                            .padding(horizontal = 8.dp),
+                    ) {
+                        SettingsRow(
+                            icon = Icons.Filled.Group,
+                            title = "Arkadaşlar",
+                            subtitle = "Arkadaş ekle ve film/dizi öner",
+                            onClick = onNavigateToFriends,
+                        )
+                        HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+                        SettingsRow(
+                            icon = Icons.Filled.Lock,
+                            title = "Şifre Değiştir",
+                            subtitle = "Hesap şifrenizi güncelleyin",
+                            onClick = { showChangePasswordDialog = true },
+                        )
+                        HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+                        SettingsRow(
+                            icon = Icons.Filled.Palette,
+                            title = "Görünüm",
+                            subtitle = "Tema ve görünüm seçimi",
+                            trailingText = if (ThemeState.isDarkTheme) "Koyu" else "Açık",
+                            onClick = { showThemeDialog = true },
+                        )
+                        HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+                        SettingsRowWithSwitch(
+                            icon = Icons.Filled.Info,
+                            title = "Bildirimler",
+                            subtitle = "Bildirim tercihlerinizi yönetin",
+                            checked = userPreferences.notificationsEnabled,
+                            onCheckedChange = { enabled ->
+                                scope.launch { userPreferencesRepository.setNotificationsEnabled(enabled) }
+                            },
+                        )
+                        HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+                        SettingsRow(
+                            icon = Icons.Filled.Help,
+                            title = "Yardım & Destek",
+                            subtitle = "Yardım alın ve bizimle iletişime geçin",
+                            onClick = { showComingSoonDialog = true },
+                        )
+                        HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+                        SettingsRow(
+                            icon = Icons.Filled.Info,
+                            title = "CineVerse Hakkında",
+                            subtitle = "Uygulama sürümü ve bilgileri",
+                            onClick = { showAboutDialog = true },
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(ErrorColor.copy(alpha = 0.1f))
-                        .border(1.dp, ErrorColor.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
-                        .clickable { showSignOutConfirm = true }
-                        .padding(vertical = 14.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = ErrorColor, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Çıkış Yap", color = ErrorColor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                // Çıkış Yap
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(ErrorColor.copy(alpha = 0.1f))
+                            .border(1.dp, ErrorColor.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .clickable { showSignOutConfirm = true }
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = ErrorColor, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Çıkış Yap", color = ErrorColor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    }
                 }
 
-                Spacer(Modifier.height(32.dp))
+                item {
+                    Spacer(Modifier.height(16.dp))
+                }
             }
         }
     }
