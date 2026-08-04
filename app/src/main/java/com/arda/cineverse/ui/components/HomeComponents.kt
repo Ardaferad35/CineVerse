@@ -44,6 +44,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -275,10 +276,10 @@ fun FeaturedMovieBanner(
     pageCount: Int = 4,
     currentPage: Int = 0,
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(340.dp)
+            .heightIn(min = 340.dp, max = 380.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(Color(0xFF0B0B10))
             .then(
@@ -292,6 +293,8 @@ fun FeaturedMovieBanner(
                 },
             ),
     ) {
+        val isNarrow = maxWidth < 360.dp
+
         if (movie.backdropUrl != null) {
             AsyncImage(
                 model = movie.backdropUrl,
@@ -322,14 +325,18 @@ fun FeaturedMovieBanner(
                 ),
         )
 
-        // Bu metinler her zaman koyu bir karartmanın üzerinde durur (fotoğraf
-        // okunabilirliği için scrim bilinçli olarak hep koyu) — bu yüzden
-        // tema ile değişen OnSurface/TextSecondary yerine SABİT açık renkler
-        // kullanıyoruz, aksi halde Açık temada koyu yazı koyu zemine karışır.
         val bannerTitleColor = Color(0xFFFFFFFF)
         val bannerSubtleColor = Color(0xFFC7C7D1)
 
-        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+        val cardPadding = if (isNarrow) 10.dp else 14.dp
+        val titleFontSize = if (isNarrow) 22.sp else 26.sp
+        val titleLetterSpacing = if (isNarrow) 1.sp else 1.5.sp
+        val buttonFontSize = if (isNarrow) 12.sp else 13.5.sp
+        val buttonIconSize = if (isNarrow) 15.dp else 17.dp
+        val buttonVertPadding = if (isNarrow) 6.dp else 8.dp
+        val buttonHorizPadding = if (isNarrow) 6.dp else 8.dp
+
+        Column(modifier = Modifier.fillMaxSize().padding(cardPadding)) {
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
@@ -344,68 +351,120 @@ fun FeaturedMovieBanner(
 
             Spacer(Modifier.weight(1f))
 
-            Text(movie.title, color = bannerTitleColor, fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, maxLines = 2)
-            Spacer(Modifier.height(10.dp))
+            Text(
+                movie.title,
+                color = bannerTitleColor,
+                fontSize = titleFontSize,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = titleLetterSpacing,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(8.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Icon(Icons.Filled.Star, contentDescription = null, tint = StarColor, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("${movie.rating}", color = bannerTitleColor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("${movie.year}", color = bannerSubtleColor, style = MaterialTheme.typography.bodyMedium)
                 if (movie.durationLabel.isNotEmpty()) {
-                    Spacer(Modifier.width(10.dp))
-                    Text(movie.durationLabel, color = bannerSubtleColor, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        movie.durationLabel,
+                        color = bannerSubtleColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                Spacer(Modifier.width(10.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(SurfaceVariant)
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                ) {
-                    Text(movie.genre, color = OnSurface, style = MaterialTheme.typography.bodySmall)
+                if (movie.genre.isNotEmpty()) {
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceVariant)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            movie.genre,
+                            color = OnSurface,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
-            Text(movie.description, color = bannerSubtleColor, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                movie.description,
+                color = bannerSubtleColor,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
 
-            Spacer(Modifier.height(16.dp))
-            Row {
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(if (isNarrow) 8.dp else 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Row(
                     modifier = Modifier
+                        .weight(1f)
                         .clip(RoundedCornerShape(24.dp))
                         .background(brush = Brush.horizontalGradient(PrimaryGradient))
                         .clickable { onDetailsClick() }
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                        .padding(horizontal = buttonHorizPadding, vertical = buttonVertPadding),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(buttonIconSize))
                     Spacer(Modifier.width(6.dp))
-                    Text("Detayları Gör", color = OnPrimary, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Detayları Gör",
+                        color = OnPrimary,
+                        fontSize = buttonFontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                Spacer(Modifier.width(12.dp))
                 Row(
                     modifier = Modifier
+                        .weight(1f)
                         .clip(RoundedCornerShape(24.dp))
                         .background(Surface)
                         .clickable { onAddToListClick() }
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                        .padding(horizontal = buttonHorizPadding, vertical = buttonVertPadding),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         if (isInWatchlist) Icons.Filled.Check else Icons.Filled.Add,
                         contentDescription = null,
                         tint = OnSurface,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(buttonIconSize),
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text(if (isInWatchlist) "Listemde" else "Listeme Ekle", color = OnSurface, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (isInWatchlist) "Listemde" else "Listeme Ekle",
+                        color = OnSurface,
+                        fontSize = buttonFontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 repeat(pageCount) { index ->
                     val active = index == currentPage
@@ -1084,7 +1143,14 @@ fun DicePickerDialog(
                                         .padding(vertical = 9.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Text("Detayları Gör 🎬", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "Detayları Gör 🎬",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
                                 }
 
                                 Box(
@@ -1238,17 +1304,18 @@ fun QuickPreviewSheet(
                         }
                     }
 
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(6.dp))
 
                     Text(
                         text = if (data.overview.isNotBlank()) data.overview else "Bu içerik için henüz özet bulunmuyor.",
                         color = TextSecondary,
                         fontSize = 12.sp,
                         lineHeight = 16.sp,
-                        maxLines = 3,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
 
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1289,7 +1356,14 @@ fun QuickPreviewSheet(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Filled.Info, contentDescription = null, tint = OnSurface, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Detaylar", color = OnSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "Detaylar",
+                                    color = OnSurface,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
                         }
                     }
