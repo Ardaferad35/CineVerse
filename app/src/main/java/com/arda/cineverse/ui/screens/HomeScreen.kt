@@ -76,6 +76,7 @@ import com.arda.cineverse.ui.theme.Primary
 import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.HomeViewModel
+import com.arda.cineverse.data.common.GENERIC_WRITE_FAILURE_MESSAGE
 import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.viewmodel.NotificationViewModel
 import kotlinx.coroutines.delay
@@ -178,14 +179,15 @@ fun HomeScreen(
         }
     }
 
-    /** Offline'ken yazma işlemleri reddedilir; optimistic UI değişikliği geri alınır ve kullanıcıya bilgi verilir. */
-    fun handleOfflineWriteFailure(error: Throwable, revert: () -> Unit): Boolean {
-        if (error is OfflineWriteException) {
-            revert()
-            offlineActionMessage = error.message
-            return true
-        }
-        return false
+    /**
+     * Yazma hatasında iyimser UI değişikliği geri alınır ve kullanıcıya bilgi
+     * verilir. Offline hatasıyla sınırlı DEĞİL: Firestore başka bir sebeple de
+     * reddedebilir — geri alınmazsa ikon "kaydedildi" gösterip yazma
+     * gerçekleşmemiş olurdu.
+     */
+    fun handleWriteFailure(error: Throwable, revert: () -> Unit) {
+        revert()
+        offlineActionMessage = if (error is OfflineWriteException) error.message else GENERIC_WRITE_FAILURE_MESSAGE
     }
 
     fun toggleFavorite(movie: Movie, mediaType: String = "movie") {
@@ -220,9 +222,7 @@ fun HomeScreen(
                     ),
                 )
             }
-            result.onFailure { error ->
-                if (!handleOfflineWriteFailure(error) { revert() }) return@onFailure
-            }
+            result.onFailure { error -> handleWriteFailure(error) { revert() } }
             if (result.isSuccess) {
                 if (isFav) {
                     if (isTv) recommendationRepository.removeTvFavoriteSignal(movie.id) else recommendationRepository.removeFavoriteSignal(movie.id)
@@ -245,7 +245,7 @@ fun HomeScreen(
                 )
             }
             result.onFailure { error ->
-                handleOfflineWriteFailure(error) {
+                handleWriteFailure(error) {
                     watchlistMovieIds = if (isSaved) watchlistMovieIds + featured.id else watchlistMovieIds - featured.id
                 }
             }
@@ -271,7 +271,7 @@ fun HomeScreen(
                 )
             }
             result.onFailure { error ->
-                handleOfflineWriteFailure(error) {
+                handleWriteFailure(error) {
                     watchlistTvIds = if (isSaved) watchlistTvIds + featured.id else watchlistTvIds - featured.id
                 }
             }

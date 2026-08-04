@@ -2,6 +2,7 @@ package com.arda.cineverse.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.data.common.GENERIC_WRITE_FAILURE_MESSAGE
 import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.repository.CommentRepository
@@ -203,12 +204,13 @@ class MyListViewModel(
                     }
                 },
                 onFailure = { error ->
-                    if (error is OfflineWriteException) {
-                        if (isFavTab) {
-                            _uiState.value = _uiState.value.copy(favorites = _uiState.value.favorites + removedItem, offlineMessage = error.message)
-                        } else {
-                            _uiState.value = _uiState.value.copy(watchlist = _uiState.value.watchlist + removedItem, offlineMessage = error.message)
-                        }
+                    // Offline hatasıyla sınırlı değil: Firestore başka bir sebeple de
+                    // reddedebilir — geri alınmazsa öğe listeden kaybolur ama silinmemiş olur.
+                    val message = if (error is OfflineWriteException) error.message else GENERIC_WRITE_FAILURE_MESSAGE
+                    if (isFavTab) {
+                        _uiState.value = _uiState.value.copy(favorites = _uiState.value.favorites + removedItem, offlineMessage = message)
+                    } else {
+                        _uiState.value = _uiState.value.copy(watchlist = _uiState.value.watchlist + removedItem, offlineMessage = message)
                     }
                 },
             )

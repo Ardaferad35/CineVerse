@@ -3,6 +3,7 @@ package com.arda.cineverse.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.data.common.GENERIC_WRITE_FAILURE_MESSAGE
 import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.model.TvShow
@@ -129,7 +130,7 @@ class TvShowDetailViewModel(
                         recommendationRepository.removeTvFavoriteSignal(tvShow.id)
                     }
                 },
-                onFailure = { error -> revertOnOfflineFailure(error) { _uiState.value = _uiState.value.copy(isFavorite = !newValue) } },
+                onFailure = { error -> revertOnFailure(error) { _uiState.value = _uiState.value.copy(isFavorite = !newValue) } },
             )
         }
     }
@@ -145,17 +146,22 @@ class TvShowDetailViewModel(
                 userListRepository.removeFromWatchlist(tvShow.id, mediaType = "tv")
             }
             result.onFailure { error ->
-                revertOnOfflineFailure(error) { _uiState.value = _uiState.value.copy(isSaved = !newValue) }
+                revertOnFailure(error) { _uiState.value = _uiState.value.copy(isSaved = !newValue) }
             }
         }
     }
 
-    /** Hata offline yazma hatasıysa iyimser UI değişikliğini geri alır ve kullanıcıya kısa süreli bir mesaj gösterir. */
-    private fun revertOnOfflineFailure(error: Throwable, revert: () -> Unit) {
-        if (error is OfflineWriteException) {
-            revert()
-            _uiState.value = _uiState.value.copy(offlineMessage = error.message)
-        }
+    /**
+     * Yazma hatasında iyimser UI değişikliğini geri alır ve kullanıcıya kısa
+     * süreli bir mesaj gösterir. Offline hatasıyla sınırlı DEĞİL: Firestore
+     * başka bir sebeple de reddedebilir (izin/zaman aşımı) — geri alınmazsa
+     * ikon "kaydedildi" gösterip yazma gerçekleşmemiş olurdu.
+     */
+    private fun revertOnFailure(error: Throwable, revert: () -> Unit) {
+        revert()
+        _uiState.value = _uiState.value.copy(
+            offlineMessage = if (error is OfflineWriteException) error.message else GENERIC_WRITE_FAILURE_MESSAGE,
+        )
     }
 
     fun clearOfflineMessage() {

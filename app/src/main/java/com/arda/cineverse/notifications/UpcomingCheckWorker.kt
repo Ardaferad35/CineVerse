@@ -77,7 +77,11 @@ class UpcomingCheckWorker(
         val unreadCount = notificationRepository.getUnreadCount().getOrNull() ?: return
 
         val lastNotifiedCount = prefs.getInt("last_unread_notified_count", 0)
-        if (unreadCount > 0 && unreadCount != lastNotifiedCount) {
+        // Sadece sayı ARTTIĞINDA bildir — "!=" kullanılsaydı kullanıcı bir
+        // bildirimi okuyup sayı azaldığında da (örn. 3 -> 2) yeni hiçbir şey
+        // gelmediği halde tekrar bildirim düşerdi. Azalışlar aşağıda yine de
+        // kaydediliyor ki sonraki artış doğru tabana göre kıyaslansın.
+        if (unreadCount > lastNotifiedCount) {
             LocalNotificationHelper.show(
                 context = applicationContext,
                 notificationId = 1003,

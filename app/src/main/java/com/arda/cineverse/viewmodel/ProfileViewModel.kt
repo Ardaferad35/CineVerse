@@ -7,7 +7,9 @@ import com.arda.cineverse.di.AppGraph
 import com.arda.cineverse.notifications.CineVerseMessagingService
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.AggregateSource
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -46,23 +48,34 @@ class ProfileViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            val userDoc = uid?.let {
-                runCatching { firestore.collection("users").document(it).get().await() }.getOrNull()
+            // Üç bağımsız Firestore çağrısı paralel (eskiden sırayla bekleniyordu);
+            // sayımlar count() aggregate ile sunucuda yapılıyor — tüm favori/izleme
+            // belgelerini indirip .size almaya gerek yok.
+            val userDocDeferred = uid?.let { id ->
+                async { runCatching { firestore.collection("users").document(id).get().await() }.getOrNull() }
             }
+            val favoritesCountDeferred = uid?.let { id ->
+                async {
+                    runCatching {
+                        firestore.collection("users").document(id).collection("favorites")
+                            .count().get(AggregateSource.SERVER).await().count.toInt()
+                    }.getOrNull()
+                }
+            }
+            val watchlistCountDeferred = uid?.let { id ->
+                async {
+                    runCatching {
+                        firestore.collection("users").document(id).collection("watchlist")
+                            .count().get(AggregateSource.SERVER).await().count.toInt()
+                    }.getOrNull()
+                }
+            }
+
+            val userDoc = userDocDeferred?.await()
             val username = userDoc?.getString("username") ?: ""
             val avatarId = userDoc?.getString("avatarId") ?: "default"
-
-            val favoritesCount = uid?.let {
-                runCatching {
-                    firestore.collection("users").document(it).collection("favorites").get().await().documents.size
-                }.getOrNull()
-            } ?: 0
-
-            val watchlistCount = uid?.let {
-                runCatching {
-                    firestore.collection("users").document(it).collection("watchlist").get().await().documents.size
-                }.getOrNull()
-            } ?: 0
+            val favoritesCount = favoritesCountDeferred?.await() ?: 0
+            val watchlistCount = watchlistCountDeferred?.await() ?: 0
 
             // ratingSum/ratingCount, her yorum eklendikçe/düzenlendikçe/silindikçe
             // CommentRepository tarafından anlık güncellenen alanlar — burada sadece

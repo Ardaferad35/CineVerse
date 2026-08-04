@@ -2,6 +2,7 @@ package com.arda.cineverse.data.repository
 
 import com.arda.cineverse.data.model.AppNotification
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.AggregateSource
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
@@ -30,14 +31,18 @@ class NotificationRepository(
             .mapNotNull { doc -> doc.toObject(AppNotification::class.java)?.copy(id = doc.id) }
     }
 
+    // count() aggregate sorgusu: belgelerin kendisini indirmeden sunucuda
+    // sayar — eskiden tüm okunmamış belgeler indirilip .size alınıyordu
+    // (hem gereksiz bant genişliği hem belge başına okuma maliyeti).
     suspend fun getUnreadCount(): Result<Int> = runCatching {
         val uid = auth.currentUser?.uid ?: return@runCatching 0
         notificationsCollection(uid)
             .whereEqualTo("isRead", false)
-            .get()
+            .count()
+            .get(AggregateSource.SERVER)
             .await()
-            .documents
-            .size
+            .count
+            .toInt()
     }
 
     suspend fun markAsRead(notificationId: String): Result<Unit> = runCatching {

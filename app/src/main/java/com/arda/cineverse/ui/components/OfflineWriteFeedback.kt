@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.arda.cineverse.data.common.GENERIC_WRITE_FAILURE_MESSAGE
 import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.TextSecondary
@@ -36,14 +37,16 @@ class OfflineWriteMessageState {
     var message by mutableStateOf<String?>(null)
         private set
 
-    /** Hata offline yazma hatasıysa [revert]'i çalıştırıp mesajı gösterir, true döner. Değilse dokunmaz. */
+    /**
+     * Yazma hatasında [revert]'i çalıştırıp kullanıcıya nedenini gösterir.
+     * Hata offline yazma hatası olmasa da (ör. Firestore izin/zaman aşımı)
+     * geri alma yapılır — aksi halde ikon "kaydedildi" gösterip yazma
+     * gerçekleşmemiş olurdu. Offline hatasıysa true döner.
+     */
     fun handle(error: Throwable, revert: () -> Unit): Boolean {
-        if (error is OfflineWriteException) {
-            revert()
-            message = error.message
-            return true
-        }
-        return false
+        revert()
+        message = if (error is OfflineWriteException) error.message else GENERIC_WRITE_FAILURE_MESSAGE
+        return error is OfflineWriteException
     }
 
     fun clear() {

@@ -72,9 +72,18 @@ android {
 
     buildTypes {
         release {
+            // R8 açık: kod küçültme + obfuscation. Kapalıyken release APK'sı
+            // gereksiz büyüktü ve BuildConfig'teki API anahtarları düz metin
+            // olarak çok daha kolay çıkarılabiliyordu. Reflection kullanan
+            // kütüphanelerin (Gson, Firestore) ihtiyaç duyduğu keep kuralları
+            // proguard-rules.pro'da.
             optimization {
-                enable = false
+                enable = true
             }
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
     compileOptions {
