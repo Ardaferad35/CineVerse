@@ -9,10 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -632,7 +632,7 @@ fun CVBottomNavBar(
 ) {
     val items = listOf(
         BottomNavItem("Ana Sayfa", Icons.Outlined.Home, Icons.Filled.Home),
-        BottomNavItem("Arama", Icons.Outlined.Search, Icons.Filled.Search),
+        BottomNavItem("Asistan", Icons.Outlined.AutoAwesome, Icons.Filled.AutoAwesome),
         BottomNavItem("Listem", Icons.Outlined.BookmarkBorder, Icons.Filled.Bookmark),
     )
     Row(

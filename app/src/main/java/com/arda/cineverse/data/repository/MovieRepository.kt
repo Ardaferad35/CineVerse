@@ -155,10 +155,6 @@ class MovieRepository @Inject constructor(
         api.searchMovies(query = query).results.map { it.toUiMovie() }
     }
 
-    suspend fun searchMoviesAndTv(query: String): Result<List<Movie>> = runCatching {
-        api.searchMulti(query = query).results.mapNotNull { it.toUiMovie() }
-    }
-
     suspend fun searchMulti(query: String): Result<List<SearchSuggestion>> = runCatching {
         api.searchMulti(query = query).results.mapNotNull { it.toSearchSuggestion() }
     }
