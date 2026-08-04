@@ -27,6 +27,9 @@ const FIREBASE_PRIVATE_KEY = Deno.env.get("FIREBASE_PRIVATE_KEY")!.replace(/\\n/
 
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
+/** batchGet/commit gövdesinde belgeler tam adlarıyla veriliyor, URL'le değil. */
+const FIRESTORE_DOCUMENT_ROOT = `projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+
 const idTokenJwks = createRemoteJWKSet(
   new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"),
 );
@@ -175,6 +178,74 @@ async function firestoreDelete(path: string): Promise<void> {
   }
 }
 
+// --- Firestore işlemleri (transaction) ---------------------------------
+// Günlük kota "oku, kontrol et, yaz" gerektiriyor; bunu düz GET+PATCH ile
+// yapmak yarış durumuna açık olurdu (aynı anda gelen iki istek aynı sayacı
+// okuyup limiti birlikte aşabilir). Transaction, sayaç okunduktan sonra
+// değiştiyse commit'i reddediyor.
+
+async function firestoreBeginTransaction(): Promise<string> {
+  const token = await getAccessToken();
+  const response = await fetch(`${FIRESTORE_BASE}:beginTransaction`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ options: { readWrite: {} } }),
+  });
+  if (!response.ok) {
+    throw new Error(`Firestore beginTransaction başarısız: ${response.status} ${await response.text()}`);
+  }
+  return (await response.json()).transaction as string;
+}
+
+async function firestoreGetInTransaction(
+  path: string,
+  transaction: string,
+): Promise<Record<string, string> | null> {
+  const token = await getAccessToken();
+  const response = await fetch(`${FIRESTORE_BASE}:batchGet`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ documents: [`${FIRESTORE_DOCUMENT_ROOT}/${path}`], transaction }),
+  });
+  if (!response.ok) {
+    throw new Error(`Firestore batchGet başarısız (${path}): ${response.status}`);
+  }
+  const results = await response.json();
+  const found = results?.[0]?.found;
+  return found ? fromFirestoreFields(found.fields) : null;
+}
+
+/** Commit çakışma yüzünden reddedilirse false döner (istek yeniden denenebilir). */
+async function firestoreCommitInTransaction(
+  transaction: string,
+  path: string,
+  fields: Record<string, Primitive>,
+): Promise<boolean> {
+  const token = await getAccessToken();
+  const response = await fetch(`${FIRESTORE_BASE}:commit`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      transaction,
+      writes: [{
+        update: { name: `${FIRESTORE_DOCUMENT_ROOT}/${path}`, fields: toFirestoreFields(fields) },
+      }],
+    }),
+  });
+  if (response.ok) return true;
+  console.warn(`Firestore commit reddedildi (${path}): ${response.status}`);
+  return false;
+}
+
+async function firestoreRollback(transaction: string): Promise<void> {
+  const token = await getAccessToken();
+  await fetch(`${FIRESTORE_BASE}:rollback`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ transaction }),
+  }).catch(() => {});
+}
+
 async function listFcmTokens(uid: string): Promise<string[]> {
   const token = await getAccessToken();
   const response = await fetch(`${FIRESTORE_BASE}/users/${uid}/fcmTokens`, {
@@ -265,7 +336,21 @@ interface CommentReplyPayload {
   text: string;
 }
 
-type Payload = RequestPayload | AcceptPayload | CommentReplyPayload;
+/**
+ * Bir film/diziyi arkadaşlara önerme. Alıcılar istemciden geliyor ama her biri
+ * için GERÇEKTEN arkadaş olunup olunmadığı burada doğrulanıyor; aksi halde
+ * herkes herkesin bildirim kutusuna yazabilirdi.
+ */
+interface RecommendPayload {
+  action: "recommend";
+  targetUids: string[];
+  mediaId: number;
+  mediaType: string; // "movie" | "tv"
+  mediaTitle: string;
+  note?: string;
+}
+
+type Payload = RequestPayload | AcceptPayload | CommentReplyPayload | RecommendPayload;
 
 async function handleRequest(payload: RequestPayload, verifiedUid: string): Promise<Response> {
   if (verifiedUid !== payload.fromUid) {
@@ -338,6 +423,15 @@ const COMMENT_ROOT_COLLECTIONS = ["movies", "tv_shows"];
 // kalıp aynı zamanda REST yoluna "/" veya ".." enjekte edilmesini engelliyor.
 const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
+/**
+ * Öneri gönderiminin günlük sınırı. Sayaç ALICI başına işliyor: tek bir filmi
+ * üç arkadaşa göndermek üç hak harcar. İstemci de kalan hakkı gösterip butonu
+ * kilitliyor ama asıl kapı burası — istemci tarafındaki sayaç değiştirilmiş
+ * bir APK ya da doğrudan REST çağrısıyla atlanabilir.
+ */
+const DAILY_RECOMMENDATION_LIMIT = 10;
+const MAX_RECOMMENDATION_NOTE_LENGTH = 120;
+
 async function handleCommentReply(
   payload: CommentReplyPayload,
   caller: VerifiedCaller,
@@ -395,6 +489,106 @@ async function handleCommentReply(
   return jsonResponse({ ok: true });
 }
 
+/**
+ * Kotanın hangi güne yazılacağı. Sunucu UTC'de çalışıyor; ham UTC gününü
+ * kullansaydık hak, kullanıcı için gecenin 03:00'ünde yenilenirdi.
+ */
+function quotaDayKey(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date());
+}
+
+interface QuotaResult {
+  ok: boolean;
+  /** İşlemden SONRA kalan hak. */
+  remaining: number;
+}
+
+/** [count] kadar günlük öneri hakkını atomik olarak düşer. */
+async function reserveRecommendationQuota(uid: string, count: number): Promise<QuotaResult> {
+  const path = `users/${uid}/limits/recommendations`;
+  const day = quotaDayKey();
+  const transaction = await firestoreBeginTransaction();
+
+  const existing = await firestoreGetInTransaction(path, transaction);
+  // Gün değiştiyse eski sayaç sıfırdan sayılıyor; belgeyi ayrıca temizlemeye gerek yok.
+  const used = existing?.day === day ? Number(existing.count ?? 0) : 0;
+
+  if (used + count > DAILY_RECOMMENDATION_LIMIT) {
+    await firestoreRollback(transaction);
+    return { ok: false, remaining: Math.max(0, DAILY_RECOMMENDATION_LIMIT - used) };
+  }
+
+  const committed = await firestoreCommitInTransaction(transaction, path, {
+    day,
+    count: used + count,
+    updatedAt: Date.now(),
+  });
+  if (!committed) {
+    // Aynı anda gelen başka bir istek sayacı değiştirdi; kullanıcı tekrar denesin.
+    return { ok: false, remaining: Math.max(0, DAILY_RECOMMENDATION_LIMIT - used) };
+  }
+  return { ok: true, remaining: DAILY_RECOMMENDATION_LIMIT - (used + count) };
+}
+
+async function handleRecommend(payload: RecommendPayload, caller: VerifiedCaller): Promise<Response> {
+  if (!Number.isInteger(payload.mediaId) || payload.mediaId <= 0) {
+    return jsonResponse({ ok: false, error: "Geçersiz mediaId" }, 400);
+  }
+  const mediaType = payload.mediaType === "tv" ? "tv" : "movie";
+  const mediaTitle = (payload.mediaTitle ?? "").trim().slice(0, 100);
+  if (mediaTitle.length === 0) {
+    return jsonResponse({ ok: false, error: "mediaTitle boş" }, 400);
+  }
+  const note = (payload.note ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_RECOMMENDATION_NOTE_LENGTH);
+
+  const requested = [...new Set(payload.targetUids ?? [])]
+    .filter((uid) => DOCUMENT_ID_PATTERN.test(uid) && uid !== caller.uid);
+  if (requested.length === 0) {
+    return jsonResponse({ ok: false, error: "Alıcı yok" }, 400);
+  }
+  if (requested.length > DAILY_RECOMMENDATION_LIMIT) {
+    return jsonResponse({ ok: false, error: `Tek seferde en fazla ${DAILY_RECOMMENDATION_LIMIT} kişi` }, 400);
+  }
+
+  // Alıcı listesi istemciden geliyor: her birinin gerçekten arkadaş olduğunu
+  // burada doğrulamazsak herkes herkese bildirim gönderebilir.
+  const friendDocs = await Promise.all(
+    requested.map((uid) => firestoreGet(`users/${caller.uid}/friends/${uid}`)),
+  );
+  const recipients = requested.filter((_, index) => friendDocs[index] !== null);
+  if (recipients.length === 0) {
+    return jsonResponse({ ok: false, error: "Alıcılar arkadaş listenizde değil" }, 403);
+  }
+
+  const quota = await reserveRecommendationQuota(caller.uid, recipients.length);
+  if (!quota.ok) {
+    return jsonResponse({ ok: false, error: "quota_exceeded", remaining: quota.remaining }, 429);
+  }
+
+  const me = await firestoreGet(`users/${caller.uid}`);
+  const displayName = me?.fullName || me?.username || caller.email?.split("@")[0] || "Kullanıcı";
+  const title = `${displayName} sana bir ${mediaType === "tv" ? "dizi" : "film"} önerdi`
+    .slice(0, MAX_TITLE_LENGTH);
+  const body = (note.length > 0 ? `${mediaTitle} — "${note}"` : mediaTitle).slice(0, MAX_BODY_LENGTH);
+  const route = mediaType === "tv" ? `tv_detail/${payload.mediaId}` : `movie_detail/${payload.mediaId}`;
+
+  await Promise.all(recipients.map(async (uid) => {
+    await firestoreAdd(`users/${uid}/notifications`, {
+      type: "recommendation",
+      title,
+      body,
+      movieId: mediaType === "tv" ? null : payload.mediaId,
+      tvId: mediaType === "tv" ? payload.mediaId : null,
+      mediaType,
+      isRead: false,
+      createdAt: Date.now(),
+    });
+    await sendPush(uid, { type: "recommendation", title, body, route });
+  }));
+
+  return jsonResponse({ ok: true, sent: recipients.length, remaining: quota.remaining });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -417,6 +611,7 @@ Deno.serve(async (req) => {
     if (payload.action === "request") return await handleRequest(payload, caller.uid);
     if (payload.action === "accept") return await handleAccept(payload, caller.uid);
     if (payload.action === "comment_reply") return await handleCommentReply(payload, caller);
+    if (payload.action === "recommend") return await handleRecommend(payload, caller);
     return jsonResponse({ ok: false, error: "Bilinmeyen action" }, 400);
   } catch (error) {
     console.error("friend-push hata:", error);

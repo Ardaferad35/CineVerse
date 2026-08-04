@@ -72,6 +72,7 @@ import com.arda.cineverse.viewmodel.CommentViewModel
 import com.arda.cineverse.viewmodel.CommentViewModelFactory
 import com.arda.cineverse.viewmodel.MovieDetailViewModel
 import com.arda.cineverse.viewmodel.MovieDetailViewModelFactory
+import com.arda.cineverse.viewmodel.RecommendShareViewModel
 import kotlinx.coroutines.launch
 
 import androidx.compose.runtime.LaunchedEffect
@@ -152,6 +153,17 @@ fun MovieDetailScreen(
     var showTrailerPlayer by remember { mutableStateOf(false) }
     val commentBoxRequester = remember { BringIntoViewRequester() }
 
+    val recommendShareViewModel: RecommendShareViewModel = viewModel()
+    val shareState by recommendShareViewModel.uiState.collectAsState()
+    var showShareSheet by remember { mutableStateOf(false) }
+    var shareSentMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(shareState.sentCount) {
+        val count = shareState.sentCount ?: return@LaunchedEffect
+        showShareSheet = false
+        shareSentMessage = if (count == 1) "Önerin gönderildi" else "$count arkadaşına önerin gönderildi"
+    }
+
     fun playTrailer(key: String?) {
         if (key.isNullOrBlank()) return
         val uri = "https://www.youtube.com/watch?v=$key".toUri()
@@ -161,14 +173,6 @@ fun MovieDetailScreen(
     fun openInYouTubeApp(key: String) {
         val uri = "https://www.youtube.com/watch?v=$key".toUri()
         context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-    }
-
-    fun shareMovie(title: String) {
-        val sendIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "CineVerse'de \"$title\" filmine göz at!")
-        }
-        context.startActivity(Intent.createChooser(sendIntent, "Paylaş"))
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
@@ -251,7 +255,13 @@ fun MovieDetailScreen(
                                             tint = if (detailState.isSaved) Primary else OverlayIconColor,
                                             onClick = { movieDetailViewModel.toggleWatchlist() },
                                         )
-                                        CircleIconButton(icon = Icons.Filled.Share, onClick = { shareMovie(movie.title) })
+                                        CircleIconButton(
+                                            icon = Icons.Filled.Share,
+                                            onClick = {
+                                                recommendShareViewModel.reset()
+                                                showShareSheet = true
+                                            },
+                                        )
                                     }
                                 }
 
@@ -558,7 +568,8 @@ fun MovieDetailScreen(
 
         ClearOfflineMessageAfterDelay(detailState.offlineMessage) { movieDetailViewModel.clearOfflineMessage() }
         ClearOfflineMessageAfterDelay(commentState.mutationErrorMessage) { commentViewModel.clearMutationError() }
-        (detailState.offlineMessage ?: offlineMessageState.message ?: commentState.mutationErrorMessage)?.let {
+        ClearOfflineMessageAfterDelay(shareSentMessage) { shareSentMessage = null }
+        (detailState.offlineMessage ?: offlineMessageState.message ?: commentState.mutationErrorMessage ?: shareSentMessage)?.let {
             OfflineActionSnackbar(
                 message = it,
                 modifier = Modifier
@@ -566,6 +577,27 @@ fun MovieDetailScreen(
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 88.dp)
                     .fillMaxWidth(),
+            )
+        }
+    }
+
+    if (showShareSheet) {
+        detailState.movie?.let { movie ->
+            RecommendShareSheet(
+                state = shareState,
+                mediaTitle = movie.title,
+                posterUrl = movie.posterUrl,
+                isTvShow = false,
+                onToggleFriend = recommendShareViewModel::toggleFriend,
+                onNoteChange = recommendShareViewModel::onNoteChange,
+                onSend = {
+                    recommendShareViewModel.send(
+                        mediaId = movieId,
+                        mediaType = "movie",
+                        mediaTitle = movie.title,
+                    )
+                },
+                onDismiss = { showShareSheet = false },
             )
         }
     }
