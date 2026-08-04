@@ -113,6 +113,16 @@ fun HomeScreen(
     // rotası duruyor — push bildirimi ve Profil girişi oraya gidiyor.
     var showFriendsPanel by rememberSaveable { mutableStateOf(false) }
 
+    var quickPreviewData by remember { mutableStateOf<QuickPreviewData?>(null) }
+    var shareMediaId by remember { mutableStateOf<Int?>(null) }
+    var shareMediaType by remember { mutableStateOf<String>("movie") }
+    var shareMediaTitle by remember { mutableStateOf<String>("") }
+    var shareMediaPosterUrl by remember { mutableStateOf<String?>(null) }
+    var showShareSheet by remember { mutableStateOf(false) }
+
+    val recommendShareViewModel: com.arda.cineverse.viewmodel.RecommendShareViewModel = hiltViewModel()
+    val shareState by recommendShareViewModel.uiState.collectAsState()
+
     val userListRepository = remember { UserListRepository() }
     val recommendationRepository = remember { RecommendationRepository() }
     val tvRepository = remember { TvRepository() }
@@ -393,6 +403,19 @@ fun HomeScreen(
                                         label = "GÜNÜN DİZİSİ",
                                         onDetailsClick = { onTvShowClick(featuredTv.id) },
                                         onAddToListClick = { toggleFeaturedTvWatchlist(featuredTv) },
+                                        onLongClick = {
+                                            quickPreviewData = QuickPreviewData(
+                                                id = featuredTv.id,
+                                                title = featuredTv.title,
+                                                overview = featuredTv.description,
+                                                posterUrl = featuredTv.posterUrl,
+                                                backdropUrl = featuredTv.backdropUrl,
+                                                rating = featuredTv.rating,
+                                                year = featuredTv.year,
+                                                genre = featuredTv.genre,
+                                                mediaType = "tv",
+                                            )
+                                        },
                                         isInWatchlist = featuredTv.id in watchlistTvIds,
                                         modifier = Modifier.padding(horizontal = 20.dp),
                                     )
@@ -406,6 +429,19 @@ fun HomeScreen(
                                         movie = featured,
                                         onDetailsClick = { onMovieClick(featured.id) },
                                         onAddToListClick = { toggleFeaturedWatchlist(featured) },
+                                        onLongClick = {
+                                            quickPreviewData = QuickPreviewData(
+                                                id = featured.id,
+                                                title = featured.title,
+                                                overview = featured.description,
+                                                posterUrl = featured.posterUrl,
+                                                backdropUrl = featured.backdropUrl,
+                                                rating = featured.rating,
+                                                year = featured.year,
+                                                genre = featured.genre,
+                                                mediaType = "movie",
+                                            )
+                                        },
                                         isInWatchlist = featured.id in watchlistMovieIds,
                                         modifier = Modifier.padding(horizontal = 20.dp),
                                     )
@@ -433,6 +469,19 @@ fun HomeScreen(
                                                 ),
                                                 onClick = {
                                                     if (uiState.isTvMode) onTvShowClick(movie.id) else onMovieClick(movie.id)
+                                                },
+                                                onLongClick = {
+                                                    quickPreviewData = QuickPreviewData(
+                                                        id = movie.id,
+                                                        title = movie.title,
+                                                        overview = movie.overview,
+                                                        posterUrl = movie.posterUrl,
+                                                        rating = movie.rating,
+                                                        year = movie.year,
+                                                        genre = movie.genre,
+                                                        mediaType = if (uiState.isTvMode) "tv" else "movie",
+                                                        isFavorite = movie.id in if (uiState.isTvMode) favoriteTvIds else favoriteMovieIds,
+                                                    )
                                                 },
                                                 onFavoriteClick = {
                                                     toggleFavorite(movie, mediaType = if (uiState.isTvMode) "tv" else "movie")
@@ -465,6 +514,19 @@ fun HomeScreen(
                                             onClick = {
                                                 if (uiState.isTvMode) onTvShowClick(movie.id) else onMovieClick(movie.id)
                                             },
+                                            onLongClick = {
+                                                quickPreviewData = QuickPreviewData(
+                                                    id = movie.id,
+                                                    title = movie.title,
+                                                    overview = movie.overview,
+                                                    posterUrl = movie.posterUrl,
+                                                    rating = movie.rating,
+                                                    year = movie.year,
+                                                    genre = movie.genre,
+                                                    mediaType = if (uiState.isTvMode) "tv" else "movie",
+                                                    isFavorite = movie.id in if (uiState.isTvMode) favoriteTvIds else favoriteMovieIds,
+                                                )
+                                            },
                                             onFavoriteClick = {
                                                 toggleFavorite(movie, mediaType = if (uiState.isTvMode) "tv" else "movie")
                                             },
@@ -491,6 +553,19 @@ fun HomeScreen(
                                             PopularMovieCard(
                                                 movie = movie.copy(isFavorite = movie.id in favoriteMovieIds),
                                                 onClick = { onMovieClick(movie.id) },
+                                                onLongClick = {
+                                                    quickPreviewData = QuickPreviewData(
+                                                        id = movie.id,
+                                                        title = movie.title,
+                                                        overview = movie.overview,
+                                                        posterUrl = movie.posterUrl,
+                                                        rating = movie.rating,
+                                                        year = movie.year,
+                                                        genre = movie.genre,
+                                                        mediaType = "movie",
+                                                        isFavorite = movie.id in favoriteMovieIds,
+                                                    )
+                                                },
                                                 onFavoriteClick = { toggleFavorite(movie, mediaType = "movie") },
                                             )
                                         }
@@ -517,6 +592,19 @@ fun HomeScreen(
                                             PopularMovieCard(
                                                 movie = tvShow.copy(isFavorite = tvShow.id in favoriteTvIds),
                                                 onClick = { onTvShowClick(tvShow.id) },
+                                                onLongClick = {
+                                                    quickPreviewData = QuickPreviewData(
+                                                        id = tvShow.id,
+                                                        title = tvShow.title,
+                                                        overview = tvShow.overview,
+                                                        posterUrl = tvShow.posterUrl,
+                                                        rating = tvShow.rating,
+                                                        year = tvShow.year,
+                                                        genre = tvShow.genre,
+                                                        mediaType = "tv",
+                                                        isFavorite = tvShow.id in favoriteTvIds,
+                                                    )
+                                                },
                                                 onFavoriteClick = { toggleFavorite(tvShow, mediaType = "tv") },
                                             )
                                         }
@@ -540,6 +628,15 @@ fun HomeScreen(
                                                 UpcomingMovieCard(
                                                     movie = tvShow,
                                                     onClick = { onTvShowClick(tvShow.id) },
+                                                    onLongClick = {
+                                                        quickPreviewData = QuickPreviewData(
+                                                            id = tvShow.id,
+                                                            title = tvShow.title,
+                                                            posterUrl = tvShow.posterUrl,
+                                                            year = tvShow.year,
+                                                            mediaType = "tv",
+                                                        )
+                                                    },
                                                 )
                                             }
                                         }
@@ -563,6 +660,15 @@ fun HomeScreen(
                                             UpcomingMovieCard(
                                                 movie = movie,
                                                 onClick = { onMovieClick(movie.id) },
+                                                onLongClick = {
+                                                    quickPreviewData = QuickPreviewData(
+                                                        id = movie.id,
+                                                        title = movie.title,
+                                                        posterUrl = movie.posterUrl,
+                                                        year = movie.year,
+                                                        mediaType = "movie",
+                                                    )
+                                                },
                                             )
                                         }
                                     }
@@ -633,6 +739,47 @@ fun HomeScreen(
             ) {
                 Text(message, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
+        }
+
+        quickPreviewData?.let { data ->
+            QuickPreviewSheet(
+                data = data,
+                onNavigateDetail = {
+                    val targetId = data.id
+                    val isTv = data.mediaType == "tv"
+                    quickPreviewData = null
+                    if (isTv) onTvShowClick(targetId) else onMovieClick(targetId)
+                },
+                onShareWithFriends = {
+                    shareMediaId = data.id
+                    shareMediaType = data.mediaType
+                    shareMediaTitle = data.title
+                    shareMediaPosterUrl = data.posterUrl
+                    showShareSheet = true
+                    quickPreviewData = null
+                },
+                onDismiss = { quickPreviewData = null },
+            )
+        }
+
+        if (showShareSheet && shareMediaId != null) {
+            RecommendShareSheet(
+                state = shareState,
+                mediaTitle = shareMediaTitle,
+                posterUrl = shareMediaPosterUrl,
+                isTvShow = shareMediaType == "tv",
+                onToggleFriend = recommendShareViewModel::toggleFriend,
+                onNoteChange = recommendShareViewModel::onNoteChange,
+                onSend = {
+                    recommendShareViewModel.send(
+                        mediaId = shareMediaId!!,
+                        mediaType = shareMediaType,
+                        mediaTitle = shareMediaTitle,
+                        posterUrl = shareMediaPosterUrl,
+                    )
+                },
+                onDismiss = { showShareSheet = false },
+            )
         }
 
         // En üstte: alt navigasyon çubuğunu ve mesajları da örtmeli.
