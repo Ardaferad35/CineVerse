@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 import java.util.Date
+import javax.inject.Inject
 
 /** Günlük öneri hakkı doldu — kullanıcıya ayrı bir mesaj gösteriliyor. */
 class RecommendationQuotaException : Exception("Günlük öneri hakkın doldu")
@@ -21,9 +22,9 @@ class RecommendationQuotaException : Exception("Günlük öneri hakkın doldu")
  * gidiyor. Kota da orada düşülüyor; buradaki okuma sadece arayüzün kalan
  * hakkı gösterip butonu kilitlemesi için — asıl sınır sunucuda.
  */
-class RecommendationShareRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+class RecommendationShareRepository @Inject constructor(
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth,
 ) {
     private fun requireUid(): String = auth.currentUser?.uid ?: error("Giriş yapmalısınız")
 

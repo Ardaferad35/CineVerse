@@ -73,7 +73,7 @@ class UpcomingCheckWorker(
     }
 
     private suspend fun checkUnreadNotifications() {
-        val notificationRepository = NotificationRepository()
+        val notificationRepository = NotificationRepository.default()
         val unreadCount = notificationRepository.getUnreadCount().getOrNull() ?: return
 
         val lastNotifiedCount = prefs.getInt("last_unread_notified_count", 0)

@@ -26,6 +26,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import retrofit2.HttpException
 import java.io.IOException
+import javax.inject.Inject
 
 /**
  * Sebebi bilinen, mesajı doğrudan kullanıcıya gösterilebilecek asistan hatası.
@@ -48,9 +49,9 @@ private data class AiItemDto(
     val note: String? = null,
 )
 
-class AiChatRepository(
-    private val geminiApi: GeminiApiService = GeminiNetworkModule.api,
-    private val tmdbApi: TmdbApiService = TmdbNetworkModule.api,
+class AiChatRepository @Inject constructor(
+    private val geminiApi: GeminiApiService,
+    private val tmdbApi: TmdbApiService,
 ) {
     private val gson = Gson()
 

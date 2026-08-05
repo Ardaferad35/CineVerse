@@ -32,7 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
 import com.arda.cineverse.viewmodel.*
@@ -47,7 +47,7 @@ fun MyListScreen(
     onNavigateTab: (Int) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
-    viewModel: MyListViewModel = viewModel(),
+    viewModel: MyListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 

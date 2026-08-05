@@ -1,7 +1,7 @@
 package com.arda.cineverse.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.arda.cineverse.data.common.GENERIC_WRITE_FAILURE_MESSAGE
 import com.arda.cineverse.data.common.OfflineWriteException
@@ -11,9 +11,11 @@ import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.repository.MovieRepository
 import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.UserListRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class MovieDetailUiState(
     val isLoading: Boolean = true,
@@ -57,12 +59,18 @@ private fun MovieDetail.toSavedMovie() = SavedMovie(
     genreIds = genreIds,
 )
 
-class MovieDetailViewModel(
-    private val movieId: Int,
-    private val movieRepository: MovieRepository = MovieRepository.default(),
-    private val userListRepository: UserListRepository = UserListRepository.default(),
-    private val recommendationRepository: RecommendationRepository = RecommendationRepository.default(),
+@HiltViewModel
+class MovieDetailViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val movieRepository: MovieRepository,
+    private val userListRepository: UserListRepository,
+    private val recommendationRepository: RecommendationRepository,
 ) : ViewModel() {
+
+    // "movieId", CineVerseNavGraph'taki MOVIE_DETAIL rotasının nav argument
+    // adıyla birebir aynı olmalı — Hilt bu SavedStateHandle'ı o backstack
+    // kaydının argümanlarından otomatik dolduruyor.
+    private val movieId: Int = checkNotNull(savedStateHandle["movieId"]) { "movieId eksik" }
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
     val uiState: StateFlow<MovieDetailUiState> = _uiState
@@ -166,12 +174,5 @@ class MovieDetailViewModel(
 
     fun clearOfflineMessage() {
         _uiState.value = _uiState.value.copy(offlineMessage = null)
-    }
-}
-
-class MovieDetailViewModelFactory(private val movieId: Int) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return MovieDetailViewModel(movieId) as T
     }
 }

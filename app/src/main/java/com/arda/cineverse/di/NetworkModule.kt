@@ -1,5 +1,7 @@
 package com.arda.cineverse.di
 
+import com.arda.cineverse.data.remote.GeminiApiService
+import com.arda.cineverse.data.remote.GeminiNetworkModule
 import com.arda.cineverse.data.remote.TmdbApiService
 import com.arda.cineverse.data.remote.TmdbNetworkModule
 import dagger.Module
@@ -16,4 +18,9 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideTmdbApiService(): TmdbApiService = TmdbNetworkModule.api
+
+    /** Mevcut GeminiNetworkModule singleton'ını (Retrofit/OkHttp kurulumu) yeniden kullanır. */
+    @Provides
+    @Singleton
+    fun provideGeminiApiService(): GeminiApiService = GeminiNetworkModule.api
 }

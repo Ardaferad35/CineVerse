@@ -6,10 +6,11 @@ import com.google.firebase.firestore.AggregateSource
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
-class NotificationRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+class NotificationRepository @Inject constructor(
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth,
 ) {
     private fun notificationsCollection(uid: String) =
         firestore.collection("users").document(uid).collection("notifications")
@@ -63,5 +64,14 @@ class NotificationRepository(
             chunk.forEach { doc -> batch.update(doc.reference, "isRead", true) }
             batch.commit().await()
         }
+    }
+
+    // bkz. MovieRepository.Companion.default() — aynı gerekçe (WorkManager
+    // Worker'ları henüz Hilt'e taşınmadı, bkz. UpcomingCheckWorker).
+    companion object {
+        fun default(): NotificationRepository = NotificationRepository(
+            firestore = FirebaseFirestore.getInstance(),
+            auth = FirebaseAuth.getInstance(),
+        )
     }
 }

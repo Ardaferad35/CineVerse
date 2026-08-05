@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.arda.cineverse.data.model.Comment
@@ -66,7 +67,6 @@ import com.arda.cineverse.ui.theme.*
 import com.arda.cineverse.viewmodel.CommentViewModel
 import com.arda.cineverse.viewmodel.CommentViewModelFactory
 import com.arda.cineverse.viewmodel.MovieDetailViewModel
-import com.arda.cineverse.viewmodel.MovieDetailViewModelFactory
 import com.arda.cineverse.viewmodel.RecommendShareViewModel
 import kotlinx.coroutines.launch
 
@@ -92,7 +92,7 @@ fun MovieDetailScreen(
     onBack: () -> Unit = {},
     onGoHome: () -> Unit = {},
     onMovieClick: (Int) -> Unit = {},
-    movieDetailViewModel: MovieDetailViewModel = viewModel(factory = MovieDetailViewModelFactory(movieId)),
+    movieDetailViewModel: MovieDetailViewModel = hiltViewModel(),
     commentViewModel: CommentViewModel = viewModel(factory = CommentViewModelFactory(movieId)),
 ) {
     val context = LocalContext.current
@@ -148,7 +148,7 @@ fun MovieDetailScreen(
     var selectedCast by remember { mutableStateOf<com.arda.cineverse.data.model.CastMember?>(null) }
     val commentBoxRequester = remember { BringIntoViewRequester() }
 
-    val recommendShareViewModel: RecommendShareViewModel = viewModel()
+    val recommendShareViewModel: RecommendShareViewModel = hiltViewModel()
     val shareState by recommendShareViewModel.uiState.collectAsState()
     var showShareSheet by remember { mutableStateOf(false) }
     var shareSentMessage by remember { mutableStateOf<String?>(null) }

@@ -4,17 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arda.cineverse.data.model.AppNotification
 import com.arda.cineverse.data.repository.NotificationRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class NotificationsUiState(
     val isLoading: Boolean = true,
     val notifications: List<AppNotification> = emptyList(),
 )
 
-class NotificationViewModel(
-    private val repository: NotificationRepository = NotificationRepository(),
+@HiltViewModel
+class NotificationViewModel @Inject constructor(
+    private val repository: NotificationRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NotificationsUiState())

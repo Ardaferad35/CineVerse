@@ -43,7 +43,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
@@ -96,7 +95,7 @@ fun HomeScreen(
     onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     homeViewModel: HomeViewModel = hiltViewModel(),
-    notificationViewModel: NotificationViewModel = viewModel(),
+    notificationViewModel: NotificationViewModel = hiltViewModel(),
 ) {
     var selectedCategoryId by remember { mutableStateOf("") }
 

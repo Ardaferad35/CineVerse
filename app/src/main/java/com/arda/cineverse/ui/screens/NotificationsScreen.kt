@@ -32,7 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.arda.cineverse.data.model.AppNotification
 import com.arda.cineverse.ui.components.timeAgo
 import com.arda.cineverse.ui.theme.Background
@@ -47,7 +47,7 @@ import com.arda.cineverse.viewmodel.NotificationViewModel
 fun NotificationsScreen(
     onBack: () -> Unit = {},
     onNotificationClick: (AppNotification) -> Unit = {},
-    viewModel: NotificationViewModel = viewModel(),
+    viewModel: NotificationViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 

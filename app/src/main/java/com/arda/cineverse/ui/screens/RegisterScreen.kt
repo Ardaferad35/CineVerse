@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.arda.cineverse.data.repository.FriendRepository
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
@@ -34,7 +34,7 @@ fun RegisterScreen(
     onBack: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
     onRegisterSuccess: (email: String) -> Unit = {},
-    authViewModel: AuthViewModel = viewModel(),
+    authViewModel: AuthViewModel = hiltViewModel(),
 ) {
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -49,7 +49,7 @@ fun RegisterScreen(
     var emailError by remember { mutableStateOf<String?>(null) }
     var confirmError by remember { mutableStateOf<String?>(null) }
 
-    val friendRepository = remember { FriendRepository() }
+    val friendRepository = remember { FriendRepository.default() }
     val usernameFormatValid = username.matches(FriendRepository.USERNAME_REGEX)
 
     LaunchedEffect(username) {

@@ -6,10 +6,12 @@ import com.arda.cineverse.data.model.Friend
 import com.arda.cineverse.data.repository.FriendRepository
 import com.arda.cineverse.data.repository.RecommendationQuotaException
 import com.arda.cineverse.data.repository.RecommendationShareRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class RecommendShareUiState(
     val friends: List<Friend> = emptyList(),
@@ -32,9 +34,10 @@ data class RecommendShareUiState(
         get() = selectedUids.isNotEmpty() && !isOverQuota && !isSending && !isQuotaExhausted
 }
 
-class RecommendShareViewModel(
-    private val friendRepository: FriendRepository = FriendRepository(),
-    private val shareRepository: RecommendationShareRepository = RecommendationShareRepository(),
+@HiltViewModel
+class RecommendShareViewModel @Inject constructor(
+    private val friendRepository: FriendRepository,
+    private val shareRepository: RecommendationShareRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RecommendShareUiState())
