@@ -77,8 +77,11 @@ class TvRepository @Inject constructor(
         getOnTheAirTvShows().getOrDefault(emptyList())
     }
 
+    /** bkz. MovieRepository.refreshFeaturedMovie() — aynı "günde bir kez sabitle" gerekçesi. */
     suspend fun refreshFeaturedTvShow(): SyncResult {
         if (!connectivityObserver.isCurrentlyOnline()) return SyncResult.Offline
+        val cached = featuredDao.getTv()
+        if (cached != null && isCachedToday(cached.cachedAt)) return SyncResult.Success
         return getFeaturedTvShow().fold(
             onSuccess = { featured ->
                 featuredDao.upsertTv(featured.toEntity(System.currentTimeMillis()))
@@ -279,6 +282,13 @@ class TvRepository @Inject constructor(
     private fun todaySeed(): Int {
         val today = LocalDate.now()
         return today.year * 1000 + today.dayOfYear
+    }
+
+    private fun isCachedToday(cachedAtMillis: Long): Boolean {
+        val cachedDate = java.time.Instant.ofEpochMilli(cachedAtMillis)
+            .atZone(java.time.ZoneId.systemDefault())
+            .toLocalDate()
+        return cachedDate == LocalDate.now()
     }
 
     companion object {
