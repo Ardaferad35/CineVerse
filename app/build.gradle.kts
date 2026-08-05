@@ -104,6 +104,15 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
 
+    // ViewModel/repository unit testleri: mockk (constructor injection sayesinde
+    // repository'ler artık interface gerekmeden doğrudan mock'lanabiliyor),
+    // kotlinx-coroutines-test (runTest/StandardTestDispatcher — viewModelScope
+    // içindeki coroutine'leri deterministik çalıştırmak için), turbine (Flow
+    // tabanlı StateFlow/observeFriends() gibi akışları test etmek için).
+    testImplementation("io.mockk:mockk:1.14.7")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("app.cash.turbine:turbine:1.2.1")
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
