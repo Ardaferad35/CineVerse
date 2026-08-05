@@ -112,8 +112,19 @@ class MovieRepository @Inject constructor(
         }.fold(onSuccess = { SyncResult.Success }, onFailure = { SyncResult.Error(it) })
     }
 
+    /**
+     * Günün filmi TMDB'den yeniden seçilmeden önce, bugün için zaten seçilmiş
+     * bir film olup olmadığı kontrol edilir. Bu koruma olmadan her Home
+     * yenilemesi (bağlantı offline→online geçişi, ekran yeniden oluşturulması
+     * vb. — günde defalarca olabilir) getFeaturedMovie()'yi tekrar çağırırdı;
+     * bu da hem seed() takvim gününe bağlı olsa da TMDB'nin discover
+     * sonuçlarının (popularity.desc) saat içinde dalgalanması yüzünden AYNI
+     * gün içinde bile farklı bir film seçilmesine yol açıyordu.
+     */
     suspend fun refreshFeaturedMovie(): SyncResult {
         if (!connectivityObserver.isCurrentlyOnline()) return SyncResult.Offline
+        val cached = featuredDao.getMovie()
+        if (cached != null && isCachedToday(cached.cachedAt)) return SyncResult.Success
         return getFeaturedMovie().fold(
             onSuccess = { featured ->
                 featuredDao.upsertMovie(featured.toEntity(System.currentTimeMillis()))
@@ -317,5 +328,12 @@ class MovieRepository @Inject constructor(
     private fun todaySeed(): Int {
         val today = LocalDate.now()
         return today.year * 1000 + today.dayOfYear
+    }
+
+    private fun isCachedToday(cachedAtMillis: Long): Boolean {
+        val cachedDate = java.time.Instant.ofEpochMilli(cachedAtMillis)
+            .atZone(java.time.ZoneId.systemDefault())
+            .toLocalDate()
+        return cachedDate == LocalDate.now()
     }
 }
