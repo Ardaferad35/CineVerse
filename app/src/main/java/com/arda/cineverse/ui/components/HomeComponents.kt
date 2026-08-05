@@ -67,6 +67,7 @@ fun HomeTopBar(
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onFriendsClick: () -> Unit = {},
+    onReelsClick: () -> Unit = {},
     unreadNotificationCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {

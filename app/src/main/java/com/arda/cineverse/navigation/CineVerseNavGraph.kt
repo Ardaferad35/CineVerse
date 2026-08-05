@@ -22,6 +22,7 @@ import com.arda.cineverse.ui.screens.MovieListSource
 import com.arda.cineverse.ui.screens.MyListScreen
 import com.arda.cineverse.ui.screens.NotificationsScreen
 import com.arda.cineverse.ui.screens.ProfileScreen
+import com.arda.cineverse.ui.screens.ReelsScreen
 import com.arda.cineverse.ui.screens.RegisterScreen
 import com.arda.cineverse.ui.screens.TvShowDetailScreen
 import com.arda.cineverse.viewmodel.AiChatViewModel
@@ -46,6 +47,7 @@ object CVRoutes {
     const val MOVIE_LIST_GENRE = "movie_list_genre/{genreId}/{label}"
     const val TV_LIST_GENRE = "tv_list_genre/{genreId}/{label}"
     const val ALL_CATEGORIES = "all_categories?isTvMode={isTvMode}"
+    const val REELS = "reels"
 
     fun movieDetail(movieId: Int) = "movie_detail/$movieId"
     fun tvDetail(tvId: Int) = "tv_detail/$tvId"
@@ -162,6 +164,7 @@ fun CineVerseNavGraph(
                 },
                 onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
                 onNotificationsClick = { navController.navigate(CVRoutes.NOTIFICATIONS) },
+                onReelsClick = { navController.navigate(CVRoutes.REELS) },
             )
         }
         composable(CVRoutes.LISTEM) {
@@ -336,6 +339,13 @@ fun CineVerseNavGraph(
                 onBack = { navController.popBackStack() },
                 onGoHome = { navController.popBackStack(CVRoutes.HOME, inclusive = false) },
                 onTvShowClick = { relatedTvId -> navController.navigate(CVRoutes.tvDetail(relatedTvId)) },
+            )
+        }
+        composable(route = CVRoutes.REELS) {
+            ReelsScreen(
+                onBack = { navController.popBackStack() },
+                onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
+                onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
             )
         }
     }

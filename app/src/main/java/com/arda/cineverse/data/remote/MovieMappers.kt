@@ -14,7 +14,7 @@ import com.arda.cineverse.data.remote.dto.MultiSearchResultDto
 import com.arda.cineverse.data.remote.dto.VideosResponseDto
 import kotlin.math.round
 
-private val genreIdToTurkishName = mapOf(
+internal val genreIdToTurkishName = mapOf(
     28 to "Aksiyon",
     12 to "Macera",
     16 to "Animasyon",
@@ -40,7 +40,7 @@ private val turkishMonths = listOf(
     "OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"
 )
 
-private fun String?.extractYear(): Int? =
+internal fun String?.extractYear(): Int? =
     this?.takeIf { it.length >= 4 }?.substring(0, 4)?.toIntOrNull()
 
 private fun formatRuntime(minutes: Int?): String {
