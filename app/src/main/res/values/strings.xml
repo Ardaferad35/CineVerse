@@ -193,6 +193,9 @@
     <string name="friends_send_request_cd">İstek gönder</string>
     <string name="friends_row_subtitle">@%1$s • Dokun &amp; Etkileşimleri Gör</string>
     <string name="friends_remove_cd">Arkadaşlıktan çıkar</string>
+    <string name="friends_remove_confirm_title">Arkadaşı çıkar</string>
+    <string name="friends_remove_confirm_body">%1$s kullanıcısını arkadaş listenizden çıkarmak istediğinize emin misiniz?</string>
+    <string name="friends_remove_action">Çıkar</string>
     <string name="friends_accept_cd">Kabul et</string>
     <string name="friends_decline_cd">Reddet</string>
     <string name="friends_activity_sheet_subtitle">Son Etkileşimler (Favoriler, Yorumlar &amp; Listeler)</string>

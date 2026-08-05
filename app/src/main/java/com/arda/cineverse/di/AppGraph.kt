@@ -6,7 +6,9 @@ import com.arda.cineverse.data.local.dao.CategoryDao
 import com.arda.cineverse.data.local.dao.FeaturedDao
 import com.arda.cineverse.data.local.dao.FriendDao
 import com.arda.cineverse.data.local.dao.MovieDao
+import com.arda.cineverse.data.local.dao.PendingActionDao
 import com.arda.cineverse.data.local.dao.SavedMovieDao
+import com.arda.cineverse.data.local.dao.TvEpisodeProgressDao
 import com.arda.cineverse.data.local.dao.TvShowDao
 import com.arda.cineverse.data.local.dao.WatchHistoryDao
 import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
@@ -36,6 +38,8 @@ interface AppEntryPoint {
     fun savedMovieDao(): SavedMovieDao
     fun watchHistoryDao(): WatchHistoryDao
     fun friendDao(): FriendDao
+    fun tvEpisodeProgressDao(): TvEpisodeProgressDao
+    fun pendingActionDao(): PendingActionDao
     fun connectivityObserver(): ConnectivityObserver
     fun userPreferencesRepository(): UserPreferencesRepository
 }
@@ -54,6 +58,8 @@ object AppGraph {
     val savedMovieDao: SavedMovieDao get() = entryPoint.savedMovieDao()
     val watchHistoryDao: WatchHistoryDao get() = entryPoint.watchHistoryDao()
     val friendDao: FriendDao get() = entryPoint.friendDao()
+    val tvEpisodeProgressDao: TvEpisodeProgressDao get() = entryPoint.tvEpisodeProgressDao()
+    val pendingActionDao: PendingActionDao get() = entryPoint.pendingActionDao()
     val connectivityObserver: ConnectivityObserver get() = entryPoint.connectivityObserver()
     val userPreferencesRepository: UserPreferencesRepository get() = entryPoint.userPreferencesRepository()
 
@@ -68,6 +74,8 @@ object AppGraph {
         savedMovieDao.clearAll()
         watchHistoryDao.clearAll()
         friendDao.clearAll()
+        tvEpisodeProgressDao.clearAll()
+        pendingActionDao.clearAll()
         movieDao.clearSection(SectionType.FOR_YOU)
         tvShowDao.clearSection(SectionType.TV_FOR_YOU)
     }

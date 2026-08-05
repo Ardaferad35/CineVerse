@@ -18,11 +18,7 @@ plugins {
 
 android {
     namespace = "com.arda.cineverse"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.arda.cineverse"

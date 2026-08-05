@@ -9,6 +9,8 @@ import com.arda.cineverse.data.local.dao.FriendDao
 import com.arda.cineverse.data.local.dao.MovieDao
 import com.arda.cineverse.data.local.dao.SavedMovieDao
 import com.arda.cineverse.data.local.dao.TvShowDao
+import com.arda.cineverse.data.local.dao.PendingActionDao
+import com.arda.cineverse.data.local.dao.TvEpisodeProgressDao
 import com.arda.cineverse.data.local.dao.WatchHistoryDao
 import com.arda.cineverse.data.local.entity.CategoryEntity
 import com.arda.cineverse.data.local.entity.FeaturedMovieEntity
@@ -16,7 +18,9 @@ import com.arda.cineverse.data.local.entity.FeaturedTvEntity
 import com.arda.cineverse.data.local.entity.FriendEntity
 import com.arda.cineverse.data.local.entity.MovieEntity
 import com.arda.cineverse.data.local.entity.MovieSectionCrossRefEntity
+import com.arda.cineverse.data.local.entity.PendingActionEntity
 import com.arda.cineverse.data.local.entity.SavedMovieEntity
+import com.arda.cineverse.data.local.entity.TvEpisodeProgressEntity
 import com.arda.cineverse.data.local.entity.TvSectionCrossRefEntity
 import com.arda.cineverse.data.local.entity.TvShowEntity
 import com.arda.cineverse.data.local.entity.WatchHistoryEntity
@@ -33,8 +37,10 @@ import com.arda.cineverse.data.local.entity.WatchHistoryEntity
         SavedMovieEntity::class,
         WatchHistoryEntity::class,
         FriendEntity::class,
+        TvEpisodeProgressEntity::class,
+        PendingActionEntity::class,
     ],
-    version = 2,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -46,6 +52,8 @@ abstract class CineVerseDatabase : RoomDatabase() {
     abstract fun savedMovieDao(): SavedMovieDao
     abstract fun watchHistoryDao(): WatchHistoryDao
     abstract fun friendDao(): FriendDao
+    abstract fun tvEpisodeProgressDao(): TvEpisodeProgressDao
+    abstract fun pendingActionDao(): PendingActionDao
 
     companion object {
         const val DATABASE_NAME = "cineverse.db"

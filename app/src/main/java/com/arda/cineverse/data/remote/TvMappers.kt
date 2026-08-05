@@ -4,10 +4,16 @@ import com.arda.cineverse.data.model.CastMember
 import com.arda.cineverse.data.model.FeaturedMovie
 import com.arda.cineverse.data.model.FeaturedTvShow
 import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.model.TvEpisode
+import com.arda.cineverse.data.model.TvSeasonDetail
+import com.arda.cineverse.data.model.TvSeasonSummary
 import com.arda.cineverse.data.model.TvShow
 import com.arda.cineverse.data.model.TvShowDetail
 import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.remote.dto.CreditsResponseDto
+import com.arda.cineverse.data.remote.dto.TvEpisodeDto
+import com.arda.cineverse.data.remote.dto.TvSeasonDetailDto
+import com.arda.cineverse.data.remote.dto.TvSeasonSummaryDto
 import com.arda.cineverse.data.remote.dto.TvShowDetailDto
 import com.arda.cineverse.data.remote.dto.TvShowDto
 import com.arda.cineverse.data.remote.dto.VideosResponseDto
@@ -80,6 +86,39 @@ fun TvShowDto.toUpcomingTvShow(): UpcomingMovie = UpcomingMovie(
     posterUrl = TmdbNetworkModule.posterUrl(poster_path),
 )
 
+
+
+fun TvSeasonSummaryDto.toDomain(): TvSeasonSummary = TvSeasonSummary(
+    id = id,
+    seasonNumber = season_number,
+    name = name?.takeIf { it.isNotBlank() } ?: "Sezon $season_number",
+    episodeCount = episode_count,
+    airDate = air_date,
+    posterUrl = TmdbNetworkModule.posterUrl(poster_path),
+    overview = overview,
+)
+
+fun TvSeasonDetailDto.toDomain(): TvSeasonDetail = TvSeasonDetail(
+    id = id,
+    seasonNumber = season_number,
+    name = name,
+    overview = overview,
+    posterUrl = TmdbNetworkModule.posterUrl(poster_path),
+    episodes = episodes.map { it.toDomain() },
+)
+
+fun TvEpisodeDto.toDomain(): TvEpisode = TvEpisode(
+    id = id,
+    episodeNumber = episode_number,
+    seasonNumber = season_number,
+    name = name,
+    overview = overview,
+    airDate = air_date,
+    stillUrl = TmdbNetworkModule.posterUrl(still_path, size = "w500"),
+    voteAverage = vote_average?.let { round(it * 10) / 10.0 },
+    runtimeMinutes = runtime,
+)
+
 fun buildTvShowDetail(
     detail: TvShowDetailDto,
     credits: CreditsResponseDto,
@@ -103,6 +142,10 @@ fun buildTvShowDetail(
         it.site.equals("YouTube", ignoreCase = true)
     }
 
+    val seasons = detail.seasons
+        .filter { it.season_number > 0 }
+        .map { it.toDomain() }
+
     return TvShowDetail(
         id = detail.id,
         name = detail.name,
@@ -118,6 +161,7 @@ fun buildTvShowDetail(
         createdBy = detail.created_by.firstOrNull()?.name,
         cast = cast,
         trailerKey = trailer?.key,
+        seasons = seasons,
         similarShows = similar.map { it.toUiTvShow() },
     )
 }

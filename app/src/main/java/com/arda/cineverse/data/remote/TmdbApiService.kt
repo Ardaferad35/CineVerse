@@ -5,6 +5,7 @@ import com.arda.cineverse.data.remote.dto.GenreListResponseDto
 import com.arda.cineverse.data.remote.dto.MovieDetailDto
 import com.arda.cineverse.data.remote.dto.MoviesResponseDto
 import com.arda.cineverse.data.remote.dto.MultiSearchResponseDto
+import com.arda.cineverse.data.remote.dto.TvSeasonDetailDto
 import com.arda.cineverse.data.remote.dto.TvShowDetailDto
 import com.arda.cineverse.data.remote.dto.TvShowsResponseDto
 import com.arda.cineverse.data.remote.dto.VideosResponseDto
@@ -116,6 +117,13 @@ interface TmdbApiService {
         @Path("tv_id") tvId: Int,
         @Query("language") language: String = "tr-TR",
     ): TvShowDetailDto
+
+    @GET("tv/{tv_id}/season/{season_number}")
+    suspend fun getTvSeasonDetail(
+        @Path("tv_id") tvId: Int,
+        @Path("season_number") seasonNumber: Int,
+        @Query("language") language: String = "tr-TR",
+    ): TvSeasonDetailDto
 
     @GET("tv/{tv_id}/credits")
     suspend fun getTvShowCredits(

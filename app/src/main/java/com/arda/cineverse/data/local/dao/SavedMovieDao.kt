@@ -36,6 +36,12 @@ interface SavedMovieDao {
     @Query("DELETE FROM saved_movies")
     suspend fun clearAll()
 
+    @Query("DELETE FROM saved_movies WHERE mediaId = :mediaId AND mediaType = :mediaType AND listType = :listType")
+    suspend fun delete(mediaId: Int, mediaType: String, listType: String)
+
+    @Upsert
+    suspend fun upsert(item: SavedMovieEntity)
+
     @Upsert
     suspend fun upsertAll(items: List<SavedMovieEntity>)
 

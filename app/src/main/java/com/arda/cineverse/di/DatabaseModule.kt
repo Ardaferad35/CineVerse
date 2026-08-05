@@ -6,7 +6,9 @@ import com.arda.cineverse.data.local.dao.CategoryDao
 import com.arda.cineverse.data.local.dao.FeaturedDao
 import com.arda.cineverse.data.local.dao.FriendDao
 import com.arda.cineverse.data.local.dao.MovieDao
+import com.arda.cineverse.data.local.dao.PendingActionDao
 import com.arda.cineverse.data.local.dao.SavedMovieDao
+import com.arda.cineverse.data.local.dao.TvEpisodeProgressDao
 import com.arda.cineverse.data.local.dao.TvShowDao
 import com.arda.cineverse.data.local.dao.WatchHistoryDao
 import com.arda.cineverse.data.local.db.CineVerseDatabase
@@ -51,4 +53,10 @@ object DatabaseModule {
 
     @Provides
     fun provideFriendDao(database: CineVerseDatabase): FriendDao = database.friendDao()
+
+    @Provides
+    fun provideTvEpisodeProgressDao(database: CineVerseDatabase): TvEpisodeProgressDao = database.tvEpisodeProgressDao()
+
+    @Provides
+    fun providePendingActionDao(database: CineVerseDatabase): PendingActionDao = database.pendingActionDao()
 }

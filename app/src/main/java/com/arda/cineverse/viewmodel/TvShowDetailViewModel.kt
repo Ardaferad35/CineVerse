@@ -17,18 +17,22 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.arda.cineverse.data.model.TvEpisode
+import com.arda.cineverse.data.model.TvEpisodeProgress
+import com.arda.cineverse.data.model.TvSeasonDetail
+
 data class TvShowDetailUiState(
     val isLoading: Boolean = true,
     val tvShow: TvShowDetail? = null,
     val isFavorite: Boolean = false,
     val isSaved: Boolean = false,
     val errorMessage: String? = null,
-    // Offline'ken favori/izleme listesi yazma girişimi reddedildiğinde kısa
-    // süreliğine gösterilecek mesaj.
     val offlineMessage: String? = null,
-    // true ise `tvShow` TMDB'den tam çekilemedi, Home cache'inden (Room)
-    // kurtarılan kısmi bir görünüm — kadro/fragman/benzer diziler eksik.
     val isOfflineFallback: Boolean = false,
+    val selectedSeasonNumber: Int = 1,
+    val selectedSeasonDetail: TvSeasonDetail? = null,
+    val isLoadingSeasonDetail: Boolean = false,
+    val watchedEpisodesMap: Map<String, Boolean> = emptyMap(),
 )
 
 /** Room'da cache'lenmiş temel dizi verisinden (kadro/fragman/benzer diziler olmadan) kısmi bir TvShowDetail oluşturur. */
@@ -79,6 +83,7 @@ class TvShowDetailViewModel @Inject constructor(
     init {
         load()
         loadUserListStatus()
+        observeEpisodeProgress()
     }
 
     fun load() {
@@ -87,13 +92,11 @@ class TvShowDetailViewModel @Inject constructor(
             tvRepository.getTvShowDetailFull(tvId).fold(
                 onSuccess = { tvShow ->
                     _uiState.value = _uiState.value.copy(isLoading = false, tvShow = tvShow, isOfflineFallback = false)
-                    // Öneri sistemi için: bu diziyi "görüntülendi" penceresine ekle.
                     recommendationRepository.recordTvView(tvShow.id, tvShow.genreIds)
+                    val firstSeason = tvShow.seasons.firstOrNull()?.seasonNumber ?: 1
+                    selectSeason(firstSeason)
                 },
                 onFailure = {
-                    // Tam detay \u00E7ekilemedi (muhtemelen \u00E7evrimd\u0131\u015F\u0131) \u2014 Home'da
-                    // daha \u00F6nce cache'lenmi\u015F temel dizi verisiyle k\u0131smi bir
-                    // g\u00F6r\u00FCn\u00FCm g\u00F6stermeyi dene (bkz. MovieDetailViewModel.load).
                     val cachedTvShow = tvRepository.getCachedTvShow(tvId)
                     if (cachedTvShow != null) {
                         _uiState.value = _uiState.value.copy(
@@ -104,11 +107,59 @@ class TvShowDetailViewModel @Inject constructor(
                     } else {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            errorMessage = "Dizi bilgileri y\u00FCklenemedi. \u0130nternet ba\u011Flant\u0131n\u0131z\u0131 kontrol edin.",
+                            errorMessage = "Dizi bilgileri yüklenemedi. İnternet bağlantınızı kontrol edin.",
                         )
                     }
                 },
             )
+        }
+    }
+
+    private fun observeEpisodeProgress() {
+        viewModelScope.launch {
+            tvRepository.observeEpisodeProgress(tvId).collect { list ->
+                val map = list.associate { "s${it.seasonNumber}_e${it.episodeNumber}" to it.isWatched }
+                _uiState.value = _uiState.value.copy(watchedEpisodesMap = map)
+            }
+        }
+    }
+
+    fun selectSeason(seasonNumber: Int) {
+        _uiState.value = _uiState.value.copy(selectedSeasonNumber = seasonNumber, isLoadingSeasonDetail = true)
+        viewModelScope.launch {
+            tvRepository.getTvSeasonDetail(tvId, seasonNumber).fold(
+                onSuccess = { detail ->
+                    _uiState.value = _uiState.value.copy(selectedSeasonDetail = detail, isLoadingSeasonDetail = false)
+                },
+                onFailure = {
+                    _uiState.value = _uiState.value.copy(isLoadingSeasonDetail = false)
+                },
+            )
+        }
+    }
+
+    fun toggleEpisodeWatched(seasonNumber: Int, episodeNumber: Int) {
+        val key = "s${seasonNumber}_e${episodeNumber}"
+        val isCurrentlyWatched = _uiState.value.watchedEpisodesMap[key] == true
+        val targetWatched = !isCurrentlyWatched
+        viewModelScope.launch {
+            tvRepository.toggleEpisodeWatched(tvId, seasonNumber, episodeNumber, targetWatched)
+            if (targetWatched && !_uiState.value.isSaved) {
+                toggleWatchlist()
+            }
+        }
+    }
+
+    fun toggleSeasonWatched(seasonNumber: Int, episodes: List<TvEpisode>) {
+        val allWatched = episodes.all { ep ->
+            _uiState.value.watchedEpisodesMap["s${seasonNumber}_e${ep.episodeNumber}"] == true
+        }
+        val targetWatched = !allWatched
+        viewModelScope.launch {
+            tvRepository.toggleSeasonWatched(tvId, seasonNumber, episodes, targetWatched)
+            if (targetWatched && !_uiState.value.isSaved) {
+                toggleWatchlist()
+            }
         }
     }
 

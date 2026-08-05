@@ -3,7 +3,9 @@ package com.arda.cineverse.data.repository
 import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.data.common.SyncResult
 import com.arda.cineverse.data.connectivity.ConnectivityObserver
+import com.arda.cineverse.data.local.dao.PendingActionDao
 import com.arda.cineverse.data.local.dao.SavedMovieDao
+import com.arda.cineverse.data.local.entity.PendingActionEntity
 import com.arda.cineverse.data.local.mapper.toDomain
 import com.arda.cineverse.data.local.mapper.toEntity
 import com.arda.cineverse.data.model.SavedMovie
@@ -32,6 +34,7 @@ class UserListRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
     private val savedMovieDao: SavedMovieDao,
+    private val pendingActionDao: PendingActionDao,
     private val connectivityObserver: ConnectivityObserver,
 ) {
     // bkz. MovieRepository.Companion.default() — aynı gerekçe.
@@ -40,6 +43,7 @@ class UserListRepository @Inject constructor(
             firestore = FirebaseFirestore.getInstance(),
             auth = FirebaseAuth.getInstance(),
             savedMovieDao = AppGraph.savedMovieDao,
+            pendingActionDao = AppGraph.pendingActionDao,
             connectivityObserver = AppGraph.connectivityObserver,
         )
     }
@@ -107,9 +111,21 @@ class UserListRepository @Inject constructor(
         firestore.collection("users").document(requireUid()).collection("activities")
 
     suspend fun addFavorite(movie: SavedMovie): Result<Unit> {
-        if (!connectivityObserver.isCurrentlyOnline()) return Result.failure(OfflineWriteException())
+        val now = System.currentTimeMillis()
+        savedMovieDao.upsert(movie.copy(addedAt = now).toEntity(LIST_FAVORITE))
+
+        if (!connectivityObserver.isCurrentlyOnline()) {
+            pendingActionDao.insert(
+                PendingActionEntity(
+                    actionType = "ADD_FAVORITE",
+                    mediaId = movie.id,
+                    mediaType = movie.mediaType,
+                ),
+            )
+            return Result.success(Unit)
+        }
+
         return runCatching {
-            val now = System.currentTimeMillis()
             favoritesCollection().document(documentId(movie.id, movie.mediaType))
                 .set(movie.copy(addedAt = now)).await()
 
@@ -135,7 +151,19 @@ class UserListRepository @Inject constructor(
     suspend fun removeFavorite(movieId: Int): Result<Unit> = removeFavorite(movieId, mediaType = "movie")
 
     suspend fun removeFavorite(mediaId: Int, mediaType: String): Result<Unit> {
-        if (!connectivityObserver.isCurrentlyOnline()) return Result.failure(OfflineWriteException())
+        savedMovieDao.delete(mediaId, mediaType, LIST_FAVORITE)
+
+        if (!connectivityObserver.isCurrentlyOnline()) {
+            pendingActionDao.insert(
+                PendingActionEntity(
+                    actionType = "REMOVE_FAVORITE",
+                    mediaId = mediaId,
+                    mediaType = mediaType,
+                ),
+            )
+            return Result.success(Unit)
+        }
+
         return runCatching {
             favoritesCollection().document(documentId(mediaId, mediaType)).delete().await()
             runCatching { activitiesCollection().document("fav_${mediaType}_${mediaId}").delete().await() }
@@ -144,9 +172,21 @@ class UserListRepository @Inject constructor(
     }
 
     suspend fun addToWatchlist(movie: SavedMovie): Result<Unit> {
-        if (!connectivityObserver.isCurrentlyOnline()) return Result.failure(OfflineWriteException())
+        val now = System.currentTimeMillis()
+        savedMovieDao.upsert(movie.copy(addedAt = now).toEntity(LIST_WATCHLIST))
+
+        if (!connectivityObserver.isCurrentlyOnline()) {
+            pendingActionDao.insert(
+                PendingActionEntity(
+                    actionType = "ADD_WATCHLIST",
+                    mediaId = movie.id,
+                    mediaType = movie.mediaType,
+                ),
+            )
+            return Result.success(Unit)
+        }
+
         return runCatching {
-            val now = System.currentTimeMillis()
             watchlistCollection().document(documentId(movie.id, movie.mediaType))
                 .set(movie.copy(addedAt = now)).await()
 
@@ -172,11 +212,57 @@ class UserListRepository @Inject constructor(
     suspend fun removeFromWatchlist(movieId: Int): Result<Unit> = removeFromWatchlist(movieId, mediaType = "movie")
 
     suspend fun removeFromWatchlist(mediaId: Int, mediaType: String): Result<Unit> {
-        if (!connectivityObserver.isCurrentlyOnline()) return Result.failure(OfflineWriteException())
+        savedMovieDao.delete(mediaId, mediaType, LIST_WATCHLIST)
+
+        if (!connectivityObserver.isCurrentlyOnline()) {
+            pendingActionDao.insert(
+                PendingActionEntity(
+                    actionType = "REMOVE_WATCHLIST",
+                    mediaId = mediaId,
+                    mediaType = mediaType,
+                ),
+            )
+            return Result.success(Unit)
+        }
+
         return runCatching {
             watchlistCollection().document(documentId(mediaId, mediaType)).delete().await()
             runCatching { activitiesCollection().document("watch_${mediaType}_${mediaId}").delete().await() }
             Unit
         }.onSuccess { syncFavoritesAndWatchlist() }
+    }
+
+    suspend fun processPendingActions(): Boolean {
+        if (!connectivityObserver.isCurrentlyOnline()) return false
+        val pending = pendingActionDao.getAllPendingActions()
+        if (pending.isEmpty()) return true
+
+        for (action in pending) {
+            val res = runCatching {
+                when (action.actionType) {
+                    "ADD_FAVORITE" -> {
+                        val now = System.currentTimeMillis()
+                        favoritesCollection().document(documentId(action.mediaId, action.mediaType))
+                            .set(mapOf("id" to action.mediaId, "mediaType" to action.mediaType, "addedAt" to now)).await()
+                    }
+                    "REMOVE_FAVORITE" -> {
+                        favoritesCollection().document(documentId(action.mediaId, action.mediaType)).delete().await()
+                    }
+                    "ADD_WATCHLIST" -> {
+                        val now = System.currentTimeMillis()
+                        watchlistCollection().document(documentId(action.mediaId, action.mediaType))
+                            .set(mapOf("id" to action.mediaId, "mediaType" to action.mediaType, "addedAt" to now)).await()
+                    }
+                    "REMOVE_WATCHLIST" -> {
+                        watchlistCollection().document(documentId(action.mediaId, action.mediaType)).delete().await()
+                    }
+                }
+            }
+            if (res.isSuccess) {
+                pendingActionDao.deleteById(action.id)
+            }
+        }
+        syncFavoritesAndWatchlist()
+        return true
     }
 }

@@ -5,15 +5,21 @@ import com.arda.cineverse.data.connectivity.ConnectivityObserver
 import com.arda.cineverse.data.local.dao.CategoryDao
 import com.arda.cineverse.data.local.dao.FeaturedDao
 import com.arda.cineverse.data.local.dao.SavedMovieDao
+import com.arda.cineverse.data.local.dao.TvEpisodeProgressDao
 import com.arda.cineverse.data.local.dao.TvShowDao
 import com.arda.cineverse.data.local.entity.SectionType
+import com.arda.cineverse.data.local.entity.TvEpisodeProgressEntity
 import com.arda.cineverse.data.local.mapper.toDomain
 import com.arda.cineverse.data.local.mapper.toEntity
 import com.arda.cineverse.data.local.mapper.toPartialTvShow
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedTvShow
+import com.arda.cineverse.data.model.TvEpisode
+import com.arda.cineverse.data.model.TvEpisodeProgress
+import com.arda.cineverse.data.model.TvSeasonDetail
 import com.arda.cineverse.data.model.TvShow
 import com.arda.cineverse.data.model.TvShowDetail
+import com.arda.cineverse.data.remote.toDomain
 import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.remote.TmdbApiService
 import com.arda.cineverse.data.remote.TmdbNetworkModule
@@ -36,6 +42,7 @@ class TvRepository @Inject constructor(
     private val categoryDao: CategoryDao,
     private val featuredDao: FeaturedDao,
     private val savedMovieDao: SavedMovieDao,
+    private val tvEpisodeProgressDao: TvEpisodeProgressDao,
     private val connectivityObserver: ConnectivityObserver,
 ) {
     // --- Offline-first: sürekli gözlemlenen bölümler ---
@@ -249,6 +256,54 @@ class TvRepository @Inject constructor(
         }
     }
 
+    suspend fun getTvSeasonDetail(tvId: Int, seasonNumber: Int): Result<TvSeasonDetail> = runCatching {
+        api.getTvSeasonDetail(tvId, seasonNumber).toDomain()
+    }
+
+    fun observeEpisodeProgress(tvId: Int): Flow<List<TvEpisodeProgress>> =
+        tvEpisodeProgressDao.observeProgressForTv(tvId).map { list ->
+            list.map {
+                TvEpisodeProgress(
+                    tvId = it.tvId,
+                    seasonNumber = it.seasonNumber,
+                    episodeNumber = it.episodeNumber,
+                    isWatched = it.isWatched,
+                    watchedAt = it.watchedAt,
+                )
+            }
+        }
+
+    suspend fun toggleEpisodeWatched(tvId: Int, seasonNumber: Int, episodeNumber: Int, isWatched: Boolean) {
+        if (isWatched) {
+            tvEpisodeProgressDao.insertOrUpdate(
+                TvEpisodeProgressEntity(
+                    tvId = tvId,
+                    seasonNumber = seasonNumber,
+                    episodeNumber = episodeNumber,
+                    isWatched = true,
+                ),
+            )
+        } else {
+            tvEpisodeProgressDao.delete(tvId, seasonNumber, episodeNumber)
+        }
+    }
+
+    suspend fun toggleSeasonWatched(tvId: Int, seasonNumber: Int, episodes: List<TvEpisode>, isWatched: Boolean) {
+        if (isWatched) {
+            val entities = episodes.map { ep ->
+                TvEpisodeProgressEntity(
+                    tvId = tvId,
+                    seasonNumber = seasonNumber,
+                    episodeNumber = ep.episodeNumber,
+                    isWatched = true,
+                )
+            }
+            tvEpisodeProgressDao.insertAll(entities)
+        } else {
+            tvEpisodeProgressDao.deleteSeason(tvId, seasonNumber)
+        }
+    }
+
     private fun tokenizeOverview(text: String?): Set<String> {
         if (text.isNullOrBlank()) return emptySet()
         val stopWords = setOf("bir", "ve", "de", "da", "bu", "ile", "için", "ama", "gibi", "kendi", "daha", "en", "her", "o", "kadar", "sonra", "ki")
@@ -301,6 +356,7 @@ class TvRepository @Inject constructor(
             categoryDao = AppGraph.categoryDao,
             featuredDao = AppGraph.featuredDao,
             savedMovieDao = AppGraph.savedMovieDao,
+            tvEpisodeProgressDao = AppGraph.tvEpisodeProgressDao,
             connectivityObserver = AppGraph.connectivityObserver,
         )
     }
