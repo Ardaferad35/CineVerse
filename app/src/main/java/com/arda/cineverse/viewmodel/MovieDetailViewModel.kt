@@ -59,9 +59,9 @@ private fun MovieDetail.toSavedMovie() = SavedMovie(
 
 class MovieDetailViewModel(
     private val movieId: Int,
-    private val movieRepository: MovieRepository = MovieRepository(),
-    private val userListRepository: UserListRepository = UserListRepository(),
-    private val recommendationRepository: RecommendationRepository = RecommendationRepository(),
+    private val movieRepository: MovieRepository = MovieRepository.default(),
+    private val userListRepository: UserListRepository = UserListRepository.default(),
+    private val recommendationRepository: RecommendationRepository = RecommendationRepository.default(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())

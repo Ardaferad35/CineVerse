@@ -60,9 +60,9 @@ private fun TvShowDetail.toSavedMovie() = SavedMovie(
 
 class TvShowDetailViewModel(
     private val tvId: Int,
-    private val tvRepository: TvRepository = TvRepository(),
-    private val userListRepository: UserListRepository = UserListRepository(),
-    private val recommendationRepository: RecommendationRepository = RecommendationRepository(),
+    private val tvRepository: TvRepository = TvRepository.default(),
+    private val userListRepository: UserListRepository = UserListRepository.default(),
+    private val recommendationRepository: RecommendationRepository = RecommendationRepository.default(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TvShowDetailUiState())

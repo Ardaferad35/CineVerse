@@ -29,11 +29,20 @@ private const val LIST_WATCHLIST = "WATCHLIST"
  * gösterebilir.
  */
 class UserListRepository @Inject constructor(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val savedMovieDao: SavedMovieDao = AppGraph.savedMovieDao,
-    private val connectivityObserver: ConnectivityObserver = AppGraph.connectivityObserver,
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth,
+    private val savedMovieDao: SavedMovieDao,
+    private val connectivityObserver: ConnectivityObserver,
 ) {
+    // bkz. MovieRepository.Companion.default() — aynı gerekçe.
+    companion object {
+        fun default(): UserListRepository = UserListRepository(
+            firestore = FirebaseFirestore.getInstance(),
+            auth = FirebaseAuth.getInstance(),
+            savedMovieDao = AppGraph.savedMovieDao,
+            connectivityObserver = AppGraph.connectivityObserver,
+        )
+    }
     private fun requireUid(): String = auth.currentUser?.uid ?: error("Giriş yapmalısınız")
 
     private fun favoritesCollection() =

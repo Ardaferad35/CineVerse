@@ -196,10 +196,10 @@ fun MovieListScreen(
 @Composable
 private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
     var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
-    val repository = remember { MovieRepository() }
-    val userListRepository = remember { UserListRepository() }
+    val repository = remember { MovieRepository.default() }
+    val userListRepository = remember { UserListRepository.default() }
     val commentRepository = remember { CommentRepository() }
-    val recommendationRepository = remember { RecommendationRepository() }
+    val recommendationRepository = remember { RecommendationRepository.default() }
     val scope = rememberCoroutineScope()
 
     val fetchPage: suspend (Int) -> Result<List<Movie>> = remember(source, sortMode) {
@@ -335,8 +335,8 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit, 
 @Composable
 private fun UpcomingGrid(isTv: Boolean, onMovieClick: (Int) -> Unit, onTvShowClick: (Int) -> Unit) {
     var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
-    val movieRepository = remember { MovieRepository() }
-    val tvRepository = remember { TvRepository() }
+    val movieRepository = remember { MovieRepository.default() }
+    val tvRepository = remember { TvRepository.default() }
     val commentRepository = remember { if (isTv) tvCommentRepository() else CommentRepository() }
 
     val fetchPage: suspend (Int) -> Result<List<UpcomingMovie>> = remember(isTv, sortMode) {
@@ -436,10 +436,10 @@ private fun UpcomingGrid(isTv: Boolean, onMovieClick: (Int) -> Unit, onTvShowCli
 @Composable
 private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
     var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
-    val repository = remember { TvRepository() }
-    val userListRepository = remember { UserListRepository() }
+    val repository = remember { TvRepository.default() }
+    val userListRepository = remember { UserListRepository.default() }
     val commentRepository = remember { tvCommentRepository() }
-    val recommendationRepository = remember { RecommendationRepository() }
+    val recommendationRepository = remember { RecommendationRepository.default() }
     val scope = rememberCoroutineScope()
 
     val fetchPage: suspend (Int) -> Result<List<TvShow>> = remember(source, sortMode) {
@@ -555,10 +555,10 @@ private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) ->
 @Composable
 private fun TvPopularList(onTvShowClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
     var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
-    val repository = remember { TvRepository() }
-    val userListRepository = remember { UserListRepository() }
+    val repository = remember { TvRepository.default() }
+    val userListRepository = remember { UserListRepository.default() }
     val commentRepository = remember { tvCommentRepository() }
-    val recommendationRepository = remember { RecommendationRepository() }
+    val recommendationRepository = remember { RecommendationRepository.default() }
     val scope = rememberCoroutineScope()
 
     val fetchPage: suspend (Int) -> Result<List<TvShow>> = remember(sortMode) {
@@ -673,10 +673,10 @@ private fun TvPopularList(onTvShowClick: (Int) -> Unit, offlineMessageState: Off
 @Composable
 private fun TvOnAirList(onTvShowClick: (Int) -> Unit, offlineMessageState: OfflineWriteMessageState) {
     var sortMode by remember { mutableStateOf(SortMode.POPULAR) }
-    val repository = remember { TvRepository() }
-    val userListRepository = remember { UserListRepository() }
+    val repository = remember { TvRepository.default() }
+    val userListRepository = remember { UserListRepository.default() }
     val commentRepository = remember { tvCommentRepository() }
-    val recommendationRepository = remember { RecommendationRepository() }
+    val recommendationRepository = remember { RecommendationRepository.default() }
     val scope = rememberCoroutineScope()
 
     // Su An Yayinda: TMDB on_the_air endpoint tek seferlik buyuk bir havuz dondurur;

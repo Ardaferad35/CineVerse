@@ -26,7 +26,7 @@ data class AiChatUiState(
 
 class AiChatViewModel(
     private val chatRepository: AiChatRepository = AiChatRepository(),
-    private val recommendationRepository: RecommendationRepository = RecommendationRepository(),
+    private val recommendationRepository: RecommendationRepository = RecommendationRepository.default(),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AiChatUiState())

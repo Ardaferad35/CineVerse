@@ -133,8 +133,8 @@ fun TvShowDetailScreen(
     val detailState by tvShowDetailViewModel.uiState.collectAsState()
     val commentState by commentViewModel.uiState.collectAsState()
 
-    val userListRepository = remember { UserListRepository() }
-    val recommendationRepository = remember { RecommendationRepository() }
+    val userListRepository = remember { UserListRepository.default() }
+    val recommendationRepository = remember { RecommendationRepository.default() }
 
     var favoriteTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     val offlineMessageState = rememberOfflineWriteMessageState()

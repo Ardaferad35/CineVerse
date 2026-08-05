@@ -31,12 +31,12 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 class TvRepository @Inject constructor(
-    private val api: TmdbApiService = TmdbNetworkModule.api,
-    private val tvShowDao: TvShowDao = AppGraph.tvShowDao,
-    private val categoryDao: CategoryDao = AppGraph.categoryDao,
-    private val featuredDao: FeaturedDao = AppGraph.featuredDao,
-    private val savedMovieDao: SavedMovieDao = AppGraph.savedMovieDao,
-    private val connectivityObserver: ConnectivityObserver = AppGraph.connectivityObserver,
+    private val api: TmdbApiService,
+    private val tvShowDao: TvShowDao,
+    private val categoryDao: CategoryDao,
+    private val featuredDao: FeaturedDao,
+    private val savedMovieDao: SavedMovieDao,
+    private val connectivityObserver: ConnectivityObserver,
 ) {
     // --- Offline-first: sürekli gözlemlenen bölümler ---
 
@@ -281,7 +281,17 @@ class TvRepository @Inject constructor(
         return today.year * 1000 + today.dayOfYear
     }
 
-    private companion object {
-        const val MAX_ON_THE_AIR_PAGES = 3
+    companion object {
+        private const val MAX_ON_THE_AIR_PAGES = 3
+
+        // bkz. MovieRepository.Companion.default() — aynı gerekçe.
+        fun default(): TvRepository = TvRepository(
+            api = TmdbNetworkModule.api,
+            tvShowDao = AppGraph.tvShowDao,
+            categoryDao = AppGraph.categoryDao,
+            featuredDao = AppGraph.featuredDao,
+            savedMovieDao = AppGraph.savedMovieDao,
+            connectivityObserver = AppGraph.connectivityObserver,
+        )
     }
 }

@@ -65,8 +65,8 @@ fun AiChatScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val keyboard = LocalSoftwareKeyboardController.current
-    val userListRepository = remember { UserListRepository() }
-    val recommendationRepository = remember { RecommendationRepository() }
+    val userListRepository = remember { UserListRepository.default() }
+    val recommendationRepository = remember { RecommendationRepository.default() }
 
     var favoriteIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var watchlistIds by remember { mutableStateOf<Set<Int>>(emptySet()) }

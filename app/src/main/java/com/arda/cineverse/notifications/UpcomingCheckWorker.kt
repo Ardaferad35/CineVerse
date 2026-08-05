@@ -40,7 +40,7 @@ class UpcomingCheckWorker(
     }
 
     private suspend fun checkUpcomingMovies() {
-        val movieRepository = MovieRepository()
+        val movieRepository = MovieRepository.default()
         val upcoming = movieRepository.getUpcomingMovies().getOrNull() ?: return
 
         val knownIds = prefs.getStringSet("known_upcoming_ids", emptySet()).orEmpty().mapNotNull { it.toIntOrNull() }.toSet()

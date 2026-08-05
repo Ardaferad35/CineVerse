@@ -13,7 +13,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
     id("com.google.devtools.ksp")
-    // Hilt Gradle plugin BİLEREK yok — bkz. root build.gradle.kts'teki not.
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -140,13 +140,11 @@ dependencies {
     implementation("androidx.room:room-ktx:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")
 
-    implementation("com.google.dagger:hilt-android:2.57.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.57.1")
-    // 1.4.0, compileSdk 37 gerektiriyor (proje 36'da) ve dagger:hilt-android'i
-    // 2.59'a yükseltip yukarıdaki 2.57.1 compiler ile sürüm uyuşmazlığı
-    // yaratıyordu ("getSavedStateHandleHolder" symbol not found) — bu yüzden
-    // compileSdk 36 ile uyumlu 1.2.0'da sabitlendi.
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("com.google.dagger:hilt-android:2.60.1")
+    ksp("com.google.dagger:hilt-android-compiler:2.60.1")
+    // 1.4.0, compileSdk 37 gerektiriyor (proje 36'da); 1.3.0 compileSdk 36
+    // ile uyumlu en güncel kararlı sürüm.
+    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
 
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 }

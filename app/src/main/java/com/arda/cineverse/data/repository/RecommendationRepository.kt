@@ -48,16 +48,30 @@ import javax.inject.Inject
  * "son izlenen 20" pencerelerini watch_history tablosuna aynalıyor.
  */
 class RecommendationRepository @Inject constructor(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val movieRepository: MovieRepository = MovieRepository(),
-    private val tvRepository: TvRepository = TvRepository(),
-    private val userListRepository: UserListRepository = UserListRepository(),
-    private val movieDao: MovieDao = AppGraph.movieDao,
-    private val tvShowDao: TvShowDao = AppGraph.tvShowDao,
-    private val watchHistoryDao: WatchHistoryDao = AppGraph.watchHistoryDao,
-    private val connectivityObserver: ConnectivityObserver = AppGraph.connectivityObserver,
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth,
+    private val movieRepository: MovieRepository,
+    private val tvRepository: TvRepository,
+    private val userListRepository: UserListRepository,
+    private val movieDao: MovieDao,
+    private val tvShowDao: TvShowDao,
+    private val watchHistoryDao: WatchHistoryDao,
+    private val connectivityObserver: ConnectivityObserver,
 ) {
+    // bkz. MovieRepository.Companion.default() — aynı gerekçe.
+    companion object {
+        fun default(): RecommendationRepository = RecommendationRepository(
+            firestore = FirebaseFirestore.getInstance(),
+            auth = FirebaseAuth.getInstance(),
+            movieRepository = MovieRepository.default(),
+            tvRepository = TvRepository.default(),
+            userListRepository = UserListRepository.default(),
+            movieDao = AppGraph.movieDao,
+            tvShowDao = AppGraph.tvShowDao,
+            watchHistoryDao = AppGraph.watchHistoryDao,
+            connectivityObserver = AppGraph.connectivityObserver,
+        )
+    }
     // "movieId" alan adı tarihi nedenlerle böyle kaldı ama film ve dizi
     // pencereleri AYRI Firestore alanlarında tutulduğu için (recentlyViewed/
     // recentFavorites vs. recentlyViewedTv/recentFavoritesTv) bu sınıf
