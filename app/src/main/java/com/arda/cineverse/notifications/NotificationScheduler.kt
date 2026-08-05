@@ -1,6 +1,7 @@
 package com.arda.cineverse.notifications
 
 import android.content.Context
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -19,25 +20,36 @@ import java.util.concurrent.TimeUnit
 object NotificationScheduler {
 
     fun scheduleAll(context: Context) {
-        scheduleFilmOfTheDay(context)
-        scheduleUpcomingCheck(context)
-        enqueueOfflineSync(context)
+        try {
+            scheduleFilmOfTheDay(context)
+            scheduleUpcomingCheck(context)
+            enqueueOfflineSync(context)
+        } catch (e: Throwable) {
+            // "No service published for: persistent_data_block" veya benzeri bir WorkManager 
+            // başlatma hatası (özellikle emülatörlerde/Android 15'te) gelirse uygulamanın 
+            // çökmesini engelle.
+            Log.e("NotificationScheduler", "WorkManager planlama hatası: ${e.message}", e)
+        }
     }
 
     fun enqueueOfflineSync(context: Context) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+        try {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
 
-        val request = OneTimeWorkRequestBuilder<OfflineSyncWorker>()
-            .setConstraints(constraints)
-            .build()
+            val request = OneTimeWorkRequestBuilder<OfflineSyncWorker>()
+                .setConstraints(constraints)
+                .build()
 
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            "offline_sync_work",
-            ExistingWorkPolicy.REPLACE,
-            request,
-        )
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "offline_sync_work",
+                ExistingWorkPolicy.REPLACE,
+                request,
+            )
+        } catch (e: Throwable) {
+            Log.e("NotificationScheduler", "enqueueOfflineSync hatası: ${e.message}")
+        }
     }
 
     private fun scheduleFilmOfTheDay(context: Context) {

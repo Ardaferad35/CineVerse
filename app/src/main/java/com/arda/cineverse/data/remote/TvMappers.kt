@@ -19,7 +19,7 @@ import com.arda.cineverse.data.remote.dto.TvShowDto
 import com.arda.cineverse.data.remote.dto.VideosResponseDto
 import kotlin.math.round
 
-private val tvGenreIdToTurkishName = mapOf(
+internal val tvGenreIdToTurkishName = mapOf(
     10759 to "Aksiyon & Macera",
     16 to "Animasyon",
     35 to "Komedi",
@@ -37,9 +37,6 @@ private val tvGenreIdToTurkishName = mapOf(
     10768 to "Sava\u015F & Politik",
     37 to "Vah\u015Fi Bat\u0131",
 )
-
-private fun String?.extractYear(): Int? =
-    this?.takeIf { it.length >= 4 }?.substring(0, 4)?.toIntOrNull()
 
 private val compoundTvGenreSeparators = listOf(" & ", " ve ")
 

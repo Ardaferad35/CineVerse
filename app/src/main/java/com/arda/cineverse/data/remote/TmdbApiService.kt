@@ -54,7 +54,7 @@ interface TmdbApiService {
     @GET("movie/{movie_id}/videos")
     suspend fun getMovieVideos(
         @Path("movie_id") movieId: Int,
-        @Query("language") language: String = "tr-TR",
+        @Query("language") language: String? = null,
     ): VideosResponseDto
 
     @GET("movie/{movie_id}/similar")
@@ -134,7 +134,7 @@ interface TmdbApiService {
     @GET("tv/{tv_id}/videos")
     suspend fun getTvShowVideos(
         @Path("tv_id") tvId: Int,
-        @Query("language") language: String = "tr-TR",
+        @Query("language") language: String? = null,
     ): VideosResponseDto
 
     @GET("tv/{tv_id}/similar")

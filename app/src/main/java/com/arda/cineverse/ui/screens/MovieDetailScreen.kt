@@ -639,9 +639,6 @@ fun MovieDetailScreen(
                     commentPendingDelete = null
                 }) { Text(stringResource(R.string.comment_delete), color = ErrorColor) }
             },
-            dismissButton = {
-                TextButton(onClick = { commentPendingDelete = null }) { Text(stringResource(R.string.common_cancel)) }
-            },
         )
     }
 }

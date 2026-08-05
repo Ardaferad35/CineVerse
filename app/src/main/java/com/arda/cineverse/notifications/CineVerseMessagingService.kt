@@ -66,7 +66,13 @@ class CineVerseMessagingService : FirebaseMessagingService() {
             // Küçük bir bekleme ve retry mekanizması bu geçici sorunu çözer.
             for (attempt in 1..3) {
                 try {
-                    token = FirebaseMessaging.getInstance().token.await()
+                    // "No service published for: persistent_data_block" gibi sistem hatalarını yakala
+                    val messaging = runCatching { FirebaseMessaging.getInstance() }.getOrNull()
+                    if (messaging == null) {
+                        Log.e(TAG, "registerCurrentToken: FirebaseMessaging başlatılamadı")
+                        return
+                    }
+                    token = messaging.token.await()
                     if (token != null) break
                 } catch (e: Exception) {
                     lastError = e
@@ -102,7 +108,10 @@ class CineVerseMessagingService : FirebaseMessagingService() {
         /** Çıkış yapılmadan ÖNCE çağrılmalı — silme isOwner gerektirir, signOut() sonrası kimlik geçersiz olur. */
         suspend fun deleteCurrentToken() {
             val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-            val token = runCatching { FirebaseMessaging.getInstance().token.await() }.getOrNull() ?: return
+            val token = runCatching {
+                val messaging = FirebaseMessaging.getInstance()
+                messaging.token.await()
+            }.getOrNull() ?: return
             runCatching {
                 FirebaseFirestore.getInstance()
                     .collection("users").document(uid)

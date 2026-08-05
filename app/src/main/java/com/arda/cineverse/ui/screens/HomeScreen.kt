@@ -1,6 +1,8 @@
 package com.arda.cineverse.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -20,14 +23,19 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Recommend
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -95,6 +103,7 @@ fun HomeScreen(
     onTvCategoryClick: (Category) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
+    onReelsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     homeViewModel: HomeViewModel = hiltViewModel(),
     notificationViewModel: NotificationViewModel = hiltViewModel(),
@@ -294,6 +303,7 @@ fun HomeScreen(
                 onProfileClick = onProfileClick,
                 onNotificationsClick = onNotificationsClick,
                 onFriendsClick = { showFriendsPanel = true },
+                onReelsClick = onReelsClick,
                 unreadNotificationCount = unreadCount,
             )
             Spacer(Modifier.height(12.dp))
@@ -715,16 +725,60 @@ fun HomeScreen(
         }
 
         if (!uiState.isLoading && uiState.errorMessage == null) {
-            CVBottomNavBar(
-                selectedIndex = 0,
-                onItemSelected = { index ->
-                    if (index == 1) onAiSearchClick(uiState.isTvMode) else onNavigateTab(index)
-                },
+            // Alt Bara Doğrudan Bitişik Efsanevi Keşif Akışı Butonu ve Alt Navigasyon Barı
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-            )
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            ) {
+                // Alt Bara Üstten Bitişik Seviye Butonu (Daha Büyük & Belirgin)
+                Box(
+                    modifier = Modifier
+                        .offset(y = 6.dp)
+                        .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp, bottomStart = 8.dp, bottomEnd = 8.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Primary, Color(0xFFE040FB)),
+                            ),
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            brush = Brush.horizontalGradient(
+                                listOf(Color.White.copy(alpha = 0.7f), Color.White.copy(alpha = 0.25f)),
+                            ),
+                            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp, bottomStart = 8.dp, bottomEnd = 8.dp),
+                        )
+                        .clickable { onReelsClick() }
+                        .padding(horizontal = 26.dp, vertical = 11.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Sonsuz Keşif Akışı",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+
+                CVBottomNavBar(
+                    selectedIndex = 0,
+                    onItemSelected = { index ->
+                        if (index == 1) onAiSearchClick(uiState.isTvMode) else onNavigateTab(index)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         offlineActionMessage?.let { message ->

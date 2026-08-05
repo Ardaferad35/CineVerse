@@ -135,7 +135,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { CineVerseMessagingService.deleteCurrentToken() }
             runCatching { AppGraph.clearUserScopedCache() }
-            auth.signOut()
+            runCatching { auth.signOut() }
             onComplete()
         }
     }
