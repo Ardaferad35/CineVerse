@@ -30,9 +30,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.AppNotification
 import com.arda.cineverse.ui.components.timeAgo
 import com.arda.cineverse.ui.theme.Background
@@ -67,10 +69,10 @@ fun NotificationsScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
             }
             Spacer(Modifier.width(8.dp))
-            Text("Bildirimler", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.notifications_title), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
 
         when {
@@ -87,7 +89,7 @@ fun NotificationsScreen(
                 ) {
                     Icon(Icons.Filled.NotificationsNone, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(48.dp))
                     Spacer(Modifier.height(12.dp))
-                    Text("Henüz bildiriminiz yok", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.notifications_empty), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                 }
             }
             else -> {

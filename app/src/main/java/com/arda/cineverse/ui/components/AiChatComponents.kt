@@ -42,12 +42,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.AiChatMessage
 import com.arda.cineverse.data.model.AiIntent
 import com.arda.cineverse.data.model.AiMovieSuggestion
@@ -56,23 +58,26 @@ import com.arda.cineverse.ui.theme.*
 private val StarColor = Color(0xFFFFC857)
 
 /** Boş sohbet ekranında gösterilen, dokununca direkt gönderilen hazır başlangıçlar. */
-private val MovieStarters = listOf(
-    "Bugün moralim bozuk, iyi gelecek bir film öner",
-    "Sonu şaşırtan bir gerilim istiyorum",
-    "Adını unuttum: uzayda geçen baba–kız filmi",
-    "Arkadaşlarla izlemelik bir komedi",
-)
+@Composable
+fun aiChatStarters(isTvMode: Boolean): List<String> = if (isTvMode) {
+    listOf(
+        stringResource(R.string.ai_chat_starter_tv_1),
+        stringResource(R.string.ai_chat_starter_tv_2),
+        stringResource(R.string.ai_chat_starter_tv_3),
+        stringResource(R.string.ai_chat_starter_tv_4),
+    )
+} else {
+    listOf(
+        stringResource(R.string.ai_chat_starter_movie_1),
+        stringResource(R.string.ai_chat_starter_movie_2),
+        stringResource(R.string.ai_chat_starter_movie_3),
+        stringResource(R.string.ai_chat_starter_movie_4),
+    )
+}
 
-private val TvStarters = listOf(
-    "Bir çırpıda bitireceğim bir dizi öner",
-    "Sonu şaşırtan bir gerilim dizisi istiyorum",
-    "Adını unuttum: bir kimya öğretmeninin suça bulaştığı dizi",
-    "Breaking Bad'i sevdiysem ne izlemeliyim?",
-)
-
-fun aiChatStarters(isTvMode: Boolean): List<String> = if (isTvMode) TvStarters else MovieStarters
-
-fun aiAssistantTitle(isTvMode: Boolean): String = if (isTvMode) "Dizi Asistanı" else "Film Asistanı"
+@Composable
+fun aiAssistantTitle(isTvMode: Boolean): String =
+    if (isTvMode) stringResource(R.string.ai_chat_assistant_title_tv) else stringResource(R.string.ai_chat_assistant_title_movie)
 
 @Composable
 fun AiChatEmptyState(
@@ -99,9 +104,9 @@ fun AiChatEmptyState(
         Spacer(Modifier.height(8.dp))
         Text(
             if (isTvMode) {
-                "Nasıl hissettiğini yaz, sana göre bir dizi bulayım. Ya da adını hatırlamadığın diziyi tarif et, birlikte çıkaralım."
+                stringResource(R.string.ai_chat_empty_state_tv)
             } else {
-                "Nasıl hissettiğini yaz, sana göre bir film bulayım. Ya da adını hatırlamadığın filmi tarif et, birlikte çıkaralım."
+                stringResource(R.string.ai_chat_empty_state_movie)
             },
             color = TextSecondary,
             style = MaterialTheme.typography.bodyMedium,
@@ -245,7 +250,7 @@ private fun AiSuggestionCard(
                     )
                     Icon(
                         if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = if (isFavorite) "Favorilerden çıkar" else "Favorilere ekle",
+                        contentDescription = if (isFavorite) stringResource(R.string.ai_chat_remove_favorite_cd) else stringResource(R.string.ai_chat_add_favorite_cd),
                         tint = if (isFavorite) ErrorColor else TextSecondary,
                         modifier = Modifier.size(18.dp).clickable { onFavoriteClick() },
                     )
@@ -256,7 +261,11 @@ private fun AiSuggestionCard(
                     Spacer(Modifier.width(3.dp))
                     Text("${movie.rating}", color = TextSecondary, fontSize = 12.sp)
                     Text(
-                        "  •  ${movie.year ?: "—"}  •  ${if (movie.mediaType == "tv") "Dizi" else "Film"}",
+                        stringResource(
+                            R.string.ai_chat_result_meta,
+                            movie.year?.toString() ?: "—",
+                            if (movie.mediaType == "tv") stringResource(R.string.ai_chat_type_tv) else stringResource(R.string.ai_chat_type_movie),
+                        ),
                         color = TextSecondary,
                         fontSize = 12.sp,
                     )
@@ -276,9 +285,9 @@ private fun AiSuggestionCard(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CardActionButton(
                 label = when {
-                    intent == AiIntent.IDENTIFY -> "Detaya git"
-                    movie.mediaType == "tv" -> "Diziye git"
-                    else -> "Filme git"
+                    intent == AiIntent.IDENTIFY -> stringResource(R.string.ai_chat_go_to_detail)
+                    movie.mediaType == "tv" -> stringResource(R.string.ai_chat_go_to_tv)
+                    else -> stringResource(R.string.ai_chat_go_to_movie)
                 },
                 icon = Icons.Filled.ArrowForward,
                 contentColor = Primary,
@@ -287,7 +296,7 @@ private fun AiSuggestionCard(
                 modifier = Modifier.weight(1f),
             )
             CardActionButton(
-                label = if (isInWatchlist) "Listemde" else "Listeme ekle",
+                label = if (isInWatchlist) stringResource(R.string.ai_chat_in_watchlist) else stringResource(R.string.ai_chat_add_to_watchlist),
                 icon = if (isInWatchlist) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                 contentColor = if (isInWatchlist) Primary else TextSecondary,
                 background = if (isInWatchlist) Primary.copy(alpha = 0.14f) else SurfaceVariant,
@@ -351,7 +360,7 @@ fun ChatErrorBubble(
             ) {
                 Icon(Icons.Filled.Refresh, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("Tekrar dene", color = Primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.ai_chat_retry), color = Primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -434,7 +443,7 @@ fun AiChatInputBar(
         Box(modifier = Modifier.weight(1f).padding(vertical = 10.dp)) {
             if (value.isEmpty()) {
                 Text(
-                    "Ne izlemek istersin?",
+                    stringResource(R.string.ai_chat_input_placeholder),
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -470,7 +479,7 @@ fun AiChatInputBar(
             } else {
                 Icon(
                     Icons.Filled.Send,
-                    contentDescription = "Gönder",
+                    contentDescription = stringResource(R.string.ai_chat_send_cd),
                     tint = if (canSend) OnPrimary else TextSecondary,
                     modifier = Modifier.size(18.dp),
                 )
@@ -496,7 +505,7 @@ fun AiChatHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(aiAssistantTitle(isTvMode), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(
-                if (isTvMode) "Öneri ister, adını unuttuğun diziyi sorarsın" else "Öneri ister, adını unuttuğun filmi sorarsın",
+                if (isTvMode) stringResource(R.string.ai_chat_subtitle_tv) else stringResource(R.string.ai_chat_subtitle_movie),
                 color = TextSecondary,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
@@ -504,7 +513,7 @@ fun AiChatHeader(
         }
         if (canClear) {
             IconButton(onClick = onClearClick) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Sohbeti temizle", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.ai_chat_clear_cd), tint = TextSecondary, modifier = Modifier.size(20.dp))
             }
         }
     }

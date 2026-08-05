@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
 import com.arda.cineverse.data.model.Movie
@@ -76,9 +78,9 @@ fun HomeTopBar(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.Theaters, contentDescription = null, tint = Primary, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Cine", color = OnSurface, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Text(stringResource(R.string.home_logo_cine), color = OnSurface, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             Text(
-                "Verse",
+                stringResource(R.string.home_logo_verse),
                 style = MaterialTheme.typography.titleLarge.copy(
                     brush = Brush.horizontalGradient(PrimaryGradient),
                     fontWeight = FontWeight.Bold,
@@ -87,7 +89,7 @@ fun HomeTopBar(
             )
             if (!ThemeState.isDarkTheme) {
                 Text(
-                    "Light",
+                    stringResource(R.string.home_logo_light_badge),
                     color = Primary,
                     fontWeight = FontWeight.Medium,
                     fontStyle = FontStyle.Italic,
@@ -105,7 +107,7 @@ fun HomeTopBar(
                     .clickable { onFriendsClick() },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Group, contentDescription = "Arkadaşlar", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Filled.Group, contentDescription = stringResource(R.string.home_friends_cd), tint = TextSecondary, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(10.dp))
             Box(
@@ -116,7 +118,7 @@ fun HomeTopBar(
                     .clickable { onNotificationsClick() },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Notifications, contentDescription = "Bildirimler", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.Notifications, contentDescription = stringResource(R.string.home_notifications_cd), tint = TextSecondary, modifier = Modifier.size(18.dp))
                 if (unreadNotificationCount > 0) {
                     Box(
                         modifier = Modifier
@@ -128,7 +130,7 @@ fun HomeTopBar(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            if (unreadNotificationCount > 9) "9+" else "$unreadNotificationCount",
+                            if (unreadNotificationCount > 9) stringResource(R.string.home_badge_9_plus) else "$unreadNotificationCount",
                             color = Color.White,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
@@ -145,7 +147,7 @@ fun HomeTopBar(
                     .clickable { onProfileClick() },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Person, contentDescription = "Profil", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Filled.Person, contentDescription = stringResource(R.string.home_profile_cd), tint = TextSecondary, modifier = Modifier.size(20.dp))
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -159,9 +161,9 @@ fun HomeTopBar(
     }
 }
 
-enum class HomeMode(val label: String) {
-    MOVIES("Filmler"),
-    TV_SHOWS("Diziler"),
+enum class HomeMode(@androidx.annotation.StringRes val labelRes: Int) {
+    MOVIES(R.string.home_mode_movies),
+    TV_SHOWS(R.string.home_mode_tv_shows),
 }
 
 @Composable
@@ -197,7 +199,7 @@ fun HomeModeSelector(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    mode.label,
+                    stringResource(mode.labelRes),
                     color = if (isSelected) OnPrimary else TextSecondary,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -228,7 +230,7 @@ fun HomeSearchBar(
         Spacer(Modifier.width(10.dp))
         Box(modifier = Modifier.weight(1f)) {
             if (value.isEmpty()) {
-                Text("Film, dizi veya oyuncu ara...", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.home_search_placeholder), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             }
             BasicTextField(
                 value = value,
@@ -242,7 +244,7 @@ fun HomeSearchBar(
         if (value.isNotEmpty() && onClear != null) {
             Icon(
                 Icons.Filled.Close,
-                contentDescription = "Temizle",
+                contentDescription = stringResource(R.string.common_clear),
                 tint = TextSecondary,
                 modifier = Modifier.size(18.dp).clickable { onClear() },
             )
@@ -258,7 +260,7 @@ fun HomeSearchBar(
         ) {
             Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
-            Text("AI", color = OnPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.home_ai_badge), color = OnPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -271,7 +273,7 @@ fun FeaturedMovieBanner(
     onAddToListClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    label: String = "GÜNÜN FİLMİ",
+    label: String = stringResource(R.string.home_movie_of_the_day),
     isInWatchlist: Boolean = false,
     pageCount: Int = 4,
     currentPage: Int = 0,
@@ -428,7 +430,7 @@ fun FeaturedMovieBanner(
                     Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(buttonIconSize))
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "Detayları Gör",
+                        stringResource(R.string.home_view_details),
                         color = OnPrimary,
                         fontSize = buttonFontSize,
                         fontWeight = FontWeight.SemiBold,
@@ -454,7 +456,7 @@ fun FeaturedMovieBanner(
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        if (isInWatchlist) "Listemde" else "Listeme Ekle",
+                        if (isInWatchlist) stringResource(R.string.home_in_watchlist) else stringResource(R.string.home_add_to_watchlist),
                         color = OnSurface,
                         fontSize = buttonFontSize,
                         fontWeight = FontWeight.SemiBold,
@@ -504,7 +506,7 @@ fun HomeSectionHeader(
                 modifier = Modifier.clickable { onSeeAllClick() },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Tümünü Gör", color = Primary, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.common_see_all), color = Primary, style = MaterialTheme.typography.bodyMedium)
                 Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
             }
         }
@@ -525,8 +527,8 @@ fun OfflineStatusBanner(
     modifier: Modifier = Modifier,
 ) {
     val label = when {
-        isOffline -> "Çevrimdışı Mod • Son senkronize edilen içerikler gösteriliyor"
-        lastSyncedAt != null -> "Son güncelleme: ${formatLastSyncedAt(lastSyncedAt)}"
+        isOffline -> stringResource(R.string.home_offline_mode_banner)
+        lastSyncedAt != null -> stringResource(R.string.home_last_updated, formatLastSyncedAt(lastSyncedAt))
         else -> null
     } ?: return
 
@@ -549,16 +551,14 @@ fun OfflineStatusBanner(
     }
 }
 
+/**
+ * Sabit bir Türkçe ay-adı dizisi yerine Locale("tr") tabanlı biçimlendirme
+ * kullanıyor — uygulama ileride başka bir dile taşınırsa bu fonksiyona
+ * dokunmaya gerek kalmadan doğru ay adını üretmeye devam eder.
+ */
 private fun formatLastSyncedAt(timestampMillis: Long): String {
-    val turkishMonths = listOf(
-        "Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara",
-    )
-    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = timestampMillis }
-    val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
-    val month = turkishMonths[calendar.get(java.util.Calendar.MONTH)]
-    val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY).toString().padStart(2, '0')
-    val minute = calendar.get(java.util.Calendar.MINUTE).toString().padStart(2, '0')
-    return "$day $month, $hour:$minute"
+    val formatter = java.text.SimpleDateFormat("d MMM, HH:mm", java.util.Locale.forLanguageTag("tr"))
+    return formatter.format(java.util.Date(timestampMillis))
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -625,7 +625,7 @@ fun PopularMovieCard(
             ) {
                 Icon(
                     if (movie.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = "Favorilere ekle",
+                    contentDescription = stringResource(R.string.home_add_to_favorites_cd),
                     tint = if (movie.isFavorite) ErrorColor else Color.White,
                     modifier = Modifier.size(18.dp),
                 )
@@ -740,9 +740,9 @@ fun CVBottomNavBar(
     modifier: Modifier = Modifier,
 ) {
     val items = listOf(
-        BottomNavItem("Ana Sayfa", Icons.Outlined.Home, Icons.Filled.Home),
-        BottomNavItem("Asistan", Icons.Outlined.AutoAwesome, Icons.Filled.AutoAwesome),
-        BottomNavItem("Listem", Icons.Outlined.BookmarkBorder, Icons.Filled.Bookmark),
+        BottomNavItem(stringResource(R.string.common_nav_home), Icons.Outlined.Home, Icons.Filled.Home),
+        BottomNavItem(stringResource(R.string.common_nav_assistant), Icons.Outlined.AutoAwesome, Icons.Filled.AutoAwesome),
+        BottomNavItem(stringResource(R.string.common_nav_my_list), Icons.Outlined.BookmarkBorder, Icons.Filled.Bookmark),
     )
     Row(
         modifier = modifier
@@ -850,7 +850,7 @@ fun SearchSuggestionsList(
                     Text(suggestion.subtitle, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
                 }
                 if (!clickable) {
-                    Text("Yakında", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.common_coming_soon), color = TextSecondary, style = MaterialTheme.typography.labelSmall)
                 }
             }
             if (index != suggestions.lastIndex) {
@@ -876,7 +876,7 @@ fun FloatingDiceButton(
     ) {
         Icon(
             Icons.Filled.Casino,
-            contentDescription = "Ne İzlesem? Zarı",
+            contentDescription = stringResource(R.string.home_dice_button_cd),
             tint = Color.White,
             modifier = Modifier.size(32.dp),
         )
@@ -983,7 +983,7 @@ fun DicePickerDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Ne İzlesem? Zarı 🎲",
+                            stringResource(R.string.home_dice_dialog_title),
                             color = Color.White,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
@@ -998,7 +998,7 @@ fun DicePickerDialog(
                             .clip(CircleShape)
                             .background(Color(0xFF2C2443)),
                     ) {
-                        Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = Color.White, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.common_close), tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                 }
 
@@ -1009,7 +1009,11 @@ fun DicePickerDialog(
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("all" to "Hepsi 🌟", "movie" to "Film 🎬", "tv" to "Dizi 📺").forEach { (type, label) ->
+                        listOf(
+                            "all" to stringResource(R.string.home_dice_filter_all),
+                            "movie" to stringResource(R.string.home_dice_filter_movie),
+                            "tv" to stringResource(R.string.home_dice_filter_tv),
+                        ).forEach { (type, label) ->
                             val isSelected = selectedFilter == type
                             Box(
                                 modifier = Modifier
@@ -1041,7 +1045,7 @@ fun DicePickerDialog(
                 ) {
                     Icon(
                         Icons.Filled.Casino,
-                        contentDescription = "Zar At",
+                        contentDescription = stringResource(R.string.home_dice_roll_cd),
                         tint = Color.White,
                         modifier = Modifier
                             .size(44.dp)
@@ -1051,7 +1055,7 @@ fun DicePickerDialog(
 
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    if (isSpinning) "Zar Dönüyor..." else "Zarı Çevirmek İçin Bas! 🎲",
+                    if (isSpinning) stringResource(R.string.home_dice_spinning) else stringResource(R.string.home_dice_tap_to_roll),
                     color = Color(0xFFE0E0FF),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -1097,7 +1101,7 @@ fun DicePickerDialog(
                                                 .padding(horizontal = 7.dp, vertical = 2.5.dp),
                                         ) {
                                             Text(
-                                                if (movie.mediaType == "tv") "DİZİ" else "FİLM",
+                                                if (movie.mediaType == "tv") stringResource(R.string.home_dice_result_tv_badge) else stringResource(R.string.home_dice_result_movie_badge),
                                                 color = Color.White,
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
@@ -1144,7 +1148,7 @@ fun DicePickerDialog(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
-                                        "Detayları Gör 🎬",
+                                        stringResource(R.string.home_dice_view_details),
                                         color = Color.White,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
@@ -1162,7 +1166,7 @@ fun DicePickerDialog(
                                         .padding(vertical = 9.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Text("Tekrar At 🎲", color = Color(0xFFE0E0FF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(stringResource(R.string.home_dice_roll_again), color = Color(0xFFE0E0FF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -1249,7 +1253,7 @@ fun QuickPreviewSheet(
                             .clip(CircleShape)
                             .background(Color.Black.copy(alpha = 0.5f)),
                     ) {
-                        Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = Color.White, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.common_close), tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                 }
 
@@ -1307,7 +1311,7 @@ fun QuickPreviewSheet(
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = if (data.overview.isNotBlank()) data.overview else "Bu içerik için henüz özet bulunmuyor.",
+                        text = if (data.overview.isNotBlank()) data.overview else stringResource(R.string.home_no_overview),
                         color = TextSecondary,
                         fontSize = 12.sp,
                         lineHeight = 16.sp,
@@ -1336,7 +1340,7 @@ fun QuickPreviewSheet(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Öner", color = OnPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.home_quick_preview_recommend), color = OnPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -1357,7 +1361,7 @@ fun QuickPreviewSheet(
                                 Icon(Icons.Filled.Info, contentDescription = null, tint = OnSurface, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(4.dp))
                                 Text(
-                                    "Detaylar",
+                                    stringResource(R.string.common_details),
                                     color = OnSurface,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,

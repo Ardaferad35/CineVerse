@@ -13,10 +13,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.arda.cineverse.R
 import com.arda.cineverse.data.repository.FriendRepository
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
@@ -77,19 +79,29 @@ fun RegisterScreen(
         }
     }
 
+    // validateAndSubmit() bir @Composable değil (onClick callback'i olarak
+    // kullanılıyor), bu yüzden stringResource() burada değil, composable
+    // gövdesinde önceden çözülüp closure ile yakalanıyor.
+    val usernameRequiredMessage = stringResource(R.string.register_username_required)
+    val usernameInvalidFormatMessage = stringResource(R.string.profile_username_invalid_format)
+    val usernameTakenMessage = stringResource(R.string.register_username_taken)
+    val emailRequiredMessage = stringResource(R.string.auth_email_required)
+    val emailInvalidMessage = stringResource(R.string.auth_email_invalid)
+    val passwordsMismatchMessage = stringResource(R.string.register_passwords_mismatch)
+
     fun validateAndSubmit() {
         usernameError = when {
-            username.isBlank() -> "Kullanıcı adı gerekli"
-            !usernameFormatValid -> "3-20 karakter, sadece küçük harf/rakam/_ kullanın"
-            usernameAvailable == false -> "Bu kullanıcı adı alınmış"
+            username.isBlank() -> usernameRequiredMessage
+            !usernameFormatValid -> usernameInvalidFormatMessage
+            usernameAvailable == false -> usernameTakenMessage
             else -> null
         }
         emailError = when {
-            email.isBlank() -> "E-posta gerekli"
-            !isValidEmail(email) -> "Geçerli bir e-posta girin"
+            email.isBlank() -> emailRequiredMessage
+            !isValidEmail(email) -> emailInvalidMessage
             else -> null
         }
-        confirmError = if (confirmPassword != password) "Şifreler eşleşmiyor" else null
+        confirmError = if (confirmPassword != password) passwordsMismatchMessage else null
 
         if (usernameError == null && emailError == null && confirmError == null &&
             passwordStrongEnough && agreedToTerms
@@ -107,14 +119,14 @@ fun RegisterScreen(
         ) {
             Spacer(Modifier.height(24.dp))
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
             }
             Spacer(Modifier.height(12.dp))
 
-            Text("Hesap Oluştur", color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.register_title), color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
-                "CineVerse'e katılın ve binlerce film ile diziyi keşfedin",
+                stringResource(R.string.register_subtitle),
                 color = TextSecondary,
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -124,7 +136,7 @@ fun RegisterScreen(
             CVTextField(
                 value = username,
                 onValueChange = { username = it.lowercase(); usernameError = null },
-                placeholder = "Kullanıcı adı",
+                placeholder = stringResource(R.string.register_username_placeholder),
                 leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary) },
                 isError = usernameError != null,
                 errorText = usernameError,
@@ -132,9 +144,9 @@ fun RegisterScreen(
             if (usernameError == null && username.isNotBlank() && usernameFormatValid) {
                 Text(
                     text = when (usernameAvailable) {
-                        true -> "Kullanılabilir"
-                        false -> "Bu kullanıcı adı alınmış"
-                        null -> "Kontrol ediliyor..."
+                        true -> stringResource(R.string.register_username_available)
+                        false -> stringResource(R.string.register_username_taken)
+                        null -> stringResource(R.string.register_username_checking)
                     },
                     color = if (usernameAvailable == true) Primary else TextSecondary,
                     style = MaterialTheme.typography.bodySmall,
@@ -145,7 +157,7 @@ fun RegisterScreen(
             CVTextField(
                 value = email,
                 onValueChange = { email = it; emailError = null },
-                placeholder = "E-posta adresi",
+                placeholder = stringResource(R.string.auth_email_placeholder),
                 leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
                 isError = emailError != null,
                 errorText = emailError,
@@ -155,7 +167,7 @@ fun RegisterScreen(
             CVTextField(
                 value = password,
                 onValueChange = { password = it },
-                placeholder = "Şifre",
+                placeholder = stringResource(R.string.auth_password_placeholder),
                 leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
                 isPassword = true,
                 passwordVisible = passwordVisible,
@@ -165,7 +177,7 @@ fun RegisterScreen(
             CVTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it; confirmError = null },
-                placeholder = "Şifreyi tekrar edin",
+                placeholder = stringResource(R.string.register_confirm_password_placeholder),
                 leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
                 isPassword = true,
                 passwordVisible = confirmPasswordVisible,
@@ -176,9 +188,9 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(14.dp))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                CVValidationRow("En az 8 karakter", lengthOk)
-                CVValidationRow("Rakam veya sembol içeriyor", numberOrSymbolOk)
-                CVValidationRow("Büyük ve küçük harf içeriyor", caseOk)
+                CVValidationRow(stringResource(R.string.register_rule_min_length), lengthOk)
+                CVValidationRow(stringResource(R.string.register_rule_number_or_symbol), numberOrSymbolOk)
+                CVValidationRow(stringResource(R.string.register_rule_case), caseOk)
             }
 
             Spacer(Modifier.height(14.dp))
@@ -188,7 +200,7 @@ fun RegisterScreen(
                     onCheckedChange = { agreedToTerms = it },
                     colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
                 )
-                Text("Kullanım Şartları & Gizlilik Politikasını kabul ediyorum", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.register_terms_agreement), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             }
 
             if (authState is AuthState.Error) {
@@ -202,13 +214,13 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(16.dp))
             CVGradientButton(
-                text = if (isLoading) "Hesap oluşturuluyor..." else "Kayıt Ol",
+                text = if (isLoading) stringResource(R.string.register_creating_account) else stringResource(R.string.auth_register_link),
                 onClick = ::validateAndSubmit,
                 enabled = agreedToTerms && !isLoading,
             )
 
             Spacer(Modifier.height(24.dp))
-            CVDividerWithLabel("veya şununla devam et")
+            CVDividerWithLabel(stringResource(R.string.auth_or_continue_with))
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
@@ -221,8 +233,8 @@ fun RegisterScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Zaten hesabınız var mı? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-                CVTextButton("Giriş Yap", onClick = onNavigateToLogin)
+                Text(stringResource(R.string.register_have_account), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                CVTextButton(stringResource(R.string.login_sign_in), onClick = onNavigateToLogin)
             }
             Spacer(Modifier.height(24.dp))
         }

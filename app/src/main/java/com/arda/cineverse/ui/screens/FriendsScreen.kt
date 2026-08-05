@@ -50,12 +50,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.Friend
 import com.arda.cineverse.data.model.FriendActivity
 import com.arda.cineverse.data.model.FriendActivityType
@@ -176,21 +178,21 @@ private fun FriendsContent(
                 if (isPanel) {
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "Arkadaşlar",
+                        stringResource(R.string.friends_title),
                         color = OnSurface,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = OnSurface)
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.common_close), tint = OnSurface)
                     }
                 } else {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
                     }
                     Spacer(Modifier.width(8.dp))
-                    Text("Arkadaşlar", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.friends_title), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -199,7 +201,7 @@ private fun FriendsContent(
                 CVTextField(
                     value = uiState.searchQuery,
                     onValueChange = viewModel::onSearchQueryChange,
-                    placeholder = "Kullanıcı adıyla ara",
+                    placeholder = stringResource(R.string.friends_search_placeholder),
                     leadingIcon = { Icon(Icons.Filled.PersonSearch, contentDescription = null, tint = TextSecondary) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 )
@@ -229,14 +231,18 @@ private fun FriendsContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 ListTabButton(
-                    text = "Arkadaşlarım",
+                    text = stringResource(R.string.friends_tab_friends),
                     icon = Icons.Filled.PersonAdd,
                     selected = uiState.selectedTab == FriendsTab.FRIENDS,
                     onClick = { viewModel.selectTab(FriendsTab.FRIENDS) },
                     modifier = Modifier.weight(1f),
                 )
                 ListTabButton(
-                    text = "Gelen İstekler" + if (uiState.incomingRequests.isNotEmpty()) " (${uiState.incomingRequests.size})" else "",
+                    text = stringResource(R.string.friends_tab_requests) + if (uiState.incomingRequests.isNotEmpty()) {
+                        stringResource(R.string.friends_tab_requests_count_suffix, uiState.incomingRequests.size)
+                    } else {
+                        ""
+                    },
                     icon = Icons.Filled.PersonSearch,
                     selected = uiState.selectedTab == FriendsTab.REQUESTS,
                     onClick = { viewModel.selectTab(FriendsTab.REQUESTS) },
@@ -249,7 +255,7 @@ private fun FriendsContent(
             when (uiState.selectedTab) {
                 FriendsTab.FRIENDS -> {
                     if (uiState.friends.isEmpty()) {
-                        EmptyState(text = "Henüz arkadaşınız yok. Kullanıcı adıyla arayıp istek gönderebilirsiniz.")
+                        EmptyState(text = stringResource(R.string.friends_empty_friends))
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(horizontal = 20.dp),
@@ -271,7 +277,7 @@ private fun FriendsContent(
                             CircularProgressIndicator(color = Primary)
                         }
                     } else if (uiState.incomingRequests.isEmpty()) {
-                        EmptyState(text = "Gelen arkadaşlık isteği yok.")
+                        EmptyState(text = stringResource(R.string.friends_empty_requests))
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(horizontal = 20.dp),
@@ -364,7 +370,7 @@ private fun SearchResultRow(
         }
         when {
             alreadyFriend -> Text(
-                "Arkadaşsınız",
+                stringResource(R.string.friends_already_friends),
                 color = Primary,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.SemiBold,
@@ -378,14 +384,14 @@ private fun SearchResultRow(
                 Icon(Icons.Filled.Check, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    "Gönderildi",
+                    stringResource(R.string.friends_request_sent_label),
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
             else -> IconButton(onClick = onSendRequest) {
-                Icon(Icons.Filled.PersonAdd, contentDescription = "İstek gönder", tint = Primary)
+                Icon(Icons.Filled.PersonAdd, contentDescription = stringResource(R.string.friends_send_request_cd), tint = Primary)
             }
         }
     }
@@ -416,7 +422,7 @@ private fun FriendRow(
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(friend.fullName, color = OnSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            Text("@${friend.username} • Dokun & Etkileşimleri Gör", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.friends_row_subtitle, friend.username), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -426,7 +432,7 @@ private fun FriendRow(
         )
         Spacer(Modifier.width(4.dp))
         IconButton(onClick = onRemove) {
-            Icon(Icons.Filled.PersonRemove, contentDescription = "Arkadaşlıktan çıkar", tint = ErrorColor.copy(alpha = 0.8f))
+            Icon(Icons.Filled.PersonRemove, contentDescription = stringResource(R.string.friends_remove_cd), tint = ErrorColor.copy(alpha = 0.8f))
         }
     }
 }
@@ -454,10 +460,10 @@ private fun FriendRequestRow(request: FriendRequest, onAccept: () -> Unit, onDec
             Text("@${request.fromUsername}", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
         IconButton(onClick = onAccept) {
-            Icon(Icons.Filled.Check, contentDescription = "Kabul et", tint = Primary)
+            Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.friends_accept_cd), tint = Primary)
         }
         IconButton(onClick = onDecline) {
-            Icon(Icons.Filled.Close, contentDescription = "Reddet", tint = ErrorColor)
+            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.friends_decline_cd), tint = ErrorColor)
         }
     }
 }
@@ -507,14 +513,14 @@ private fun FriendActivityBottomSheet(
                 }
 
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = TextSecondary)
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.common_close), tint = TextSecondary)
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Son Etkileşimler (Favoriler, Yorumlar & Listeler)",
+                text = stringResource(R.string.friends_activity_sheet_subtitle),
                 color = OnSurface,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -543,7 +549,7 @@ private fun FriendActivityBottomSheet(
                         Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(36.dp))
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "Henüz kaydedilmiş etkileşim bulunmuyor",
+                            stringResource(R.string.friends_activity_empty),
                             color = TextSecondary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
@@ -618,10 +624,10 @@ private fun FriendActivityItem(
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val (badgeIcon, badgeTint, label) = when (activity.type) {
-                    FriendActivityType.FAVORITE -> Triple(Icons.Filled.Favorite, ErrorColor, "Favorilerine ekledi")
-                    FriendActivityType.WATCHLIST -> Triple(Icons.Filled.Bookmark, Primary, "İzleme listesine ekledi")
-                    FriendActivityType.COMMENT -> Triple(Icons.Filled.ChatBubble, Accent, "Yorum yaptı & puan verdi")
-                    FriendActivityType.RECOMMENDATION -> Triple(Icons.AutoMirrored.Filled.Send, Warning, "Tavsiye etti")
+                    FriendActivityType.FAVORITE -> Triple(Icons.Filled.Favorite, ErrorColor, stringResource(R.string.friends_activity_favorite))
+                    FriendActivityType.WATCHLIST -> Triple(Icons.Filled.Bookmark, Primary, stringResource(R.string.friends_activity_watchlist))
+                    FriendActivityType.COMMENT -> Triple(Icons.Filled.ChatBubble, Accent, stringResource(R.string.friends_activity_comment))
+                    FriendActivityType.RECOMMENDATION -> Triple(Icons.AutoMirrored.Filled.Send, Warning, stringResource(R.string.friends_activity_recommendation))
                 }
 
                 Icon(badgeIcon, contentDescription = null, tint = badgeTint, modifier = Modifier.size(14.dp))

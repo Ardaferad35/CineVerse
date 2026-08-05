@@ -1,3 +1,339 @@
 <resources>
     <string name="app_name">CineVerse</string>
+
+    <!-- Ortak bileşenler (ui/components/CVComponents.kt) -->
+    <string name="cv_hide_password">Şifreyi gizle</string>
+    <string name="cv_show_password">Şifreyi göster</string>
+
+    <!-- Birden çok ekranda tekrar eden ortak metinler -->
+    <string name="common_retry">Tekrar Dene</string>
+    <string name="common_back">Geri</string>
+    <string name="common_close">Kapat</string>
+    <string name="common_clear">Temizle</string>
+    <string name="common_details">Detaylar</string>
+    <string name="common_see_all">Tümünü Gör</string>
+    <string name="common_coming_soon">Yakında</string>
+    <string name="common_cancel">Vazgeç</string>
+    <string name="common_save">Kaydet</string>
+    <string name="common_saving">Kaydediliyor…</string>
+    <string name="common_ok">Tamam</string>
+
+    <!-- ui/components/HomeComponents.kt -->
+    <string name="home_friends_cd">Arkadaşlar</string>
+    <string name="home_notifications_cd">Bildirimler</string>
+    <string name="home_badge_9_plus">9+</string>
+    <string name="home_profile_cd">Profil</string>
+    <string name="home_mode_movies">Filmler</string>
+    <string name="home_mode_tv_shows">Diziler</string>
+    <string name="home_search_placeholder">Film, dizi veya oyuncu ara…</string>
+    <string name="home_ai_badge">AI</string>
+    <string name="home_movie_of_the_day">GÜNÜN FİLMİ</string>
+    <string name="home_view_details">Detayları Gör</string>
+    <string name="home_in_watchlist">Listemde</string>
+    <string name="home_add_to_watchlist">Listeme Ekle</string>
+    <string name="home_offline_mode_banner">Çevrimdışı Mod • Son senkronize edilen içerikler gösteriliyor</string>
+    <string name="home_last_updated">Son güncelleme: %1$s</string>
+    <string name="home_add_to_favorites_cd">Favorilere ekle</string>
+    <string name="common_nav_home">Ana Sayfa</string>
+    <string name="common_nav_assistant">Asistan</string>
+    <string name="common_nav_my_list">Listem</string>
+    <string name="home_dice_button_cd">Ne İzlesem? Zarı</string>
+    <string name="home_dice_dialog_title">Ne İzlesem? Zarı 🎲</string>
+    <string name="home_dice_filter_all">Hepsi 🌟</string>
+    <string name="home_dice_filter_movie">Film 🎬</string>
+    <string name="home_dice_filter_tv">Dizi 📺</string>
+    <string name="home_dice_roll_cd">Zar At</string>
+    <string name="home_dice_spinning">Zar Dönüyor…</string>
+    <string name="home_dice_tap_to_roll">Zarı Çevirmek İçin Bas! 🎲</string>
+    <string name="home_dice_result_tv_badge">DİZİ</string>
+    <string name="home_dice_result_movie_badge">FİLM</string>
+    <string name="home_dice_view_details">Detayları Gör 🎬</string>
+    <string name="home_dice_roll_again">Tekrar At 🎲</string>
+    <string name="home_no_overview">Bu içerik için henüz özet bulunmuyor.</string>
+    <string name="home_quick_preview_recommend">Öner</string>
+    <string name="home_logo_cine">Cine</string>
+    <string name="home_logo_verse">Verse</string>
+    <string name="home_logo_light_badge">Light</string>
+
+    <!-- ui/screens/ProfileScreen.kt -->
+    <string name="profile_title">Profil</string>
+    <string name="profile_edit_username_cd">Kullanıcı adını düzenle</string>
+    <string name="profile_member_badge">CineVerse Üyesi</string>
+    <string name="profile_stat_favorites">Favoriler</string>
+    <string name="profile_stat_watchlist">İzleme Listem</string>
+    <string name="profile_stat_avg_rating">Ortalama Puanım</string>
+    <string name="profile_choose_avatar">Avatar Seç</string>
+    <string name="profile_settings_friends_title">Arkadaşlar</string>
+    <string name="profile_settings_friends_subtitle">Arkadaş ekle ve film/dizi öner</string>
+    <string name="profile_settings_change_password_title">Şifre Değiştir</string>
+    <string name="profile_settings_change_password_subtitle">Hesap şifrenizi güncelleyin</string>
+    <string name="profile_settings_appearance_title">Görünüm</string>
+    <string name="profile_settings_appearance_subtitle">Tema ve görünüm seçimi</string>
+    <string name="profile_theme_dark">Koyu</string>
+    <string name="profile_theme_light">Açık</string>
+    <string name="profile_settings_notifications_title">Bildirimler</string>
+    <string name="profile_settings_notifications_subtitle">Bildirim tercihlerinizi yönetin</string>
+    <string name="profile_settings_help_title">Yardım &amp; Destek</string>
+    <string name="profile_settings_help_subtitle">Yardım alın ve bizimle iletişime geçin</string>
+    <string name="profile_settings_about_title">CineVerse Hakkında</string>
+    <string name="profile_settings_about_subtitle">Uygulama sürümü ve bilgileri</string>
+    <string name="profile_sign_out">Çıkış Yap</string>
+    <string name="profile_sign_out_confirm_title">Çıkış yap</string>
+    <string name="profile_sign_out_confirm_body">Hesabınızdan çıkış yapmak istediğinize emin misiniz?</string>
+    <string name="profile_username_placeholder">kullanici_adi</string>
+    <string name="profile_username_invalid_format">3-20 karakter, sadece küçük harf/rakam/_ kullanın</string>
+    <string name="profile_about_body">CineVerse — sürüm 1.0.0\n\nKotlin ve Jetpack Compose ile geliştirilen, yapay zekâ destekli film keşif uygulaması.</string>
+    <string name="profile_coming_soon_body">Bu özellik henüz hazır değil, yakında eklenecek.</string>
+    <string name="profile_current_password_label">Mevcut şifre</string>
+    <string name="profile_new_password_label">Yeni şifre</string>
+    <string name="profile_confirm_new_password_label">Yeni şifre (tekrar)</string>
+    <string name="profile_current_password_required">Mevcut şifrenizi girin</string>
+    <string name="profile_new_password_too_short">Yeni şifre en az 6 karakter olmalı</string>
+    <string name="profile_new_passwords_mismatch">Yeni şifreler eşleşmiyor</string>
+
+    <!-- Göreli zaman etiketi (ui/components/MovieDetailComponents.kt:timeAgo, NotificationsScreen.kt) -->
+    <string name="time_ago_just_now">az önce</string>
+    <string name="time_ago_minutes">%1$d dakika önce</string>
+    <string name="time_ago_hours">%1$d saat önce</string>
+    <string name="time_ago_days">%1$d gün önce</string>
+    <string name="time_ago_weeks">%1$d hafta önce</string>
+
+    <!-- ui/components/MovieDetailComponents.kt -->
+    <string name="comment_show_less">Daha az</string>
+    <string name="comment_show_more">Daha fazla</string>
+    <string name="comment_edited_suffix">(düzenlendi)</string>
+    <string name="comment_spoiler_warning">Bu yorum spoiler içeriyor</string>
+    <string name="comment_reveal_spoiler">Göster</string>
+    <string name="comment_edit">Düzenle</string>
+    <string name="comment_delete">Sil</string>
+    <string name="comment_reply">Yanıtla</string>
+    <string name="comment_submit_default_label">Yorumu Paylaş</string>
+    <string name="comment_star_rating_cd">%1$d yıldız</string>
+    <string name="comment_placeholder">Film hakkında düşüncelerini yaz…</string>
+    <string name="comment_spoiler_checkbox">Spoiler içeriyor</string>
+    <string name="comment_reply_placeholder">Yanıt yaz…</string>
+    <string name="comment_actor_fallback">Oyuncu</string>
+    <string name="movie_detail_sticky_home">Ana Sayfa</string>
+    <string name="movie_detail_sticky_favorite">Favori</string>
+    <string name="movie_detail_sticky_save">Kaydet</string>
+    <string name="movie_detail_sticky_rate">Puan Ver</string>
+    <string name="common_update">Güncelle</string>
+
+    <!-- Öneri gönderildi bildirimi (MovieDetailScreen.kt, TvShowDetailScreen.kt) -->
+    <string name="share_sent_one">Önerin gönderildi</string>
+    <string name="share_sent_many">%1$d arkadaşına önerin gönderildi</string>
+
+    <!-- ui/screens/MovieDetailScreen.kt -->
+    <string name="movie_detail_not_found">Film bulunamadı</string>
+    <string name="movie_detail_play_trailer_cd">Fragmanı oynat</string>
+    <string name="movie_detail_offline_limited">Çevrimdışı • Sınırlı bilgi gösteriliyor</string>
+    <string name="movie_detail_watch_trailer">Fragmanı İzle</string>
+    <string name="movie_detail_in_watchlist">İzleme Listemde</string>
+    <string name="movie_detail_add_to_watchlist">İzleme Listeme Ekle</string>
+    <string name="movie_detail_overview_title">Özet</string>
+    <string name="movie_detail_no_overview">Bu film için özet bulunamadı.</string>
+    <string name="movie_detail_director">Yönetmen: %1$s</string>
+    <string name="movie_detail_cast_title">Oyuncular</string>
+    <string name="movie_detail_user_rating_title">Kullanıcı Puanı</string>
+    <string name="movie_detail_no_ratings_yet">Henüz puan verilmedi, ilk puanı sen ver!</string>
+    <string name="detail_vote_count">%1$d oy</string>
+    <string name="detail_rate_now">Puanını ver</string>
+    <string name="detail_comments_title">Yorumlar (%1$d)</string>
+    <string name="detail_write_comment_title">Yorum Yaz</string>
+    <string name="movie_detail_similar_title">Benzer Filmler</string>
+    <string name="detail_delete_comment_title">Yorumu sil</string>
+    <string name="detail_delete_comment_body">Bu yorumu silmek istediğinize emin misiniz?</string>
+
+    <!-- ui/screens/TvShowDetailScreen.kt (kalanı MovieDetailScreen.kt ile ortak) -->
+    <string name="tv_detail_not_found">Dizi bulunamadı</string>
+    <string name="tv_detail_no_overview">Bu dizi için özet bulunamadı.</string>
+    <string name="tv_detail_created_by">Oluşturan: %1$s</string>
+    <string name="tv_detail_similar_title">Benzer Diziler</string>
+
+    <!-- ui/components/AiChatComponents.kt -->
+    <string name="ai_chat_starter_movie_1">Bugün moralim bozuk, iyi gelecek bir film öner</string>
+    <string name="ai_chat_starter_movie_2">Sonu şaşırtan bir gerilim istiyorum</string>
+    <string name="ai_chat_starter_movie_3">Adını unuttum: uzayda geçen baba–kız filmi</string>
+    <string name="ai_chat_starter_movie_4">Arkadaşlarla izlemelik bir komedi</string>
+    <string name="ai_chat_starter_tv_1">Bir çırpıda bitireceğim bir dizi öner</string>
+    <string name="ai_chat_starter_tv_2">Sonu şaşırtan bir gerilim dizisi istiyorum</string>
+    <string name="ai_chat_starter_tv_3">Adını unuttum: bir kimya öğretmeninin suça bulaştığı dizi</string>
+    <string name="ai_chat_starter_tv_4">Breaking Bad\'i sevdiysem ne izlemeliyim?</string>
+    <string name="ai_chat_assistant_title_tv">Dizi Asistanı</string>
+    <string name="ai_chat_assistant_title_movie">Film Asistanı</string>
+    <string name="ai_chat_empty_state_tv">Nasıl hissettiğini yaz, sana göre bir dizi bulayım. Ya da adını hatırlamadığın diziyi tarif et, birlikte çıkaralım.</string>
+    <string name="ai_chat_empty_state_movie">Nasıl hissettiğini yaz, sana göre bir film bulayım. Ya da adını hatırlamadığın filmi tarif et, birlikte çıkaralım.</string>
+    <string name="ai_chat_remove_favorite_cd">Favorilerden çıkar</string>
+    <string name="ai_chat_add_favorite_cd">Favorilere ekle</string>
+    <string name="ai_chat_result_meta">  •  %1$s  •  %2$s</string>
+    <string name="ai_chat_type_tv">Dizi</string>
+    <string name="ai_chat_type_movie">Film</string>
+    <string name="ai_chat_go_to_detail">Detaya git</string>
+    <string name="ai_chat_go_to_tv">Diziye git</string>
+    <string name="ai_chat_go_to_movie">Filme git</string>
+    <string name="ai_chat_in_watchlist">Listemde</string>
+    <string name="ai_chat_add_to_watchlist">Listeme ekle</string>
+    <string name="ai_chat_retry">Tekrar dene</string>
+    <string name="ai_chat_input_placeholder">Ne izlemek istersin?</string>
+    <string name="ai_chat_send_cd">Gönder</string>
+    <string name="ai_chat_subtitle_tv">Öneri ister, adını unuttuğun diziyi sorarsın</string>
+    <string name="ai_chat_subtitle_movie">Öneri ister, adını unuttuğun filmi sorarsın</string>
+    <string name="ai_chat_clear_cd">Sohbeti temizle</string>
+
+    <!-- ui/screens/FriendsScreen.kt -->
+    <string name="friends_title">Arkadaşlar</string>
+    <string name="friends_search_placeholder">Kullanıcı adıyla ara</string>
+    <string name="friends_tab_friends">Arkadaşlarım</string>
+    <string name="friends_tab_requests">Gelen İstekler</string>
+    <string name="friends_tab_requests_count_suffix"> (%1$d)</string>
+    <string name="friends_empty_friends">Henüz arkadaşınız yok. Kullanıcı adıyla arayıp istek gönderebilirsiniz.</string>
+    <string name="friends_empty_requests">Gelen arkadaşlık isteği yok.</string>
+    <string name="friends_already_friends">Arkadaşsınız</string>
+    <string name="friends_request_sent_label">Gönderildi</string>
+    <string name="friends_send_request_cd">İstek gönder</string>
+    <string name="friends_row_subtitle">@%1$s • Dokun &amp; Etkileşimleri Gör</string>
+    <string name="friends_remove_cd">Arkadaşlıktan çıkar</string>
+    <string name="friends_accept_cd">Kabul et</string>
+    <string name="friends_decline_cd">Reddet</string>
+    <string name="friends_activity_sheet_subtitle">Son Etkileşimler (Favoriler, Yorumlar &amp; Listeler)</string>
+    <string name="friends_activity_empty">Henüz kaydedilmiş etkileşim bulunmuyor</string>
+    <string name="friends_activity_favorite">Favorilerine ekledi</string>
+    <string name="friends_activity_watchlist">İzleme listesine ekledi</string>
+    <string name="friends_activity_comment">Yorum yaptı &amp; puan verdi</string>
+    <string name="friends_activity_recommendation">Tavsiye etti</string>
+
+    <!-- Auth ekranları ortak (LoginScreen, RegisterScreen, ForgotPasswordScreen) -->
+    <string name="auth_email_required">E-posta gerekli</string>
+    <string name="auth_email_invalid">Geçerli bir e-posta girin</string>
+    <string name="auth_password_required">Şifre gerekli</string>
+    <string name="auth_email_placeholder">E-posta adresi</string>
+    <string name="auth_password_placeholder">Şifre</string>
+    <string name="auth_or_continue_with">veya şununla devam et</string>
+    <string name="auth_register_link">Kayıt Ol</string>
+
+    <!-- ui/screens/LoginScreen.kt -->
+    <string name="login_welcome_back">Tekrar Hoş Geldiniz!</string>
+    <string name="login_subtitle">Sinema ve dizi yolculuğunuza devam etmek için giriş yapın</string>
+    <string name="login_remember_me">Beni hatırla</string>
+    <string name="login_forgot_password">Şifremi Unuttum?</string>
+    <string name="login_signing_in">Giriş yapılıyor…</string>
+    <string name="login_sign_in">Giriş Yap</string>
+    <string name="login_no_account">Hesabınız yok mu? </string>
+
+    <!-- ui/screens/RegisterScreen.kt -->
+    <string name="register_username_required">Kullanıcı adı gerekli</string>
+    <string name="register_username_taken">Bu kullanıcı adı alınmış</string>
+    <string name="register_passwords_mismatch">Şifreler eşleşmiyor</string>
+    <string name="register_title">Hesap Oluştur</string>
+    <string name="register_subtitle">CineVerse\'e katılın ve binlerce film ile diziyi keşfedin</string>
+    <string name="register_username_placeholder">Kullanıcı adı</string>
+    <string name="register_username_available">Kullanılabilir</string>
+    <string name="register_username_checking">Kontrol ediliyor…</string>
+    <string name="register_confirm_password_placeholder">Şifreyi tekrar edin</string>
+    <string name="register_rule_min_length">En az 8 karakter</string>
+    <string name="register_rule_number_or_symbol">Rakam veya sembol içeriyor</string>
+    <string name="register_rule_case">Büyük ve küçük harf içeriyor</string>
+    <string name="register_terms_agreement">Kullanım Şartları &amp; Gizlilik Politikasını kabul ediyorum</string>
+    <string name="register_creating_account">Hesap oluşturuluyor…</string>
+    <string name="register_have_account">Zaten hesabınız var mı? </string>
+
+    <!-- ui/screens/ForgotPasswordScreen.kt (öncesi İngilizce'ydi, Türkçe'ye çevrildi) -->
+    <string name="forgot_password_generic_error">Bir hata oluştu, tekrar deneyin</string>
+    <string name="forgot_password_subtitle">E-postanızı girin, şifrenizi sıfırlamanız için bir bağlantı gönderelim</string>
+    <string name="forgot_password_sending">Gönderiliyor…</string>
+    <string name="forgot_password_send_link">Sıfırlama Bağlantısı Gönder</string>
+    <string name="forgot_password_remember">Şifrenizi hatırladınız mı? </string>
+    <string name="forgot_password_check_email_title">E-postanızı kontrol edin</string>
+    <string name="forgot_password_link_sent">Şifre sıfırlama bağlantısını\n%1$s adresine gönderdik</string>
+    <string name="forgot_password_back_to_login">Girişe Dön</string>
+    <string name="forgot_password_resending">Yeniden gönderiliyor…</string>
+    <string name="forgot_password_resend">E-postayı almadınız mı? Yeniden gönder</string>
+
+    <!-- ui/screens/MyListScreen.kt -->
+    <string name="my_list_title">Listem</string>
+    <string name="my_list_search_cd">Ara</string>
+    <string name="my_list_filter_cd">Filtre</string>
+    <string name="my_list_search_placeholder">Listemde ara (Film / Dizi adı)…</string>
+    <string name="my_list_tab_favorites">Favorilerim</string>
+    <string name="my_list_tab_watchlist">İzleme Listem</string>
+    <string name="my_list_reset_filters">Sıfırla</string>
+    <string name="my_list_sort_order_desc_short">Azalan</string>
+    <string name="my_list_sort_order_asc_short">Artan</string>
+    <string name="my_list_active_sort_chip">📌 %1$s (%2$s)</string>
+    <string name="my_list_active_search_chip">🔍 \"%1$s\"</string>
+    <string name="my_list_empty_filtered_title">Aranan kriterlere uygun içerik bulunamadı</string>
+    <string name="my_list_empty_favorites_title">Henüz favori film yok</string>
+    <string name="my_list_empty_watchlist_title">İzleme listen boş</string>
+    <string name="my_list_empty_filtered_desc">Filtreleri sıfırlayarak tüm listeni görüntüleyebilirsin.</string>
+    <string name="my_list_empty_favorites_desc">Beğendiğin filmleri favorilere ekleyerek burada görüntüleyebilirsin.</string>
+    <string name="my_list_empty_watchlist_desc">İzlemek istediğin filmleri listene ekleyerek burada görüntüleyebilirsin.</string>
+    <string name="my_list_content_count">%1$d İçerik</string>
+    <string name="my_list_avg_rating">%1$s Ortalama Puan</string>
+    <string name="my_list_filter_sheet_title">Sıralama ve Filtreleme</string>
+    <string name="my_list_sort_criterion_label">Sıralama Ölçütü</string>
+    <string name="my_list_sort_direction_label">Sıralama Yönü</string>
+    <string name="my_list_done">Tamam</string>
+    <string name="my_list_sort_imdb_rating">IMDb Puanı</string>
+    <string name="my_list_sort_app_rating">Uygulama İçi Puan</string>
+    <string name="my_list_sort_year">Yayın Yılı</string>
+    <string name="my_list_sort_title">İsme Göre (A-Z)</string>
+    <string name="my_list_order_descending">Azalan (Yüksek / En Yeni)</string>
+    <string name="my_list_order_ascending">Artan (Düşük / En Eski)</string>
+
+    <!-- ui/screens/MovieListScreen.kt -->
+    <string name="movie_list_filter_cd">Filtrele</string>
+    <string name="movie_list_source_popular">Popüler Filmler</string>
+    <string name="movie_list_source_upcoming">Yakında Vizyona Girecekler</string>
+    <string name="movie_list_source_tv_popular">Popüler Diziler</string>
+    <string name="movie_list_source_tv_on_air">Şu An Yayında</string>
+    <string name="movie_list_source_tv_upcoming">Yakında Yayınlanacak Diziler</string>
+    <string name="movie_list_sort_popular">Popüler</string>
+    <string name="movie_list_sort_top_rated">En Yüksek Puan</string>
+    <string name="movie_list_sort_app_rating">Uygulama İçi Puan</string>
+
+    <!-- ui/components/RecommendShareSheet.kt -->
+    <string name="share_no_friends_title">Henüz arkadaşın yok</string>
+    <string name="share_no_friends_subtitle">Ana sayfadaki arkadaşlar panelinden kullanıcı adıyla arkadaş ekleyebilirsin.</string>
+    <string name="share_quota_exhausted_title">Günlük hakkın doldu</string>
+    <string name="share_quota_exhausted_subtitle">Günde en fazla 10 öneri gönderebilirsin. Yarın kaldığın yerden devam.</string>
+    <string name="share_header_tv">Diziyi arkadaşlarına öner</string>
+    <string name="share_header_movie">Filmi arkadaşlarına öner</string>
+    <string name="share_quota_over">%1$d kişi seçtin ama bugün %2$d hakkın kaldı</string>
+    <string name="share_quota_none_left">Bugünlük hakkın kalmadı</string>
+    <string name="share_quota_remaining">Bugün %1$d gönderim hakkın kaldı</string>
+    <string name="share_selected_cd">Seçili</string>
+    <string name="share_note_placeholder">Kısa bir not ekle (isteğe bağlı)</string>
+    <string name="share_send">Gönder</string>
+    <string name="share_send_with_count">Gönder (%1$d)</string>
+    <string name="share_banner_title">Arkadaşlarına Tavsiye Et</string>
+    <string name="share_banner_subtitle">Özel notunla CineVerse arkadaşlarınla paylaş</string>
+
+    <!-- ui/screens/HomeScreen.kt (kalan bölüm başlıkları movie_list_source_*/common_* ile ortak) -->
+    <string name="home_tv_of_the_day">GÜNÜN DİZİSİ</string>
+    <string name="home_searching">Aranıyor…</string>
+    <string name="home_no_results">Sonuç bulunamadı</string>
+    <string name="home_section_recommended">Sizin İçin Önerilenler</string>
+    <string name="home_section_top_rated">En Çok Beğenilenler</string>
+    <string name="home_section_categories">Kategoriler</string>
+
+    <!-- ui/components/MovieListComponents.kt -->
+    <string name="movie_list_item_add_cd">Listeye ekle</string>
+    <string name="movie_list_item_favorite_cd">Favori</string>
+
+    <!-- ui/components/MyListComponents.kt -->
+    <string name="my_list_card_remove_cd">Listeden çıkar</string>
+    <string name="my_list_start_exploring">Keşfetmeye Başla</string>
+
+    <!-- ui/screens/AllCategoriesScreen.kt -->
+    <string name="all_categories_load_error">Kategoriler yüklenemedi</string>
+    <string name="all_categories_title_tv">Tüm Dizi Kategorileri</string>
+    <string name="all_categories_title_movie">Tüm Film Kategorileri</string>
+
+    <!-- ui/screens/NotificationsScreen.kt -->
+    <string name="notifications_title">Bildirimler</string>
+    <string name="notifications_empty">Henüz bildiriminiz yok</string>
+
+    <!-- ui/screens/SplashScreen.kt (öncesi İngilizce'ydi, Türkçe'ye çevrildi) -->
+    <string name="splash_subtitle_discover">Filmleri Keşfet</string>
+    <string name="splash_subtitle_beyond">Ekranın Ötesinde</string>
 </resources>

@@ -16,11 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.arda.cineverse.R
 import com.arda.cineverse.ui.theme.*
 
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -134,7 +136,11 @@ fun CVTextField(
                     IconButton(onClick = onTogglePasswordVisibility) {
                         Icon(
                             imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            contentDescription = if (passwordVisible) {
+                                stringResource(R.string.cv_hide_password)
+                            } else {
+                                stringResource(R.string.cv_show_password)
+                            },
                             tint = TextSecondary,
                         )
                     }

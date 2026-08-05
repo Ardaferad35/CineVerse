@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,13 +61,20 @@ fun LoginScreen(
         }
     }
 
+    // validateAndSubmit() bir @Composable değil (onClick callback'i olarak
+    // kullanılıyor), bu yüzden stringResource() burada değil, composable
+    // gövdesinde önceden çözülüp closure ile yakalanıyor.
+    val emailRequiredMessage = stringResource(R.string.auth_email_required)
+    val emailInvalidMessage = stringResource(R.string.auth_email_invalid)
+    val passwordRequiredMessage = stringResource(R.string.auth_password_required)
+
     fun validateAndSubmit() {
         emailError = when {
-            email.isBlank() -> "E-posta gerekli"
-            !isValidEmail(email) -> "Geçerli bir e-posta girin"
+            email.isBlank() -> emailRequiredMessage
+            !isValidEmail(email) -> emailInvalidMessage
             else -> null
         }
-        passwordError = if (password.isBlank()) "Şifre gerekli" else null
+        passwordError = if (password.isBlank()) passwordRequiredMessage else null
         if (emailError == null && passwordError == null) {
             authViewModel.login(email, password)
         }
@@ -81,7 +89,7 @@ fun LoginScreen(
         ) {
             Spacer(Modifier.height(24.dp))
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
             }
             Spacer(Modifier.height(12.dp))
 
@@ -89,7 +97,7 @@ fun LoginScreen(
                 Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Accent, modifier = Modifier.size(28.dp))
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "CineVerse",
+                    stringResource(R.string.app_name),
                     style = TextStyle(
                         brush = Brush.horizontalGradient(PrimaryGradient),
                         fontSize = MaterialTheme.typography.headlineLarge.fontSize,
@@ -97,10 +105,10 @@ fun LoginScreen(
                     ),
                 )
                 Spacer(Modifier.height(20.dp))
-                Text("Tekrar Hoş Geldiniz!", color = OnSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.login_welcome_back), color = OnSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Sinema ve dizi yolculuğunuza devam etmek için giriş yapın",
+                    stringResource(R.string.login_subtitle),
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
@@ -122,7 +130,7 @@ fun LoginScreen(
             CVTextField(
                 value = email,
                 onValueChange = { email = it; emailError = null },
-                placeholder = "E-posta adresi",
+                placeholder = stringResource(R.string.auth_email_placeholder),
                 leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
                 isError = emailError != null,
                 errorText = emailError,
@@ -132,7 +140,7 @@ fun LoginScreen(
             CVTextField(
                 value = password,
                 onValueChange = { password = it; passwordError = null },
-                placeholder = "Şifre",
+                placeholder = stringResource(R.string.auth_password_placeholder),
                 leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
                 isPassword = true,
                 passwordVisible = passwordVisible,
@@ -153,9 +161,9 @@ fun LoginScreen(
                         onCheckedChange = { rememberMe = it },
                         colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
                     )
-                    Text("Beni hatırla", color = OnSurface, style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.login_remember_me), color = OnSurface, style = MaterialTheme.typography.bodyMedium)
                 }
-                CVTextButton("Şifremi Unuttum?", onClick = onNavigateToForgotPassword)
+                CVTextButton(stringResource(R.string.login_forgot_password), onClick = onNavigateToForgotPassword)
             }
 
             if (authState is AuthState.Error) {
@@ -169,13 +177,13 @@ fun LoginScreen(
 
             Spacer(Modifier.height(16.dp))
             CVGradientButton(
-                text = if (isLoading) "Giriş yapılıyor..." else "Giriş Yap",
+                text = if (isLoading) stringResource(R.string.login_signing_in) else stringResource(R.string.login_sign_in),
                 onClick = ::validateAndSubmit,
                 enabled = !isLoading,
             )
 
             Spacer(Modifier.height(24.dp))
-            CVDividerWithLabel("veya şununla devam et")
+            CVDividerWithLabel(stringResource(R.string.auth_or_continue_with))
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
@@ -188,8 +196,8 @@ fun LoginScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Hesabınız yok mu? ", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-                CVTextButton("Kayıt Ol", onClick = onNavigateToRegister)
+                Text(stringResource(R.string.login_no_account), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                CVTextButton(stringResource(R.string.auth_register_link), onClick = onNavigateToRegister)
             }
             Spacer(Modifier.height(24.dp))
         }

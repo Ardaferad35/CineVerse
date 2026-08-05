@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,6 +73,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import androidx.compose.runtime.LaunchedEffect
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.Comment
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.SavedMovie
@@ -189,7 +191,13 @@ fun TvShowDetailScreen(
     LaunchedEffect(shareState.sentCount) {
         val count = shareState.sentCount ?: return@LaunchedEffect
         showShareSheet = false
-        shareSentMessage = if (count == 1) "Önerin gönderildi" else "$count arkadaşına önerin gönderildi"
+        // LaunchedEffect'in gövdesi @Composable değil (suspend lambda), bu
+        // yüzden stringResource() yerine context.getString() kullanılıyor.
+        shareSentMessage = if (count == 1) {
+            context.getString(R.string.share_sent_one)
+        } else {
+            context.getString(R.string.share_sent_many, count)
+        }
     }
 
     fun playTrailer(key: String?) {
@@ -221,7 +229,7 @@ fun TvShowDetailScreen(
                             .padding(12.dp)
                             .align(Alignment.TopStart),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
                     }
                     Column(
                         modifier = Modifier
@@ -231,12 +239,12 @@ fun TvShowDetailScreen(
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
-                            detailState.errorMessage ?: "Dizi bulunamadı",
+                            detailState.errorMessage ?: stringResource(R.string.tv_detail_not_found),
                             color = TextSecondary,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Spacer(Modifier.height(16.dp))
-                        CVGradientButton(text = "Tekrar Dene", onClick = { tvShowDetailViewModel.load() })
+                        CVGradientButton(text = stringResource(R.string.common_retry), onClick = { tvShowDetailViewModel.load() })
                     }
                 }
             }
@@ -308,7 +316,7 @@ fun TvShowDetailScreen(
                                             .clickable { playTrailer(tvShow.trailerKey) },
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        Icon(Icons.Filled.PlayArrow, contentDescription = "Fragmani oynat", tint = Color.White, modifier = Modifier.size(32.dp))
+                                        Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.movie_detail_play_trailer_cd), tint = Color.White, modifier = Modifier.size(32.dp))
                                     }
                                 }
 
@@ -333,7 +341,7 @@ fun TvShowDetailScreen(
                                             )
                                             Spacer(Modifier.width(4.dp))
                                             Text(
-                                                "Çevrimdışı • Sınırlı bilgi gösteriliyor",
+                                                stringResource(R.string.movie_detail_offline_limited),
                                                 color = ErrorColor,
                                                 style = MaterialTheme.typography.labelSmall,
                                             )
@@ -364,7 +372,7 @@ fun TvShowDetailScreen(
                         item {
                             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                                 CVGradientButton(
-                                    text = "Fragmanı İzle",
+                                    text = stringResource(R.string.movie_detail_watch_trailer),
                                     icon = Icons.Filled.PlayArrow,
                                     onClick = { playTrailer(tvShow.trailerKey) },
                                     enabled = tvShow.trailerKey != null,
@@ -388,7 +396,7 @@ fun TvShowDetailScreen(
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        if (detailState.isSaved) "İzleme Listemde" else "İzleme Listeme Ekle",
+                                        if (detailState.isSaved) stringResource(R.string.movie_detail_in_watchlist) else stringResource(R.string.movie_detail_add_to_watchlist),
                                         color = Primary,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -398,12 +406,12 @@ fun TvShowDetailScreen(
 
                         item {
                             Column(Modifier.padding(horizontal = 20.dp)) {
-                                Text("Özet", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.movie_detail_overview_title), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(8.dp))
-                                ExpandableOverview(text = tvShow.overview.ifBlank { "Bu dizi için özet bulunamadı." })
+                                ExpandableOverview(text = tvShow.overview.ifBlank { stringResource(R.string.tv_detail_no_overview) })
                                 tvShow.createdBy?.let {
                                     Spacer(Modifier.height(10.dp))
-                                    Text("Oluşturan: $it", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    Text(stringResource(R.string.tv_detail_created_by, it), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }
@@ -423,7 +431,7 @@ fun TvShowDetailScreen(
                             item {
                                 Column(Modifier.padding(top = 20.dp)) {
                                     Text(
-                                        "Oyuncular",
+                                        stringResource(R.string.movie_detail_cast_title),
                                         color = OnSurface,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
@@ -441,10 +449,10 @@ fun TvShowDetailScreen(
 
                         item {
                             Column(Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-                                Text("Kullanici Puani", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.movie_detail_user_rating_title), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(12.dp))
                                 if (commentState.comments.isEmpty()) {
-                                    Text("Henuz puan verilmedi, ilk puani sen ver!", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    Text(stringResource(R.string.movie_detail_no_ratings_yet), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 } else {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(90.dp)) {
@@ -460,7 +468,7 @@ fun TvShowDetailScreen(
                                                 }
                                             }
                                             Spacer(Modifier.height(4.dp))
-                                            Text("${commentState.comments.count { it.replyToCommentId == null }} oy", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                                            Text(stringResource(R.string.detail_vote_count, commentState.comments.count { it.replyToCommentId == null }), color = TextSecondary, style = MaterialTheme.typography.labelSmall)
                                         }
                                         Spacer(Modifier.width(16.dp))
                                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -476,7 +484,7 @@ fun TvShowDetailScreen(
                                 }
                                 Spacer(Modifier.height(10.dp))
                                 Text(
-                                    "Puanini ver",
+                                    stringResource(R.string.detail_rate_now),
                                     color = Primary,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
@@ -489,7 +497,7 @@ fun TvShowDetailScreen(
 
                         item {
                             Text(
-                                "Yorumlar (${commentState.comments.count { it.replyToCommentId == null }})",
+                                stringResource(R.string.detail_comments_title, commentState.comments.count { it.replyToCommentId == null }),
                                 color = OnSurface,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
@@ -510,7 +518,7 @@ fun TvShowDetailScreen(
                                         initialText = comment.text,
                                         initialRating = comment.rating,
                                         initialSpoiler = comment.isSpoiler,
-                                        submitLabel = "Güncelle",
+                                        submitLabel = stringResource(R.string.common_update),
                                         onSubmit = { text, rating, spoiler ->
                                             commentViewModel.editComment(comment.id, text, rating, spoiler, tvShow.name, tvShow.posterUrl, tvShow.year, tvShow.genreIds)
                                             editingComment = null
@@ -561,7 +569,7 @@ fun TvShowDetailScreen(
                                     .padding(horizontal = 20.dp, vertical = 12.dp)
                                     .bringIntoViewRequester(commentBoxRequester),
                             ) {
-                                Text("Yorum Yaz", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.detail_write_comment_title), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(10.dp))
                                 CommentInputBox(
                                     onSubmit = { text, rating, spoiler ->
@@ -575,7 +583,7 @@ fun TvShowDetailScreen(
                             item {
                                 Column(Modifier.padding(top = 12.dp)) {
                                     Text(
-                                        "Benzer Diziler",
+                                        stringResource(R.string.tv_detail_similar_title),
                                         color = OnSurface,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
@@ -666,18 +674,18 @@ fun TvShowDetailScreen(
         val currentTvShow = detailState.tvShow
         AlertDialog(
             onDismissRequest = { commentPendingDelete = null },
-            title = { Text("Yorumu sil") },
-            text = { Text("Bu yorumu silmek istediğinize emin misiniz?") },
+            title = { Text(stringResource(R.string.detail_delete_comment_title)) },
+            text = { Text(stringResource(R.string.detail_delete_comment_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     if (currentTvShow != null) {
                         commentViewModel.deleteComment(comment.id, currentTvShow.name, currentTvShow.posterUrl, currentTvShow.year, currentTvShow.genreIds)
                     }
                     commentPendingDelete = null
-                }) { Text("Sil", color = ErrorColor) }
+                }) { Text(stringResource(R.string.comment_delete), color = ErrorColor) }
             },
             dismissButton = {
-                TextButton(onClick = { commentPendingDelete = null }) { Text("Vazgeç") }
+                TextButton(onClick = { commentPendingDelete = null }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }

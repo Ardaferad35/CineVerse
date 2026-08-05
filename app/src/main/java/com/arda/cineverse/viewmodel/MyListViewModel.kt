@@ -2,6 +2,7 @@ package com.arda.cineverse.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.R
 import com.arda.cineverse.data.common.GENERIC_WRITE_FAILURE_MESSAGE
 import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.data.model.SavedMovie
@@ -17,16 +18,16 @@ import javax.inject.Inject
 
 enum class MyListTab { FAVORITES, WATCHLIST }
 
-enum class MyListSortCriterion(val label: String) {
-    IMDB_RATING("IMDb Puanı"),
-    APP_RATING("Uygulama İçi Puan"),
-    YEAR("Yayın Yılı"),
-    TITLE("İsme Göre (A-Z)"),
+enum class MyListSortCriterion(@androidx.annotation.StringRes val labelRes: Int) {
+    IMDB_RATING(R.string.my_list_sort_imdb_rating),
+    APP_RATING(R.string.my_list_sort_app_rating),
+    YEAR(R.string.my_list_sort_year),
+    TITLE(R.string.my_list_sort_title),
 }
 
-enum class MyListSortOrder(val label: String) {
-    DESCENDING("Azalan (Yüksek / En Yeni)"),
-    ASCENDING("Artan (Düşük / En Eski)"),
+enum class MyListSortOrder(@androidx.annotation.StringRes val labelRes: Int) {
+    DESCENDING(R.string.my_list_order_descending),
+    ASCENDING(R.string.my_list_order_ascending),
 }
 
 data class MyListUiState(

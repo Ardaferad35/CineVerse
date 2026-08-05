@@ -19,12 +19,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.ui.theme.*
 
@@ -115,7 +117,7 @@ fun SavedMovieCard(
                     .clickable { onBadgeClick() },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(badgeIcon, contentDescription = "Listeden çıkar", tint = badgeTint, modifier = Modifier.size(15.dp))
+                Icon(badgeIcon, contentDescription = stringResource(R.string.my_list_card_remove_cd), tint = badgeTint, modifier = Modifier.size(15.dp))
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -150,6 +152,6 @@ fun MyListEmptyState(
         Spacer(Modifier.height(8.dp))
         Text(description, color = TextSecondary, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
         Spacer(Modifier.height(20.dp))
-        CVGradientButton(text = "Keşfetmeye Başla", onClick = onStartExploring)
+        CVGradientButton(text = stringResource(R.string.my_list_start_exploring), onClick = onStartExploring)
     }
 }
