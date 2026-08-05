@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Theaters
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -39,12 +40,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -166,6 +170,7 @@ private fun FriendsContent(
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var friendPendingDelete by remember { mutableStateOf<Friend?>(null) }
 
     LaunchedEffect(Unit) { viewModel.refresh() }
 
@@ -265,7 +270,7 @@ private fun FriendsContent(
                                 FriendRow(
                                     friend = friend,
                                     onClick = { viewModel.selectFriendForActivity(friend) },
-                                    onRemove = { viewModel.removeFriend(friend.friendUid) },
+                                    onRemove = { friendPendingDelete = friend },
                                 )
                             }
                         }
@@ -311,6 +316,30 @@ private fun FriendsContent(
                     onTvShowClick(tvId)
                 },
                 onDismiss = { viewModel.selectFriendForActivity(null) },
+            )
+        }
+
+        // Arkadaş silme onay diyalogu
+        friendPendingDelete?.let { friend ->
+            AlertDialog(
+                onDismissRequest = { friendPendingDelete = null },
+                title = { Text(stringResource(R.string.friends_remove_confirm_title)) },
+                text = { Text(stringResource(R.string.friends_remove_confirm_body, friend.fullName)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.removeFriend(friend.friendUid)
+                            friendPendingDelete = null
+                        },
+                    ) {
+                        Text(stringResource(R.string.friends_remove_action), color = ErrorColor)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { friendPendingDelete = null }) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
+                },
             )
         }
 

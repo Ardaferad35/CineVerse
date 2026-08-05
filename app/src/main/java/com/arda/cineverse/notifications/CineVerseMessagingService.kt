@@ -58,14 +58,30 @@ class CineVerseMessagingService : FirebaseMessagingService() {
          * AKTİF olarak mevcut token çekilip yazılıyor (bkz. AuthViewModel).
          */
         suspend fun registerCurrentToken() {
-            val token = runCatching { FirebaseMessaging.getInstance().token.await() }
-                .onFailure { Log.e(TAG, "registerCurrentToken: FCM token alınamadı (Google Play Services eksik/emülatörde yok olabilir)", it) }
-                .getOrNull()
-            if (token == null) {
-                Log.w(TAG, "registerCurrentToken: token null, kayıt atlanıyor")
+            var token: String? = null
+            var lastError: Throwable? = null
+
+            // Google Play Services bazen uygulama açılışında paket görünürlüğü veya
+            // bağlama gecikmesi nedeniyle "Unknown calling package" hatası verebilir.
+            // Küçük bir bekleme ve retry mekanizması bu geçici sorunu çözer.
+            for (attempt in 1..3) {
+                try {
+                    token = FirebaseMessaging.getInstance().token.await()
+                    if (token != null) break
+                } catch (e: Exception) {
+                    lastError = e
+                    Log.w(TAG, "registerCurrentToken: deneme $attempt başarısız", e)
+                    kotlinx.coroutines.delay(attempt * 1000L)
+                }
+            }
+
+            val finalToken = token
+            if (finalToken == null) {
+                Log.e(TAG, "registerCurrentToken: FCM token alınamadı (Google Play Services hatası)", lastError)
                 return
             }
-            runCatching { registerToken(token) }
+
+            runCatching { registerToken(finalToken) }
                 .onSuccess { Log.d(TAG, "registerCurrentToken: fcmTokens'a yazma başarılı") }
                 .onFailure { Log.e(TAG, "registerCurrentToken: fcmTokens'a yazma BAŞARISIZ", it) }
         }

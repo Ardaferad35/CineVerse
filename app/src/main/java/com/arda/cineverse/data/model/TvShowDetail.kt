@@ -15,5 +15,6 @@ data class TvShowDetail(
     val createdBy: String?,
     val cast: List<CastMember>,
     val trailerKey: String?,
+    val seasons: List<TvSeasonSummary> = emptyList(),
     val similarShows: List<TvShow>,
 )

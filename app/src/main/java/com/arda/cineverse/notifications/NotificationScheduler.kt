@@ -1,7 +1,11 @@
 package com.arda.cineverse.notifications
 
 import android.content.Context
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.Calendar
@@ -17,6 +21,23 @@ object NotificationScheduler {
     fun scheduleAll(context: Context) {
         scheduleFilmOfTheDay(context)
         scheduleUpcomingCheck(context)
+        enqueueOfflineSync(context)
+    }
+
+    fun enqueueOfflineSync(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = OneTimeWorkRequestBuilder<OfflineSyncWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "offline_sync_work",
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
     }
 
     private fun scheduleFilmOfTheDay(context: Context) {

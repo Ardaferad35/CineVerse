@@ -11,6 +11,12 @@
         <package android:name="com.google.android.gms" />
         <package android:name="com.android.vending" />
         <intent>
+            <action android:name="com.google.android.gms.plus.action.SHARE_GOOGLE" />
+        </intent>
+        <intent>
+            <action android:name="com.google.firebase.MESSAGING_EVENT" />
+        </intent>
+        <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>

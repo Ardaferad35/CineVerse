@@ -94,6 +94,7 @@ import com.arda.cineverse.ui.components.PopularMovieCard
 import com.arda.cineverse.ui.components.RatingDistributionBar
 import com.arda.cineverse.ui.components.RecommendShareBannerCard
 import com.arda.cineverse.ui.components.RecommendShareSheet
+import com.arda.cineverse.ui.components.TvSeasonsAndEpisodesSection
 import com.arda.cineverse.ui.components.rememberOfflineWriteMessageState
 import com.arda.cineverse.ui.components.ReplyInputBox
 import com.arda.cineverse.ui.theme.*
@@ -423,6 +424,22 @@ fun TvShowDetailScreen(
                                         recommendShareViewModel.reset()
                                         showShareSheet = true
                                     },
+                                )
+                            }
+                        }
+
+                        if (tvShow.seasons.isNotEmpty()) {
+                            item {
+                                Spacer(Modifier.height(12.dp))
+                                TvSeasonsAndEpisodesSection(
+                                    seasons = tvShow.seasons,
+                                    selectedSeasonNumber = detailState.selectedSeasonNumber,
+                                    seasonDetail = detailState.selectedSeasonDetail,
+                                    isLoadingSeason = detailState.isLoadingSeasonDetail,
+                                    watchedEpisodesMap = detailState.watchedEpisodesMap,
+                                    onSeasonSelect = { seasonNum -> tvShowDetailViewModel.selectSeason(seasonNum) },
+                                    onEpisodeToggle = { seasonNum, epNum -> tvShowDetailViewModel.toggleEpisodeWatched(seasonNum, epNum) },
+                                    onSeasonToggleAll = { seasonNum, episodes -> tvShowDetailViewModel.toggleSeasonWatched(seasonNum, episodes) },
                                 )
                             }
                         }

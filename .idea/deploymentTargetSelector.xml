@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-08-04T11:41:48.999582Z">
+        <DropdownSelection timestamp="2026-08-05T10:48:53.489870800Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\ardaf\.android\avd\Pixel_7_API_34.avd" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\ardaf\.android\avd\Pixel_8_Pro.avd" />
             </handle>
           </Target>
         </DropdownSelection>
@@ -15,12 +15,12 @@
           <targets>
             <Target type="DEFAULT_BOOT">
               <handle>
-                <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\ardaf\.android\avd\Pixel_7_API_34.avd" />
+                <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\ardaf\.android\avd\Pixel_10_Pro.avd" />
               </handle>
             </Target>
             <Target type="DEFAULT_BOOT">
               <handle>
-                <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\ardaf\.android\avd\Pixel_10.avd" />
+                <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\ardaf\.android\avd\Pixel_8_Pro.avd" />
               </handle>
             </Target>
           </targets>

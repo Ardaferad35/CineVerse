@@ -1,0 +1,5 @@
+- `[x]` Fix SecurityException: Unknown calling package name 'com.google.android.gms'
+    - `[x]` Downgrade `compileSdk` to 35 in `app/build.gradle.kts`
+    - `[x]` Enhance package visibility in `AndroidManifest.xml`
+    - `[x]` Add retry mechanism for FCM token in `CineVerseMessagingService.kt`
+    - `[x]` Verify build and runtime behavior

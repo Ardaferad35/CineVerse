@@ -75,6 +75,38 @@ data class TvShowDetailDto(
     val number_of_episodes: Int? = null,
     val created_by: List<CreatedByDto> = emptyList(),
     val genres: List<GenreDto> = emptyList(),
+    val seasons: List<TvSeasonSummaryDto> = emptyList(),
+)
+
+data class TvSeasonSummaryDto(
+    val id: Int,
+    val season_number: Int,
+    val name: String? = null,
+    val episode_count: Int = 0,
+    val air_date: String? = null,
+    val poster_path: String? = null,
+    val overview: String? = null,
+)
+
+data class TvSeasonDetailDto(
+    val id: Int? = null,
+    val season_number: Int,
+    val name: String? = null,
+    val overview: String? = null,
+    val poster_path: String? = null,
+    val episodes: List<TvEpisodeDto> = emptyList(),
+)
+
+data class TvEpisodeDto(
+    val id: Int,
+    val episode_number: Int,
+    val season_number: Int,
+    val name: String,
+    val overview: String? = null,
+    val air_date: String? = null,
+    val still_path: String? = null,
+    val vote_average: Double? = null,
+    val runtime: Int? = null,
 )
 
 data class CreatedByDto(
