@@ -38,9 +38,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -245,6 +247,7 @@ private fun HeroDiscoveryCardItem(
     onShare: () -> Unit,
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     var isExpandedOverview by remember { mutableStateOf(false) }
     var showSwipeFeedback by remember { mutableStateOf(false) }
     var totalDragX by remember { mutableFloatStateOf(0f) }
@@ -276,6 +279,7 @@ private fun HeroDiscoveryCardItem(
                         if (totalDragX > 60f) {
                             onSwipeRightBothSaved()
                             showSwipeFeedback = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
                         totalDragX = 0f
                     },
