@@ -2,10 +2,9 @@ package com.arda.cineverse.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -81,125 +80,135 @@ fun LoginScreen(
     }
 
     CineVerseAuthBackground {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 24.dp),
         ) {
-            Spacer(Modifier.height(24.dp))
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
-            }
-            Spacer(Modifier.height(12.dp))
+            item {
+                Spacer(Modifier.height(24.dp))
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
+                }
+                Spacer(Modifier.height(12.dp))
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Accent, modifier = Modifier.size(28.dp))
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    stringResource(R.string.app_name),
-                    style = TextStyle(
-                        brush = Brush.horizontalGradient(PrimaryGradient),
-                        fontSize = MaterialTheme.typography.headlineLarge.fontSize,
-                        fontWeight = FontWeight.Bold,
-                    ),
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Accent, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.app_name),
+                        style = TextStyle(
+                            brush = Brush.horizontalGradient(PrimaryGradient),
+                            fontSize = MaterialTheme.typography.headlineLarge.fontSize,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    Text(stringResource(R.string.login_welcome_back), color = OnSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        stringResource(R.string.login_subtitle),
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            item {
+                Spacer(Modifier.height(20.dp))
+                Image(
+                    painter = painterResource(id = R.drawable.login_hero_illustration),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1472f / 812f)
+                        .clip(RoundedCornerShape(16.dp))
                 )
                 Spacer(Modifier.height(20.dp))
-                Text(stringResource(R.string.login_welcome_back), color = OnSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    stringResource(R.string.login_subtitle),
-                    color = TextSecondary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
+            }
+
+            item {
+                CVTextField(
+                    value = email,
+                    onValueChange = { email = it; emailError = null },
+                    placeholder = stringResource(R.string.auth_email_placeholder),
+                    leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
+                    isError = emailError != null,
+                    errorText = emailError,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                )
+                Spacer(Modifier.height(14.dp))
+                CVTextField(
+                    value = password,
+                    onValueChange = { password = it; passwordError = null },
+                    placeholder = stringResource(R.string.auth_password_placeholder),
+                    leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
+                    isPassword = true,
+                    passwordVisible = passwordVisible,
+                    onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
+                    isError = passwordError != null,
+                    errorText = passwordError,
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
-            Image(
-                painter = painterResource(id = R.drawable.login_hero_illustration),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1472f / 812f)
-                    .clip(RoundedCornerShape(16.dp))
-            )
-            Spacer(Modifier.height(20.dp))
-
-            CVTextField(
-                value = email,
-                onValueChange = { email = it; emailError = null },
-                placeholder = stringResource(R.string.auth_email_placeholder),
-                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
-                isError = emailError != null,
-                errorText = emailError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            )
-            Spacer(Modifier.height(14.dp))
-            CVTextField(
-                value = password,
-                onValueChange = { password = it; passwordError = null },
-                placeholder = stringResource(R.string.auth_password_placeholder),
-                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
-                isPassword = true,
-                passwordVisible = passwordVisible,
-                onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
-                isError = passwordError != null,
-                errorText = passwordError,
-            )
-
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = rememberMe,
-                        onCheckedChange = { rememberMe = it },
-                        colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
-                    )
-                    Text(stringResource(R.string.login_remember_me), color = OnSurface, style = MaterialTheme.typography.bodyMedium)
+            item {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = rememberMe,
+                            onCheckedChange = { rememberMe = it },
+                            colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
+                        )
+                        Text(stringResource(R.string.login_remember_me), color = OnSurface, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    CVTextButton(stringResource(R.string.login_forgot_password), onClick = onNavigateToForgotPassword)
                 }
-                CVTextButton(stringResource(R.string.login_forgot_password), onClick = onNavigateToForgotPassword)
-            }
 
-            if (authState is AuthState.Error) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    (authState as AuthState.Error).message,
-                    color = ErrorColor,
-                    style = MaterialTheme.typography.bodySmall,
+                if (authState is AuthState.Error) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        (authState as AuthState.Error).message,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+                CVGradientButton(
+                    text = if (isLoading) stringResource(R.string.login_signing_in) else stringResource(R.string.login_sign_in),
+                    onClick = ::validateAndSubmit,
+                    enabled = !isLoading,
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
-            CVGradientButton(
-                text = if (isLoading) stringResource(R.string.login_signing_in) else stringResource(R.string.login_sign_in),
-                onClick = ::validateAndSubmit,
-                enabled = !isLoading,
-            )
-
-            Spacer(Modifier.height(24.dp))
-            CVDividerWithLabel(stringResource(R.string.auth_or_continue_with))
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
-                CVSocialButton("Apple", "", onClick = {}, modifier = Modifier.weight(1f))
+            item {
+                Spacer(Modifier.height(24.dp))
+                CVDividerWithLabel(stringResource(R.string.auth_or_continue_with))
+                Spacer(Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
+                    CVSocialButton("Apple", "", onClick = {}, modifier = Modifier.weight(1f))
+                }
             }
 
-            Spacer(Modifier.height(20.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.login_no_account), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-                CVTextButton(stringResource(R.string.auth_register_link), onClick = onNavigateToRegister)
+            item {
+                Spacer(Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.login_no_account), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                    CVTextButton(stringResource(R.string.auth_register_link), onClick = onNavigateToRegister)
+                }
+                Spacer(Modifier.height(24.dp))
             }
-            Spacer(Modifier.height(24.dp))
         }
     }
 }

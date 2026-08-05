@@ -1,9 +1,8 @@
 package com.arda.cineverse.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
@@ -111,132 +110,140 @@ fun RegisterScreen(
     }
 
     CineVerseAuthBackground {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 24.dp),
         ) {
-            Spacer(Modifier.height(24.dp))
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
-            }
-            Spacer(Modifier.height(12.dp))
+            item {
+                Spacer(Modifier.height(24.dp))
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
+                }
+                Spacer(Modifier.height(12.dp))
 
-            Text(stringResource(R.string.register_title), color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.register_subtitle),
-                color = TextSecondary,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-
-            Spacer(Modifier.height(28.dp))
-
-            CVTextField(
-                value = username,
-                onValueChange = { username = it.lowercase(); usernameError = null },
-                placeholder = stringResource(R.string.register_username_placeholder),
-                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary) },
-                isError = usernameError != null,
-                errorText = usernameError,
-            )
-            if (usernameError == null && username.isNotBlank() && usernameFormatValid) {
-                Text(
-                    text = when (usernameAvailable) {
-                        true -> stringResource(R.string.register_username_available)
-                        false -> stringResource(R.string.register_username_taken)
-                        null -> stringResource(R.string.register_username_checking)
-                    },
-                    color = if (usernameAvailable == true) Primary else TextSecondary,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(start = 4.dp, top = 4.dp),
-                )
-            }
-            Spacer(Modifier.height(14.dp))
-            CVTextField(
-                value = email,
-                onValueChange = { email = it; emailError = null },
-                placeholder = stringResource(R.string.auth_email_placeholder),
-                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
-                isError = emailError != null,
-                errorText = emailError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            )
-            Spacer(Modifier.height(14.dp))
-            CVTextField(
-                value = password,
-                onValueChange = { password = it },
-                placeholder = stringResource(R.string.auth_password_placeholder),
-                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
-                isPassword = true,
-                passwordVisible = passwordVisible,
-                onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
-            )
-            Spacer(Modifier.height(14.dp))
-            CVTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it; confirmError = null },
-                placeholder = stringResource(R.string.register_confirm_password_placeholder),
-                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
-                isPassword = true,
-                passwordVisible = confirmPasswordVisible,
-                onTogglePasswordVisibility = { confirmPasswordVisible = !confirmPasswordVisible },
-                isError = confirmError != null,
-                errorText = confirmError,
-            )
-
-            Spacer(Modifier.height(14.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                CVValidationRow(stringResource(R.string.register_rule_min_length), lengthOk)
-                CVValidationRow(stringResource(R.string.register_rule_number_or_symbol), numberOrSymbolOk)
-                CVValidationRow(stringResource(R.string.register_rule_case), caseOk)
-            }
-
-            Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = agreedToTerms,
-                    onCheckedChange = { agreedToTerms = it },
-                    colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
-                )
-                Text(stringResource(R.string.register_terms_agreement), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-            }
-
-            if (authState is AuthState.Error) {
+                Text(stringResource(R.string.register_title), color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    (authState as AuthState.Error).message,
-                    color = ErrorColor,
-                    style = MaterialTheme.typography.bodySmall,
+                    stringResource(R.string.register_subtitle),
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+
+                Spacer(Modifier.height(28.dp))
+            }
+
+            item {
+                CVTextField(
+                    value = username,
+                    onValueChange = { username = it.lowercase(); usernameError = null },
+                    placeholder = stringResource(R.string.register_username_placeholder),
+                    leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, tint = TextSecondary) },
+                    isError = usernameError != null,
+                    errorText = usernameError,
+                )
+                if (usernameError == null && username.isNotBlank() && usernameFormatValid) {
+                    Text(
+                        text = when (usernameAvailable) {
+                            true -> stringResource(R.string.register_username_available)
+                            false -> stringResource(R.string.register_username_taken)
+                            null -> stringResource(R.string.register_username_checking)
+                        },
+                        color = if (usernameAvailable == true) Primary else TextSecondary,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                CVTextField(
+                    value = email,
+                    onValueChange = { email = it; emailError = null },
+                    placeholder = stringResource(R.string.auth_email_placeholder),
+                    leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, tint = TextSecondary) },
+                    isError = emailError != null,
+                    errorText = emailError,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                )
+                Spacer(Modifier.height(14.dp))
+                CVTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    placeholder = stringResource(R.string.auth_password_placeholder),
+                    leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
+                    isPassword = true,
+                    passwordVisible = passwordVisible,
+                    onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
+                )
+                Spacer(Modifier.height(14.dp))
+                CVTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it; confirmError = null },
+                    placeholder = stringResource(R.string.register_confirm_password_placeholder),
+                    leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary) },
+                    isPassword = true,
+                    passwordVisible = confirmPasswordVisible,
+                    onTogglePasswordVisibility = { confirmPasswordVisible = !confirmPasswordVisible },
+                    isError = confirmError != null,
+                    errorText = confirmError,
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
-            CVGradientButton(
-                text = if (isLoading) stringResource(R.string.register_creating_account) else stringResource(R.string.auth_register_link),
-                onClick = ::validateAndSubmit,
-                enabled = agreedToTerms && !isLoading,
-            )
+            item {
+                Spacer(Modifier.height(14.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CVValidationRow(stringResource(R.string.register_rule_min_length), lengthOk)
+                    CVValidationRow(stringResource(R.string.register_rule_number_or_symbol), numberOrSymbolOk)
+                    CVValidationRow(stringResource(R.string.register_rule_case), caseOk)
+                }
 
-            Spacer(Modifier.height(24.dp))
-            CVDividerWithLabel(stringResource(R.string.auth_or_continue_with))
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
-                CVSocialButton("Apple", "", onClick = {}, modifier = Modifier.weight(1f))
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = agreedToTerms,
+                        onCheckedChange = { agreedToTerms = it },
+                        colors = CheckboxDefaults.colors(checkedColor = Primary, uncheckedColor = TextSecondary),
+                    )
+                    Text(stringResource(R.string.register_terms_agreement), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                }
+
+                if (authState is AuthState.Error) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        (authState as AuthState.Error).message,
+                        color = ErrorColor,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+                CVGradientButton(
+                    text = if (isLoading) stringResource(R.string.register_creating_account) else stringResource(R.string.auth_register_link),
+                    onClick = ::validateAndSubmit,
+                    enabled = agreedToTerms && !isLoading,
+                )
             }
 
-            Spacer(Modifier.height(20.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.register_have_account), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-                CVTextButton(stringResource(R.string.login_sign_in), onClick = onNavigateToLogin)
+            item {
+                Spacer(Modifier.height(24.dp))
+                CVDividerWithLabel(stringResource(R.string.auth_or_continue_with))
+                Spacer(Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    CVSocialButton("Google", "G", onClick = {}, modifier = Modifier.weight(1f))
+                    CVSocialButton("Apple", "", onClick = {}, modifier = Modifier.weight(1f))
+                }
             }
-            Spacer(Modifier.height(24.dp))
+
+            item {
+                Spacer(Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.register_have_account), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                    CVTextButton(stringResource(R.string.login_sign_in), onClick = onNavigateToLogin)
+                }
+                Spacer(Modifier.height(24.dp))
+            }
         }
     }
 }
