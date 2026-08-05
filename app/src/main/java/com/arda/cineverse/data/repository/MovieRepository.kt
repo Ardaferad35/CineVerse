@@ -33,13 +33,27 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 class MovieRepository @Inject constructor(
-    private val api: TmdbApiService = TmdbNetworkModule.api,
-    private val movieDao: MovieDao = AppGraph.movieDao,
-    private val categoryDao: CategoryDao = AppGraph.categoryDao,
-    private val featuredDao: FeaturedDao = AppGraph.featuredDao,
-    private val savedMovieDao: SavedMovieDao = AppGraph.savedMovieDao,
-    private val connectivityObserver: ConnectivityObserver = AppGraph.connectivityObserver,
+    private val api: TmdbApiService,
+    private val movieDao: MovieDao,
+    private val categoryDao: CategoryDao,
+    private val featuredDao: FeaturedDao,
+    private val savedMovieDao: SavedMovieDao,
+    private val connectivityObserver: ConnectivityObserver,
 ) {
+    // Dagger, Kotlin'in default-parametreli constructor'larını desteklemiyor
+    // ("may only contain one injected constructor" hatası) — bu yüzden Hilt
+    // dışı (henüz migrate edilmemiş ViewModel/Composable/Worker) çağıranlar
+    // için AppGraph tabanlı bu fabrika kullanılıyor, default parametre değil.
+    companion object {
+        fun default(): MovieRepository = MovieRepository(
+            api = TmdbNetworkModule.api,
+            movieDao = AppGraph.movieDao,
+            categoryDao = AppGraph.categoryDao,
+            featuredDao = AppGraph.featuredDao,
+            savedMovieDao = AppGraph.savedMovieDao,
+            connectivityObserver = AppGraph.connectivityObserver,
+        )
+    }
     // ---------------------------------------------------------------
     // Offline-first: Home'un sürekli gözlemlenen bölümleri. UI her zaman
     // Room'daki (belki bayat) veriyi anında görür; refresh*() online iken

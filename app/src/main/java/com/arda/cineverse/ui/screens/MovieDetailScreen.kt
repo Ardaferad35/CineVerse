@@ -100,8 +100,8 @@ fun MovieDetailScreen(
     val detailState by movieDetailViewModel.uiState.collectAsState()
     val commentState by commentViewModel.uiState.collectAsState()
 
-    val userListRepository = remember { UserListRepository() }
-    val recommendationRepository = remember { RecommendationRepository() }
+    val userListRepository = remember { UserListRepository.default() }
+    val recommendationRepository = remember { RecommendationRepository.default() }
 
     var favoriteMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     val offlineMessageState = rememberOfflineWriteMessageState()
@@ -651,4 +651,4 @@ private fun CircleIconButton(icon: ImageVector, tint: Color = OverlayIconColor, 
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
     }
 }
-
+

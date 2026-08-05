@@ -97,8 +97,8 @@ data class MyListUiState(
 }
 
 class MyListViewModel(
-    private val repository: UserListRepository = UserListRepository(),
-    private val recommendationRepository: RecommendationRepository = RecommendationRepository(),
+    private val repository: UserListRepository = UserListRepository.default(),
+    private val recommendationRepository: RecommendationRepository = RecommendationRepository.default(),
     private val commentRepository: CommentRepository = CommentRepository(),
 ) : ViewModel() {
 

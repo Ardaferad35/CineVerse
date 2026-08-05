@@ -125,9 +125,9 @@ fun HomeScreen(
     val recommendShareViewModel: com.arda.cineverse.viewmodel.RecommendShareViewModel = hiltViewModel()
     val shareState by recommendShareViewModel.uiState.collectAsState()
 
-    val userListRepository = remember { UserListRepository() }
-    val recommendationRepository = remember { RecommendationRepository() }
-    val tvRepository = remember { TvRepository() }
+    val userListRepository = remember { UserListRepository.default() }
+    val recommendationRepository = remember { RecommendationRepository.default() }
+    val tvRepository = remember { TvRepository.default() }
     val scope = rememberCoroutineScope()
 
     var favoriteMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }

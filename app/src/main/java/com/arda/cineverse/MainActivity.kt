@@ -28,11 +28,8 @@ import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
-// Hilt Gradle plugin'i uygulanmadığı için (bkz. root build.gradle.kts),
-// üretilen Hilt_MainActivity sınıfı doğrudan extend ediliyor. Plugin
-// olmadan @AndroidEntryPoint'in taban sınıfı açıkça belirtilmesi gerekiyor.
-@AndroidEntryPoint(ComponentActivity::class)
-class MainActivity : Hilt_MainActivity() {
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
 
     private val requestNotificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),

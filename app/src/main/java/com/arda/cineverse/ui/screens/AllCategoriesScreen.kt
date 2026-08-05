@@ -49,8 +49,8 @@ fun AllCategoriesScreen(
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    val movieRepository = remember { MovieRepository() }
-    val tvRepository = remember { TvRepository() }
+    val movieRepository = remember { MovieRepository.default() }
+    val tvRepository = remember { TvRepository.default() }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {

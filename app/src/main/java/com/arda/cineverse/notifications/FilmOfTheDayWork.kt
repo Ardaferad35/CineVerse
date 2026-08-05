@@ -26,7 +26,7 @@ class FilmOfTheDayWorker(
             return Result.success()
         }
 
-        val movieRepository = MovieRepository()
+        val movieRepository = MovieRepository.default()
         val featured = movieRepository.getFeaturedMovie().getOrNull() ?: return Result.retry()
 
         val lastNotifiedId = prefs.getInt("last_film_of_the_day_id", -1)
