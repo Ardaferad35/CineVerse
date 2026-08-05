@@ -29,10 +29,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.arda.cineverse.R
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
 import com.arda.cineverse.viewmodel.*
@@ -66,12 +68,12 @@ fun MyListScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Listem", color = OnSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.my_list_title), color = OnSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Row {
                     IconButton(onClick = viewModel::toggleSearch) {
                         Icon(
                             Icons.Filled.Search,
-                            contentDescription = "Ara",
+                            contentDescription = stringResource(R.string.my_list_search_cd),
                             tint = if (uiState.isSearchActive) Primary else OnSurface,
                         )
                     }
@@ -87,7 +89,7 @@ fun MyListScreen(
                         ) {
                             Icon(
                                 Icons.Filled.FilterList,
-                                contentDescription = "Filtre",
+                                contentDescription = stringResource(R.string.my_list_filter_cd),
                                 tint = if (uiState.hasActiveFilters) Primary else OnSurface,
                             )
                         }
@@ -104,13 +106,13 @@ fun MyListScreen(
                     CVTextField(
                         value = uiState.searchQuery,
                         onValueChange = viewModel::setSearchQuery,
-                        placeholder = "Listemde ara (Film / Dizi adı)...",
+                        placeholder = stringResource(R.string.my_list_search_placeholder),
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = TextSecondary) },
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))
                     IconButton(onClick = viewModel::toggleSearch) {
-                        Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = OnSurface)
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.common_close), tint = OnSurface)
                     }
                 }
             }
@@ -121,14 +123,14 @@ fun MyListScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 ListTabButton(
-                    text = "Favorilerim",
+                    text = stringResource(R.string.my_list_tab_favorites),
                     icon = Icons.Filled.Favorite,
                     selected = uiState.selectedTab == MyListTab.FAVORITES,
                     onClick = { viewModel.selectTab(MyListTab.FAVORITES) },
                     modifier = Modifier.weight(1f),
                 )
                 ListTabButton(
-                    text = "İzleme Listem",
+                    text = stringResource(R.string.my_list_tab_watchlist),
                     icon = Icons.Filled.BookmarkBorder,
                     selected = uiState.selectedTab == MyListTab.WATCHLIST,
                     onClick = { viewModel.selectTab(MyListTab.WATCHLIST) },
@@ -153,9 +155,9 @@ fun MyListScreen(
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.Clear, contentDescription = "Temizle", tint = Primary, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.common_clear), tint = Primary, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Sıfırla", color = Primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.my_list_reset_filters), color = Primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -163,7 +165,15 @@ fun MyListScreen(
                     if (uiState.sortCriterion != MyListSortCriterion.IMDB_RATING || uiState.sortOrder != MyListSortOrder.DESCENDING) {
                         item {
                             ActiveFilterChip(
-                                text = "📌 ${uiState.sortCriterion.label} (${if (uiState.sortOrder == MyListSortOrder.DESCENDING) "Azalan" else "Artan"})",
+                                text = stringResource(
+                                    R.string.my_list_active_sort_chip,
+                                    stringResource(uiState.sortCriterion.labelRes),
+                                    if (uiState.sortOrder == MyListSortOrder.DESCENDING) {
+                                        stringResource(R.string.my_list_sort_order_desc_short)
+                                    } else {
+                                        stringResource(R.string.my_list_sort_order_asc_short)
+                                    },
+                                ),
                                 onClear = {
                                     viewModel.setSortCriterion(MyListSortCriterion.IMDB_RATING)
                                     viewModel.setSortOrder(MyListSortOrder.DESCENDING)
@@ -175,7 +185,7 @@ fun MyListScreen(
                     if (uiState.searchQuery.isNotBlank()) {
                         item {
                             ActiveFilterChip(
-                                text = "🔍 \"${uiState.searchQuery}\"",
+                                text = stringResource(R.string.my_list_active_search_chip, uiState.searchQuery),
                                 onClear = { viewModel.setSearchQuery("") },
                             )
                         }
@@ -196,7 +206,7 @@ fun MyListScreen(
                     ) {
                         Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(16.dp))
-                        CVGradientButton(text = "Tekrar Dene", onClick = { viewModel.loadAll() })
+                        CVGradientButton(text = stringResource(R.string.common_retry), onClick = { viewModel.loadAll() })
                     }
                 }
                 uiState.currentList.isEmpty() -> {
@@ -204,18 +214,18 @@ fun MyListScreen(
                     Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp)) {
                         MyListEmptyState(
                             title = if (uiState.hasActiveFilters) {
-                                "Aranan kriterlere uygun içerik bulunamadı"
+                                stringResource(R.string.my_list_empty_filtered_title)
                             } else if (isFavTab) {
-                                "Henüz favori film yok"
+                                stringResource(R.string.my_list_empty_favorites_title)
                             } else {
-                                "İzleme listen boş"
+                                stringResource(R.string.my_list_empty_watchlist_title)
                             },
                             description = if (uiState.hasActiveFilters) {
-                                "Filtreleri sıfırlayarak tüm listeni görüntüleyebilirsin."
+                                stringResource(R.string.my_list_empty_filtered_desc)
                             } else if (isFavTab) {
-                                "Beğendiğin filmleri favorilere ekleyerek burada görüntüleyebilirsin."
+                                stringResource(R.string.my_list_empty_favorites_desc)
                             } else {
-                                "İzlemek istediğin filmleri listene ekleyerek burada görüntüleyebilirsin."
+                                stringResource(R.string.my_list_empty_watchlist_desc)
                             },
                             onStartExploring = if (uiState.hasActiveFilters) viewModel::resetFilters else onStartExploring,
                             modifier = Modifier.align(Alignment.TopCenter).padding(top = 24.dp),
@@ -236,12 +246,12 @@ fun MyListScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.Favorite, contentDescription = null, tint = Primary, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("${uiState.currentList.size} İçerik", color = OnSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.my_list_content_count, uiState.currentList.size), color = OnSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC857), modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("${uiState.averageRating} Ortalama Puan", color = OnSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.my_list_avg_rating, uiState.averageRating.toString()), color = OnSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                         }
                     }
 
@@ -358,20 +368,20 @@ private fun MyListFilterBottomSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Sıralama ve Filtreleme",
+                    text = stringResource(R.string.my_list_filter_sheet_title),
                     color = OnSurface,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = TextSecondary)
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.common_close), tint = TextSecondary)
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Sıralama Ölçütü",
+                text = stringResource(R.string.my_list_sort_criterion_label),
                 color = OnSurface,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -396,7 +406,7 @@ private fun MyListFilterBottomSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = criterion.label,
+                            text = stringResource(criterion.labelRes),
                             color = if (isSelected) Primary else OnSurface,
                             fontSize = 14.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
@@ -411,7 +421,7 @@ private fun MyListFilterBottomSheet(
             Spacer(Modifier.height(18.dp))
 
             Text(
-                text = "Sıralama Yönü",
+                text = stringResource(R.string.my_list_sort_direction_label),
                 color = OnSurface,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -434,7 +444,7 @@ private fun MyListFilterBottomSheet(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = order.label,
+                            text = stringResource(order.labelRes),
                             color = if (isSelected) Primary else OnSurface,
                             fontSize = 13.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
@@ -456,7 +466,7 @@ private fun MyListFilterBottomSheet(
                     border = BorderStroke(1.dp, DividerColor),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnSurface),
                 ) {
-                    Text("Sıfırla", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.my_list_reset_filters), fontWeight = FontWeight.SemiBold)
                 }
 
                 Box(
@@ -468,7 +478,7 @@ private fun MyListFilterBottomSheet(
                         .clickable { onDismiss() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("Tamam", color = OnPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.my_list_done), color = OnPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

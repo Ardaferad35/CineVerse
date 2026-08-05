@@ -47,11 +47,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.arda.cineverse.R
 import com.arda.cineverse.ui.components.avatarPresetById
 import com.arda.cineverse.ui.components.avatarPresets
 import com.arda.cineverse.ui.theme.Background
@@ -102,10 +104,10 @@ fun ProfileScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
             }
             Spacer(Modifier.width(8.dp))
-            Text("Profil", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.profile_title), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
 
         if (uiState.isLoading) {
@@ -152,7 +154,7 @@ fun ProfileScreen(
                                         fontWeight = FontWeight.Bold,
                                     )
                                     Spacer(Modifier.width(6.dp))
-                                    Icon(Icons.Filled.Edit, contentDescription = "Kullanıcı adını düzenle", tint = Primary, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.profile_edit_username_cd), tint = Primary, modifier = Modifier.size(16.dp))
                                 }
                                 Spacer(Modifier.height(2.dp))
                                 Text(uiState.email, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
@@ -163,7 +165,7 @@ fun ProfileScreen(
                                         .background(Primary.copy(alpha = 0.18f))
                                         .padding(horizontal = 10.dp, vertical = 4.dp),
                                 ) {
-                                    Text("CineVerse Üyesi", color = Primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                                    Text(stringResource(R.string.profile_member_badge), color = Primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -183,21 +185,21 @@ fun ProfileScreen(
                             icon = Icons.Filled.Favorite,
                             iconTint = ErrorColor,
                             value = "${uiState.favoritesCount}",
-                            label = "Favoriler",
+                            label = stringResource(R.string.profile_stat_favorites),
                             modifier = Modifier.weight(1f),
                         )
                         ProfileStat(
                             icon = Icons.Filled.Bookmark,
                             iconTint = Primary,
                             value = "${uiState.watchlistCount}",
-                            label = "İzleme Listem",
+                            label = stringResource(R.string.profile_stat_watchlist),
                             modifier = Modifier.weight(1f),
                         )
                         ProfileStat(
                             icon = Icons.Filled.Star,
                             iconTint = Color(0xFFFFC857),
                             value = if (uiState.ratingsGivenCount > 0) "${uiState.averageRatingGiven}" else "—",
-                            label = "Ortalama Puanım",
+                            label = stringResource(R.string.profile_stat_avg_rating),
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -206,7 +208,7 @@ fun ProfileScreen(
                 // Avatar Seç
                 item {
                     Column {
-                        Text("Avatar Seç", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.profile_choose_avatar), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(12.dp))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             items(avatarPresets, key = { it.id }) { preset ->
@@ -244,30 +246,30 @@ fun ProfileScreen(
                     ) {
                         SettingsRow(
                             icon = Icons.Filled.Group,
-                            title = "Arkadaşlar",
-                            subtitle = "Arkadaş ekle ve film/dizi öner",
+                            title = stringResource(R.string.profile_settings_friends_title),
+                            subtitle = stringResource(R.string.profile_settings_friends_subtitle),
                             onClick = onNavigateToFriends,
                         )
                         HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
                         SettingsRow(
                             icon = Icons.Filled.Lock,
-                            title = "Şifre Değiştir",
-                            subtitle = "Hesap şifrenizi güncelleyin",
+                            title = stringResource(R.string.profile_settings_change_password_title),
+                            subtitle = stringResource(R.string.profile_settings_change_password_subtitle),
                             onClick = { showChangePasswordDialog = true },
                         )
                         HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
                         SettingsRow(
                             icon = Icons.Filled.Palette,
-                            title = "Görünüm",
-                            subtitle = "Tema ve görünüm seçimi",
-                            trailingText = if (ThemeState.isDarkTheme) "Koyu" else "Açık",
+                            title = stringResource(R.string.profile_settings_appearance_title),
+                            subtitle = stringResource(R.string.profile_settings_appearance_subtitle),
+                            trailingText = if (ThemeState.isDarkTheme) stringResource(R.string.profile_theme_dark) else stringResource(R.string.profile_theme_light),
                             onClick = { showThemeDialog = true },
                         )
                         HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
                         SettingsRowWithSwitch(
                             icon = Icons.Filled.Info,
-                            title = "Bildirimler",
-                            subtitle = "Bildirim tercihlerinizi yönetin",
+                            title = stringResource(R.string.profile_settings_notifications_title),
+                            subtitle = stringResource(R.string.profile_settings_notifications_subtitle),
                             checked = userPreferences.notificationsEnabled,
                             onCheckedChange = { enabled ->
                                 scope.launch { userPreferencesRepository.setNotificationsEnabled(enabled) }
@@ -276,15 +278,15 @@ fun ProfileScreen(
                         HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
                         SettingsRow(
                             icon = Icons.Filled.Help,
-                            title = "Yardım & Destek",
-                            subtitle = "Yardım alın ve bizimle iletişime geçin",
+                            title = stringResource(R.string.profile_settings_help_title),
+                            subtitle = stringResource(R.string.profile_settings_help_subtitle),
                             onClick = { showComingSoonDialog = true },
                         )
                         HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
                         SettingsRow(
                             icon = Icons.Filled.Info,
-                            title = "CineVerse Hakkında",
-                            subtitle = "Uygulama sürümü ve bilgileri",
+                            title = stringResource(R.string.profile_settings_about_title),
+                            subtitle = stringResource(R.string.profile_settings_about_subtitle),
                             onClick = { showAboutDialog = true },
                         )
                     }
@@ -305,7 +307,7 @@ fun ProfileScreen(
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = ErrorColor, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Çıkış Yap", color = ErrorColor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.profile_sign_out), color = ErrorColor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
@@ -319,16 +321,16 @@ fun ProfileScreen(
     if (showSignOutConfirm) {
         AlertDialog(
             onDismissRequest = { showSignOutConfirm = false },
-            title = { Text("Çıkış yap") },
-            text = { Text("Hesabınızdan çıkış yapmak istediğinize emin misiniz?") },
+            title = { Text(stringResource(R.string.profile_sign_out_confirm_title)) },
+            text = { Text(stringResource(R.string.profile_sign_out_confirm_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     showSignOutConfirm = false
                     viewModel.signOut { onSignedOut() }
-                }) { Text("Çıkış Yap", color = ErrorColor) }
+                }) { Text(stringResource(R.string.profile_sign_out), color = ErrorColor) }
             },
             dismissButton = {
-                TextButton(onClick = { showSignOutConfirm = false }) { Text("Vazgeç") }
+                TextButton(onClick = { showSignOutConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -339,14 +341,14 @@ fun ProfileScreen(
         var isSubmitting by remember { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { if (!isSubmitting) showEditUsernameDialog = false },
-            title = { Text("Kullanıcı adını düzenle") },
+            title = { Text(stringResource(R.string.profile_edit_username_cd)) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = usernameInput,
                         onValueChange = { usernameInput = it.lowercase(); errorMessage = null },
                         singleLine = true,
-                        placeholder = { Text("kullanici_adi") },
+                        placeholder = { Text(stringResource(R.string.profile_username_placeholder)) },
                     )
                     if (errorMessage != null) {
                         Spacer(Modifier.height(8.dp))
@@ -355,11 +357,12 @@ fun ProfileScreen(
                 }
             },
             confirmButton = {
+                val invalidUsernameMessage = stringResource(R.string.profile_username_invalid_format)
                 TextButton(
                     enabled = !isSubmitting,
                     onClick = {
                         if (!usernameInput.matches(com.arda.cineverse.data.repository.FriendRepository.USERNAME_REGEX)) {
-                            errorMessage = "3-20 karakter, sadece küçük harf/rakam/_ kullanın"
+                            errorMessage = invalidUsernameMessage
                             return@TextButton
                         }
                         isSubmitting = true
@@ -372,10 +375,10 @@ fun ProfileScreen(
                             }
                         }
                     },
-                ) { Text(if (isSubmitting) "Kaydediliyor..." else "Kaydet", color = Primary) }
+                ) { Text(if (isSubmitting) stringResource(R.string.common_saving) else stringResource(R.string.common_save), color = Primary) }
             },
             dismissButton = {
-                TextButton(onClick = { if (!isSubmitting) showEditUsernameDialog = false }) { Text("Vazgeç") }
+                TextButton(onClick = { if (!isSubmitting) showEditUsernameDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -383,10 +386,10 @@ fun ProfileScreen(
     if (showAboutDialog) {
         AlertDialog(
             onDismissRequest = { showAboutDialog = false },
-            title = { Text("CineVerse Hakkında") },
-            text = { Text("CineVerse — sürüm 1.0.0\n\nKotlin ve Jetpack Compose ile geliştirilen, yapay zekâ destekli film keşif uygulaması.") },
+            title = { Text(stringResource(R.string.profile_settings_about_title)) },
+            text = { Text(stringResource(R.string.profile_about_body)) },
             confirmButton = {
-                TextButton(onClick = { showAboutDialog = false }) { Text("Kapat", color = Primary) }
+                TextButton(onClick = { showAboutDialog = false }) { Text(stringResource(R.string.common_close), color = Primary) }
             },
         )
     }
@@ -394,10 +397,10 @@ fun ProfileScreen(
     if (showComingSoonDialog) {
         AlertDialog(
             onDismissRequest = { showComingSoonDialog = false },
-            title = { Text("Yakında") },
-            text = { Text("Bu özellik henüz hazır değil, yakında eklenecek.") },
+            title = { Text(stringResource(R.string.common_coming_soon)) },
+            text = { Text(stringResource(R.string.profile_coming_soon_body)) },
             confirmButton = {
-                TextButton(onClick = { showComingSoonDialog = false }) { Text("Tamam", color = Primary) }
+                TextButton(onClick = { showComingSoonDialog = false }) { Text(stringResource(R.string.common_ok), color = Primary) }
             },
         )
     }
@@ -406,7 +409,7 @@ fun ProfileScreen(
         val context = LocalContext.current
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
-            title = { Text("Görünüm") },
+            title = { Text(stringResource(R.string.profile_settings_appearance_title)) },
             text = {
                 Column {
                     Row(
@@ -421,7 +424,7 @@ fun ProfileScreen(
                     ) {
                         RadioButton(selected = ThemeState.isDarkTheme, onClick = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Koyu", color = OnSurface)
+                        Text(stringResource(R.string.profile_theme_dark), color = OnSurface)
                     }
                     Row(
                         modifier = Modifier
@@ -435,12 +438,12 @@ fun ProfileScreen(
                     ) {
                         RadioButton(selected = !ThemeState.isDarkTheme, onClick = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Açık", color = OnSurface)
+                        Text(stringResource(R.string.profile_theme_light), color = OnSurface)
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showThemeDialog = false }) { Text("Kapat", color = Primary) }
+                TextButton(onClick = { showThemeDialog = false }) { Text(stringResource(R.string.common_close), color = Primary) }
             },
         )
     }
@@ -454,13 +457,13 @@ fun ProfileScreen(
 
         AlertDialog(
             onDismissRequest = { if (!isSubmitting) showChangePasswordDialog = false },
-            title = { Text("Şifre Değiştir") },
+            title = { Text(stringResource(R.string.profile_settings_change_password_title)) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = currentPassword,
                         onValueChange = { currentPassword = it; errorMessage = null },
-                        label = { Text("Mevcut şifre") },
+                        label = { Text(stringResource(R.string.profile_current_password_label)) },
                         visualTransformation = PasswordVisualTransformation(),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -469,7 +472,7 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = newPassword,
                         onValueChange = { newPassword = it; errorMessage = null },
-                        label = { Text("Yeni şifre") },
+                        label = { Text(stringResource(R.string.profile_new_password_label)) },
                         visualTransformation = PasswordVisualTransformation(),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -478,7 +481,7 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it; errorMessage = null },
-                        label = { Text("Yeni şifre (tekrar)") },
+                        label = { Text(stringResource(R.string.profile_confirm_new_password_label)) },
                         visualTransformation = PasswordVisualTransformation(),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -490,13 +493,16 @@ fun ProfileScreen(
                 }
             },
             confirmButton = {
+                val currentPasswordRequiredMessage = stringResource(R.string.profile_current_password_required)
+                val passwordTooShortMessage = stringResource(R.string.profile_new_password_too_short)
+                val passwordsMismatchMessage = stringResource(R.string.profile_new_passwords_mismatch)
                 TextButton(
                     enabled = !isSubmitting,
                     onClick = {
                         when {
-                            currentPassword.isBlank() -> errorMessage = "Mevcut şifrenizi girin"
-                            newPassword.length < 6 -> errorMessage = "Yeni şifre en az 6 karakter olmalı"
-                            newPassword != confirmPassword -> errorMessage = "Yeni şifreler eşleşmiyor"
+                            currentPassword.isBlank() -> errorMessage = currentPasswordRequiredMessage
+                            newPassword.length < 6 -> errorMessage = passwordTooShortMessage
+                            newPassword != confirmPassword -> errorMessage = passwordsMismatchMessage
                             else -> {
                                 isSubmitting = true
                                 viewModel.changePassword(currentPassword, newPassword) { success, error ->
@@ -511,11 +517,11 @@ fun ProfileScreen(
                         }
                     },
                 ) {
-                    Text(if (isSubmitting) "Kaydediliyor..." else "Kaydet", color = Primary)
+                    Text(if (isSubmitting) stringResource(R.string.common_saving) else stringResource(R.string.common_save), color = Primary)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { if (!isSubmitting) showChangePasswordDialog = false }) { Text("Vazgeç") }
+                TextButton(onClick = { if (!isSubmitting) showChangePasswordDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }

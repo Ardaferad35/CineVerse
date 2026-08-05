@@ -25,8 +25,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.repository.MovieRepository
 import com.arda.cineverse.data.repository.TvRepository
@@ -52,6 +54,9 @@ fun AllCategoriesScreen(
     val movieRepository = remember { MovieRepository.default() }
     val tvRepository = remember { TvRepository.default() }
     val scope = rememberCoroutineScope()
+    // load() bir @Composable değil, bu yüzden stringResource() burada değil,
+    // composable gövdesinde önceden çözülüp closure ile yakalanıyor.
+    val loadErrorMessage = stringResource(R.string.all_categories_load_error)
 
     suspend fun load() {
         isLoading = true
@@ -59,7 +64,7 @@ fun AllCategoriesScreen(
         val result = if (isTvMode) tvRepository.getAllTvGenres() else movieRepository.getAllGenres()
         result.fold(
             onSuccess = { list -> categories = list; isLoading = false },
-            onFailure = { errorMessage = "Kategoriler yüklenemedi"; isLoading = false },
+            onFailure = { errorMessage = loadErrorMessage; isLoading = false },
         )
     }
 
@@ -77,10 +82,10 @@ fun AllCategoriesScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
             }
             Spacer(Modifier.width(8.dp))
-            Text(if (isTvMode) "Tüm Dizi Kategorileri" else "Tüm Film Kategorileri", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(if (isTvMode) stringResource(R.string.all_categories_title_tv) else stringResource(R.string.all_categories_title_movie), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
 
         when {
@@ -95,7 +100,7 @@ fun AllCategoriesScreen(
                 ) {
                     Text(errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(16.dp))
-                    CVGradientButton(text = "Tekrar Dene", onClick = { scope.launch { load() } })
+                    CVGradientButton(text = stringResource(R.string.common_retry), onClick = { scope.launch { load() } })
                 }
             }
             else -> {

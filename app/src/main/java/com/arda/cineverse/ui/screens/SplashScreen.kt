@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -86,7 +87,7 @@ fun SplashScreen(onFinished: () -> Unit) {
 
             // Title
             Text(
-                text = "CineVerse",
+                text = stringResource(R.string.app_name),
                 color = textColor,
                 fontSize = 44.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -114,7 +115,7 @@ fun SplashScreen(onFinished: () -> Unit) {
 
             // Subtitles
             Text(
-                text = "Discover Movies",
+                text = stringResource(R.string.splash_subtitle_discover),
                 color = textColor.copy(alpha = 0.8f),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
@@ -124,7 +125,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Beyond the Screen",
+                text = stringResource(R.string.splash_subtitle_beyond),
                 color = subtitleColor,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,

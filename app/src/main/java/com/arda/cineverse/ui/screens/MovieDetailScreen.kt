@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +62,7 @@ import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.Comment
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
@@ -156,7 +158,13 @@ fun MovieDetailScreen(
     LaunchedEffect(shareState.sentCount) {
         val count = shareState.sentCount ?: return@LaunchedEffect
         showShareSheet = false
-        shareSentMessage = if (count == 1) "Önerin gönderildi" else "$count arkadaşına önerin gönderildi"
+        // LaunchedEffect'in gövdesi @Composable değil (suspend lambda), bu
+        // yüzden stringResource() yerine context.getString() kullanılıyor.
+        shareSentMessage = if (count == 1) {
+            context.getString(R.string.share_sent_one)
+        } else {
+            context.getString(R.string.share_sent_many, count)
+        }
     }
 
     fun playTrailer(key: String?) {
@@ -188,7 +196,7 @@ fun MovieDetailScreen(
                             .padding(12.dp)
                             .align(Alignment.TopStart),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
                     }
                     Column(
                         modifier = Modifier
@@ -198,12 +206,12 @@ fun MovieDetailScreen(
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
-                            detailState.errorMessage ?: "Film bulunamadı",
+                            detailState.errorMessage ?: stringResource(R.string.movie_detail_not_found),
                             color = TextSecondary,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Spacer(Modifier.height(16.dp))
-                        CVGradientButton(text = "Tekrar Dene", onClick = { movieDetailViewModel.load() })
+                        CVGradientButton(text = stringResource(R.string.common_retry), onClick = { movieDetailViewModel.load() })
                     }
                 }
             }
@@ -272,7 +280,7 @@ fun MovieDetailScreen(
                                             .clickable { playTrailer(movie.trailerKey) },
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        Icon(Icons.Filled.PlayArrow, contentDescription = "Fragmanı oynat", tint = Color.White, modifier = Modifier.size(32.dp))
+                                        Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.movie_detail_play_trailer_cd), tint = Color.White, modifier = Modifier.size(32.dp))
                                     }
                                 }
 
@@ -297,7 +305,7 @@ fun MovieDetailScreen(
                                             )
                                             Spacer(Modifier.width(4.dp))
                                             Text(
-                                                "Çevrimdışı • Sınırlı bilgi gösteriliyor",
+                                                stringResource(R.string.movie_detail_offline_limited),
                                                 color = ErrorColor,
                                                 style = MaterialTheme.typography.labelSmall,
                                             )
@@ -328,7 +336,7 @@ fun MovieDetailScreen(
                         item {
                             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                                 CVGradientButton(
-                                    text = "Fragmanı İzle",
+                                    text = stringResource(R.string.movie_detail_watch_trailer),
                                     icon = Icons.Filled.PlayArrow,
                                     onClick = { playTrailer(movie.trailerKey) },
                                     enabled = movie.trailerKey != null,
@@ -352,7 +360,7 @@ fun MovieDetailScreen(
                                     )
                                     Spacer(Modifier.width(6.dp))
                                     Text(
-                                        if (detailState.isSaved) "İzleme Listemde" else "İzleme Listeme Ekle",
+                                        if (detailState.isSaved) stringResource(R.string.movie_detail_in_watchlist) else stringResource(R.string.movie_detail_add_to_watchlist),
                                         color = Primary,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -362,12 +370,12 @@ fun MovieDetailScreen(
 
                         item {
                             Column(Modifier.padding(horizontal = 20.dp)) {
-                                Text("Özet", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.movie_detail_overview_title), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(8.dp))
-                                ExpandableOverview(text = movie.overview.ifBlank { "Bu film için özet bulunamadı." })
+                                ExpandableOverview(text = movie.overview.ifBlank { stringResource(R.string.movie_detail_no_overview) })
                                 movie.director?.let {
                                     Spacer(Modifier.height(10.dp))
-                                    Text("Yönetmen: $it", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    Text(stringResource(R.string.movie_detail_director, it), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }
@@ -387,7 +395,7 @@ fun MovieDetailScreen(
                             item {
                                 Column(Modifier.padding(top = 20.dp)) {
                                     Text(
-                                        "Oyuncular",
+                                        stringResource(R.string.movie_detail_cast_title),
                                         color = OnSurface,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
@@ -405,10 +413,10 @@ fun MovieDetailScreen(
 
                         item {
                             Column(Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-                                Text("Kullanıcı Puanı", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.movie_detail_user_rating_title), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(12.dp))
                                 if (commentState.comments.isEmpty()) {
-                                    Text("Henüz puan verilmedi, ilk puanı sen ver!", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    Text(stringResource(R.string.movie_detail_no_ratings_yet), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 } else {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(90.dp)) {
@@ -424,7 +432,7 @@ fun MovieDetailScreen(
                                                 }
                                             }
                                             Spacer(Modifier.height(4.dp))
-                                            Text("${commentState.comments.count { it.replyToCommentId == null }} oy", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                                            Text(stringResource(R.string.detail_vote_count, commentState.comments.count { it.replyToCommentId == null }), color = TextSecondary, style = MaterialTheme.typography.labelSmall)
                                         }
                                         Spacer(Modifier.width(16.dp))
                                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -440,7 +448,7 @@ fun MovieDetailScreen(
                                 }
                                 Spacer(Modifier.height(10.dp))
                                 Text(
-                                    "Puanını ver",
+                                    stringResource(R.string.detail_rate_now),
                                     color = Primary,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
@@ -453,7 +461,7 @@ fun MovieDetailScreen(
 
                         item {
                             Text(
-                                "Yorumlar (${commentState.comments.count { it.replyToCommentId == null }})",
+                                stringResource(R.string.detail_comments_title, commentState.comments.count { it.replyToCommentId == null }),
                                 color = OnSurface,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
@@ -474,7 +482,7 @@ fun MovieDetailScreen(
                                         initialText = comment.text,
                                         initialRating = comment.rating,
                                         initialSpoiler = comment.isSpoiler,
-                                        submitLabel = "Güncelle",
+                                        submitLabel = stringResource(R.string.common_update),
                                         onSubmit = { text, rating, spoiler ->
                                             commentViewModel.editComment(comment.id, text, rating, spoiler, movie.title, movie.posterUrl, movie.year, movie.genreIds)
                                             editingComment = null
@@ -525,7 +533,7 @@ fun MovieDetailScreen(
                                     .padding(horizontal = 20.dp, vertical = 12.dp)
                                     .bringIntoViewRequester(commentBoxRequester),
                             ) {
-                                Text("Yorum Yaz", color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.detail_write_comment_title), color = OnSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(10.dp))
                                 CommentInputBox(
                                     onSubmit = { text, rating, spoiler ->
@@ -539,7 +547,7 @@ fun MovieDetailScreen(
                             item {
                                 Column(Modifier.padding(top = 12.dp)) {
                                     Text(
-                                        "Benzer Filmler",
+                                        stringResource(R.string.movie_detail_similar_title),
                                         color = OnSurface,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
@@ -621,18 +629,18 @@ fun MovieDetailScreen(
         val currentMovie = detailState.movie
         AlertDialog(
             onDismissRequest = { commentPendingDelete = null },
-            title = { Text("Yorumu sil") },
-            text = { Text("Bu yorumu silmek istediğinize emin misiniz?") },
+            title = { Text(stringResource(R.string.detail_delete_comment_title)) },
+            text = { Text(stringResource(R.string.detail_delete_comment_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     if (currentMovie != null) {
                         commentViewModel.deleteComment(comment.id, currentMovie.title, currentMovie.posterUrl, currentMovie.year, currentMovie.genreIds)
                     }
                     commentPendingDelete = null
-                }) { Text("Sil", color = ErrorColor) }
+                }) { Text(stringResource(R.string.comment_delete), color = ErrorColor) }
             },
             dismissButton = {
-                TextButton(onClick = { commentPendingDelete = null }) { Text("Vazgeç") }
+                TextButton(onClick = { commentPendingDelete = null }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }

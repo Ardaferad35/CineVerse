@@ -28,12 +28,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.Friend
 import com.arda.cineverse.ui.theme.*
 import com.arda.cineverse.viewmodel.RecommendShareUiState
@@ -88,16 +90,16 @@ fun RecommendShareSheet(
                 state.friends.isEmpty() -> {
                     EmptyState(
                         icon = Icons.Filled.Group,
-                        title = "Henüz arkadaşın yok",
-                        subtitle = "Ana sayfadaki arkadaşlar panelinden kullanıcı adıyla arkadaş ekleyebilirsin.",
+                        title = stringResource(R.string.share_no_friends_title),
+                        subtitle = stringResource(R.string.share_no_friends_subtitle),
                         modifier = listHeight,
                     )
                 }
                 state.isQuotaExhausted -> {
                     EmptyState(
                         icon = Icons.Filled.HourglassEmpty,
-                        title = "Günlük hakkın doldu",
-                        subtitle = "Günde en fazla 10 öneri gönderebilirsin. Yarın kaldığın yerden devam.",
+                        title = stringResource(R.string.share_quota_exhausted_title),
+                        subtitle = stringResource(R.string.share_quota_exhausted_subtitle),
                         modifier = listHeight,
                     )
                 }
@@ -159,7 +161,7 @@ private fun ShareHeader(mediaTitle: String, posterUrl: String?, isTvShow: Boolea
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                if (isTvShow) "Diziyi arkadaşlarına öner" else "Filmi arkadaşlarına öner",
+                if (isTvShow) stringResource(R.string.share_header_tv) else stringResource(R.string.share_header_movie),
                 color = TextSecondary,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -178,9 +180,9 @@ private fun ShareHeader(mediaTitle: String, posterUrl: String?, isTvShow: Boolea
 @Composable
 private fun QuotaBadge(remaining: Int, isOverQuota: Boolean, selected: Int) {
     val text = when {
-        isOverQuota -> "$selected kişi seçtin ama bugün $remaining hakkın kaldı"
-        remaining <= 0 -> "Bugünlük hakkın kalmadı"
-        else -> "Bugün $remaining gönderim hakkın kaldı"
+        isOverQuota -> stringResource(R.string.share_quota_over, selected, remaining)
+        remaining <= 0 -> stringResource(R.string.share_quota_none_left)
+        else -> stringResource(R.string.share_quota_remaining, remaining)
     }
     Row(
         modifier = Modifier
@@ -231,7 +233,7 @@ private fun SelectableFriendRow(friend: Friend, isSelected: Boolean, onClick: ()
             contentAlignment = Alignment.Center,
         ) {
             if (isSelected) {
-                Icon(Icons.Filled.Check, contentDescription = "Seçili", tint = OnPrimary, modifier = Modifier.size(14.dp))
+                Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.share_selected_cd), tint = OnPrimary, modifier = Modifier.size(14.dp))
             }
         }
     }
@@ -249,7 +251,7 @@ private fun NoteField(value: String, onValueChange: (String) -> Unit) {
     ) {
         if (value.isEmpty()) {
             Text(
-                "Kısa bir not ekle (isteğe bağlı)",
+                stringResource(R.string.share_note_placeholder),
                 color = TextSecondary,
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -294,7 +296,7 @@ private fun SendButton(selectedCount: Int, enabled: Boolean, isSending: Boolean,
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                if (selectedCount > 0) "Gönder ($selectedCount)" else "Gönder",
+                if (selectedCount > 0) stringResource(R.string.share_send_with_count, selectedCount) else stringResource(R.string.share_send),
                 color = if (enabled) OnPrimary else TextSecondary,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
@@ -381,14 +383,14 @@ fun RecommendShareBannerCard(
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Arkadaşlarına Tavsiye Et",
+                        text = stringResource(R.string.share_banner_title),
                         color = OnSurface,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Özel notunla CineVerse arkadaşlarınla paylaş",
+                        text = stringResource(R.string.share_banner_subtitle),
                         color = TextSecondary,
                         fontSize = 12.sp
                     )
@@ -402,7 +404,7 @@ fun RecommendShareBannerCard(
                     .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "Öner",
+                    text = stringResource(R.string.home_quick_preview_recommend),
                     color = OnPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold

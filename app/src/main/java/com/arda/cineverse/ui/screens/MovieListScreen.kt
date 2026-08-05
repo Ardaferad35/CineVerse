@@ -30,9 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.Movie
 import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.model.TvShow
@@ -69,10 +71,10 @@ sealed class MovieListSource {
     data class TvGenre(val genreId: Int, val label: String) : MovieListSource()
 }
 
-private enum class SortMode(val label: String) {
-    POPULAR("Popüler"),
-    TOP_RATED("En Yüksek Puan"),
-    APP_RATING("Uygulama İçi Puan"),
+private enum class SortMode(@androidx.annotation.StringRes val labelRes: Int) {
+    POPULAR(R.string.movie_list_sort_popular),
+    TOP_RATED(R.string.movie_list_sort_top_rated),
+    APP_RATING(R.string.movie_list_sort_app_rating),
 }
 
 private fun Movie.toSavedMovie() = SavedMovie(id = id, title = title, posterUrl = posterUrl, rating = rating, year = year, genreIds = genreIds, mediaType = mediaType)
@@ -149,15 +151,15 @@ fun MovieListScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Geri", tint = OnSurface)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = OnSurface)
                 }
                 Text(
                     text = when (source) {
-                        MovieListSource.Popular -> "Popüler Filmler"
-                        MovieListSource.Upcoming -> "Yakında Vizyona Girecekler"
-                        MovieListSource.TvPopular -> "Popüler Diziler"
-                        MovieListSource.TvOnAir -> "Şu An Yayında"
-                        MovieListSource.TvUpcoming -> "Yakında Yayınlanacak Diziler"
+                        MovieListSource.Popular -> stringResource(R.string.movie_list_source_popular)
+                        MovieListSource.Upcoming -> stringResource(R.string.movie_list_source_upcoming)
+                        MovieListSource.TvPopular -> stringResource(R.string.movie_list_source_tv_popular)
+                        MovieListSource.TvOnAir -> stringResource(R.string.movie_list_source_tv_on_air)
+                        MovieListSource.TvUpcoming -> stringResource(R.string.movie_list_source_tv_upcoming)
                         is MovieListSource.Genre -> source.label
                         is MovieListSource.TvGenre -> source.label
                     },
@@ -166,7 +168,7 @@ fun MovieListScreen(
                     fontWeight = FontWeight.Bold,
                 )
                 IconButton(onClick = { /* Detaylı filtreleme sonraki adımda eklenecek */ }) {
-                    Icon(Icons.Filled.FilterList, contentDescription = "Filtrele", tint = OnSurface)
+                    Icon(Icons.Filled.FilterList, contentDescription = stringResource(R.string.movie_list_filter_cd), tint = OnSurface)
                 }
             }
 
@@ -264,9 +266,9 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit, 
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SortChip(label = SortMode.POPULAR.label, selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
-        SortChip(label = SortMode.TOP_RATED.label, selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
-        SortChip(label = SortMode.APP_RATING.label, selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
+        SortChip(label = stringResource(SortMode.POPULAR.labelRes), selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
+        SortChip(label = stringResource(SortMode.TOP_RATED.labelRes), selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
+        SortChip(label = stringResource(SortMode.APP_RATING.labelRes), selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
     }
 
     when {
@@ -283,7 +285,7 @@ private fun RichMovieList(source: MovieListSource, onMovieClick: (Int) -> Unit, 
             ) {
                 Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
-                CVGradientButton(text = "Tekrar Dene", onClick = viewModel::loadFirstPage)
+                CVGradientButton(text = stringResource(R.string.common_retry), onClick = viewModel::loadFirstPage)
             }
         }
         else -> {
@@ -376,9 +378,9 @@ private fun UpcomingGrid(isTv: Boolean, onMovieClick: (Int) -> Unit, onTvShowCli
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SortChip(label = SortMode.POPULAR.label, selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
-        SortChip(label = SortMode.TOP_RATED.label, selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
-        SortChip(label = SortMode.APP_RATING.label, selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
+        SortChip(label = stringResource(SortMode.POPULAR.labelRes), selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
+        SortChip(label = stringResource(SortMode.TOP_RATED.labelRes), selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
+        SortChip(label = stringResource(SortMode.APP_RATING.labelRes), selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
     }
 
     when {
@@ -395,7 +397,7 @@ private fun UpcomingGrid(isTv: Boolean, onMovieClick: (Int) -> Unit, onTvShowCli
             ) {
                 Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
-                CVGradientButton(text = "Tekrar Dene", onClick = viewModel::loadFirstPage)
+                CVGradientButton(text = stringResource(R.string.common_retry), onClick = viewModel::loadFirstPage)
             }
         }
         else -> {
@@ -492,9 +494,9 @@ private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) ->
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SortChip(label = SortMode.POPULAR.label, selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
-        SortChip(label = SortMode.TOP_RATED.label, selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
-        SortChip(label = SortMode.APP_RATING.label, selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
+        SortChip(label = stringResource(SortMode.POPULAR.labelRes), selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
+        SortChip(label = stringResource(SortMode.TOP_RATED.labelRes), selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
+        SortChip(label = stringResource(SortMode.APP_RATING.labelRes), selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
     }
 
     when {
@@ -511,7 +513,7 @@ private fun TvGenreList(source: MovieListSource.TvGenre, onTvShowClick: (Int) ->
             ) {
                 Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
-                CVGradientButton(text = "Tekrar Dene", onClick = viewModel::loadFirstPage)
+                CVGradientButton(text = stringResource(R.string.common_retry), onClick = viewModel::loadFirstPage)
             }
         }
         else -> {
@@ -611,9 +613,9 @@ private fun TvPopularList(onTvShowClick: (Int) -> Unit, offlineMessageState: Off
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SortChip(label = SortMode.POPULAR.label, selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
-        SortChip(label = SortMode.TOP_RATED.label, selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
-        SortChip(label = SortMode.APP_RATING.label, selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
+        SortChip(label = stringResource(SortMode.POPULAR.labelRes), selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
+        SortChip(label = stringResource(SortMode.TOP_RATED.labelRes), selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
+        SortChip(label = stringResource(SortMode.APP_RATING.labelRes), selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
     }
 
     when {
@@ -630,7 +632,7 @@ private fun TvPopularList(onTvShowClick: (Int) -> Unit, offlineMessageState: Off
             ) {
                 Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
-                CVGradientButton(text = "Tekrar Dene", onClick = viewModel::loadFirstPage)
+                CVGradientButton(text = stringResource(R.string.common_retry), onClick = viewModel::loadFirstPage)
             }
         }
         else -> {
@@ -748,9 +750,9 @@ private fun TvOnAirList(onTvShowClick: (Int) -> Unit, offlineMessageState: Offli
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SortChip(label = SortMode.POPULAR.label, selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
-        SortChip(label = SortMode.TOP_RATED.label, selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
-        SortChip(label = SortMode.APP_RATING.label, selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
+        SortChip(label = stringResource(SortMode.POPULAR.labelRes), selected = sortMode == SortMode.POPULAR, onClick = { sortMode = SortMode.POPULAR })
+        SortChip(label = stringResource(SortMode.TOP_RATED.labelRes), selected = sortMode == SortMode.TOP_RATED, onClick = { sortMode = SortMode.TOP_RATED })
+        SortChip(label = stringResource(SortMode.APP_RATING.labelRes), selected = sortMode == SortMode.APP_RATING, onClick = { sortMode = SortMode.APP_RATING })
     }
 
     when {
@@ -767,7 +769,7 @@ private fun TvOnAirList(onTvShowClick: (Int) -> Unit, offlineMessageState: Offli
             ) {
                 Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
-                CVGradientButton(text = "Tekrar Dene", onClick = viewModel::loadFirstPage)
+                CVGradientButton(text = stringResource(R.string.common_retry), onClick = viewModel::loadFirstPage)
             }
         }
         else -> {

@@ -24,6 +24,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import com.arda.cineverse.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -165,7 +167,7 @@ fun MovieListItemCard(
                     Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        "Detaylar",
+                        stringResource(R.string.common_details),
                         color = Primary,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
@@ -182,12 +184,12 @@ fun MovieListItemCard(
                         .clickable { onAddToListClick() },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Listeye ekle", tint = OnSurface, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.movie_list_item_add_cd), tint = OnSurface, modifier = Modifier.size(16.dp))
                 }
                 Spacer(Modifier.weight(1f))
                 Icon(
                     if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = "Favori",
+                    contentDescription = stringResource(R.string.movie_list_item_favorite_cd),
                     tint = if (isFavorite) ErrorColor else TextSecondary,
                     modifier = Modifier.size(22.dp).clickable { onFavoriteClick() },
                 )

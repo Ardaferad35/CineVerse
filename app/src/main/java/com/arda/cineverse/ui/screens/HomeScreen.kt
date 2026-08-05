@@ -41,8 +41,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.arda.cineverse.R
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
@@ -337,7 +339,7 @@ fun HomeScreen(
                         Text(uiState.errorMessage!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(16.dp))
                         CVGradientButton(
-                            text = "Tekrar Dene",
+                            text = stringResource(R.string.common_retry),
                             onClick = {
                                 if (selectedHomeMode == HomeMode.TV_SHOWS) {
                                     homeViewModel.loadTvShows()
@@ -364,7 +366,7 @@ fun HomeScreen(
                                 ) {
                                     CircularProgressIndicator(color = Primary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                                     Spacer(Modifier.width(10.dp))
-                                    Text("Aran\u0131yor...", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    Text(stringResource(R.string.home_searching), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                             uiState.searchSuggestions.isNotEmpty() -> {
@@ -382,7 +384,7 @@ fun HomeScreen(
                                         .background(Surface)
                                         .padding(16.dp),
                                 ) {
-                                    Text("Sonu\u00E7 bulunamad\u0131", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                                    Text(stringResource(R.string.home_no_results), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }
@@ -400,7 +402,7 @@ fun HomeScreen(
                                 item {
                                     FeaturedMovieBanner(
                                         movie = featuredTv.toFeaturedMovie(),
-                                        label = "GÜNÜN DİZİSİ",
+                                        label = stringResource(R.string.home_tv_of_the_day),
                                         onDetailsClick = { onTvShowClick(featuredTv.id) },
                                         onAddToListClick = { toggleFeaturedTvWatchlist(featuredTv) },
                                         onLongClick = {
@@ -455,7 +457,7 @@ fun HomeScreen(
                                     HomeSectionHeader(
                                         icon = Icons.Filled.Recommend,
                                         iconTint = Primary,
-                                        title = "Sizin \u0130\u00E7in \u00D6nerilenler",
+                                        title = stringResource(R.string.home_section_recommended),
                                         showSeeAll = false,
                                     )
                                     LazyRow(
@@ -498,7 +500,7 @@ fun HomeScreen(
                                 HomeSectionHeader(
                                     icon = Icons.Filled.LocalFireDepartment,
                                     iconTint = Color(0xFFFF7A45),
-                                    title = if (uiState.isTvMode) "Pop\u00FCler Diziler" else "Pop\u00FCler Filmler",
+                                    title = if (uiState.isTvMode) stringResource(R.string.movie_list_source_tv_popular) else stringResource(R.string.movie_list_source_popular),
                                     onSeeAllClick = { onSeeAllClick(if (uiState.isTvMode) "popular_tv" else "popular") },
                                     showSeeAll = true,
                                 )
@@ -542,7 +544,7 @@ fun HomeScreen(
                                     HomeSectionHeader(
                                         icon = Icons.Filled.Star,
                                         iconTint = Color(0xFFFFC857),
-                                        title = "En \u00C7ok Be\u011Fenilenler",
+                                        title = stringResource(R.string.home_section_top_rated),
                                         showSeeAll = false,
                                     )
                                     LazyRow(
@@ -580,7 +582,7 @@ fun HomeScreen(
                                     HomeSectionHeader(
                                         icon = Icons.Filled.CalendarMonth,
                                         iconTint = Accent,
-                                        title = "\u015Eu An Yay\u0131nda",
+                                        title = stringResource(R.string.movie_list_source_tv_on_air),
                                         onSeeAllClick = { onSeeAllClick("on_air_tv") },
                                         showSeeAll = true,
                                     )
@@ -617,7 +619,7 @@ fun HomeScreen(
                                         HomeSectionHeader(
                                             icon = Icons.Filled.CalendarMonth,
                                             iconTint = Accent,
-                                            title = "Yak\u0131nda Yay\u0131nlanacak Diziler",
+                                            title = stringResource(R.string.movie_list_source_tv_upcoming),
                                             onSeeAllClick = { onSeeAllClick("upcoming_tv") },
                                         )
                                         LazyRow(
@@ -649,7 +651,7 @@ fun HomeScreen(
                                     HomeSectionHeader(
                                         icon = Icons.Filled.CalendarMonth,
                                         iconTint = Accent,
-                                        title = "Yak\u0131nda Vizyona Girecekler",
+                                        title = stringResource(R.string.movie_list_source_upcoming),
                                         onSeeAllClick = { onSeeAllClick("upcoming") },
                                     )
                                     LazyRow(
@@ -681,7 +683,7 @@ fun HomeScreen(
                                 HomeSectionHeader(
                                     icon = Icons.Filled.GridView,
                                     iconTint = Primary,
-                                    title = "Kategoriler",
+                                    title = stringResource(R.string.home_section_categories),
                                     showSeeAll = false,
                                 )
                                 LazyRow(

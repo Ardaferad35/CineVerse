@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.arda.cineverse.R
 import com.arda.cineverse.data.model.CastMember
 import com.arda.cineverse.data.model.Comment
 import com.arda.cineverse.ui.theme.*
@@ -54,7 +56,7 @@ fun ExpandableOverview(text: String, modifier: Modifier = Modifier) {
         if (text.length > 120) {
             Spacer(Modifier.height(4.dp))
             Text(
-                if (expanded) "Daha az" else "Daha fazla",
+                if (expanded) stringResource(R.string.comment_show_less) else stringResource(R.string.comment_show_more),
                 color = Primary,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -137,7 +139,7 @@ fun CastSpotlightDialog(
                             .clip(CircleShape)
                             .background(SurfaceVariant),
                     ) {
-                        Icon(Icons.Filled.Close, contentDescription = "Kapat", tint = OnSurface, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.common_close), tint = OnSurface, modifier = Modifier.size(16.dp))
                     }
                 }
 
@@ -189,7 +191,7 @@ fun CastSpotlightDialog(
                         Icon(Icons.Filled.TheaterComedy, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = cast.character.ifBlank { "Oyuncu" },
+                            text = cast.character.ifBlank { stringResource(R.string.comment_actor_fallback) },
                             color = Primary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -225,17 +227,18 @@ fun RatingDistributionBar(star: Int, count: Int, total: Int, modifier: Modifier 
     }
 }
 
+@Composable
 fun timeAgo(millis: Long): String {
     val diff = System.currentTimeMillis() - millis
     val minutes = diff / 60000
     val hours = diff / 3600000
     val days = diff / 86400000
     return when {
-        minutes < 1 -> "az önce"
-        minutes < 60 -> "$minutes dakika önce"
-        hours < 24 -> "$hours saat önce"
-        days < 7 -> "$days gün önce"
-        else -> "${days / 7} hafta önce"
+        minutes < 1 -> stringResource(R.string.time_ago_just_now)
+        minutes < 60 -> stringResource(R.string.time_ago_minutes, minutes.toInt())
+        hours < 24 -> stringResource(R.string.time_ago_hours, hours.toInt())
+        days < 7 -> stringResource(R.string.time_ago_days, days.toInt())
+        else -> stringResource(R.string.time_ago_weeks, (days / 7).toInt())
     }
 }
 
@@ -267,7 +270,7 @@ fun CommentItem(
                 Text(timeAgo(comment.createdAt), color = TextSecondary, style = MaterialTheme.typography.labelSmall)
                 if (comment.editedAt != null) {
                     Spacer(Modifier.width(6.dp))
-                    Text("(düzenlendi)", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.comment_edited_suffix), color = TextSecondary, style = MaterialTheme.typography.labelSmall)
                 }
             }
             if (!isReply) {
@@ -295,9 +298,9 @@ fun CommentItem(
                 ) {
                     Icon(Icons.Filled.Warning, contentDescription = null, tint = StarColor, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Bu yorum spoiler içeriyor", color = TextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.comment_spoiler_warning), color = TextSecondary, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     Text(
-                        "Göster",
+                        stringResource(R.string.comment_reveal_spoiler),
                         color = Primary,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
@@ -313,7 +316,7 @@ fun CommentItem(
                     if (isOwner) {
                         if (!isReply) {
                             Text(
-                                "Düzenle",
+                                stringResource(R.string.comment_edit),
                                 color = Primary,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
@@ -322,7 +325,7 @@ fun CommentItem(
                             Spacer(Modifier.width(16.dp))
                         }
                         Text(
-                            "Sil",
+                            stringResource(R.string.comment_delete),
                             color = ErrorColor,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
@@ -332,7 +335,7 @@ fun CommentItem(
                     }
                     if (onReplyClick != null) {
                         Text(
-                            "Yanıtla",
+                            stringResource(R.string.comment_reply),
                             color = TextSecondary,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
@@ -350,7 +353,7 @@ fun CommentInputBox(
     initialText: String = "",
     initialRating: Int = 5,
     initialSpoiler: Boolean = false,
-    submitLabel: String = "Yorumu Paylaş",
+    submitLabel: String = stringResource(R.string.comment_submit_default_label),
     onSubmit: (text: String, rating: Int, isSpoiler: Boolean) -> Unit,
     onCancel: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -370,7 +373,7 @@ fun CommentInputBox(
             repeat(5) { i ->
                 Icon(
                     if (i < rating) Icons.Filled.Star else Icons.Filled.StarBorder,
-                    contentDescription = "${i + 1} yıldız",
+                    contentDescription = stringResource(R.string.comment_star_rating_cd, i + 1),
                     tint = StarColor,
                     modifier = Modifier.size(26.dp).clickable { rating = i + 1 },
                 )
@@ -386,7 +389,7 @@ fun CommentInputBox(
                 .padding(10.dp),
         ) {
             if (text.isEmpty()) {
-                Text("Film hakkında düşüncelerini yaz...", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.comment_placeholder), color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             }
             BasicTextField(
                 value = text,
@@ -409,12 +412,12 @@ fun CommentInputBox(
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(6.dp))
-                Text("Spoiler içeriyor", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.comment_spoiler_checkbox), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.weight(1f))
             if (onCancel != null) {
                 Text(
-                    "Vazgeç",
+                    stringResource(R.string.common_cancel),
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.clickable { onCancel() }.padding(end = 14.dp),
@@ -474,7 +477,7 @@ fun ReplyInputBox(
                 .padding(10.dp),
         ) {
             if (text.isEmpty()) {
-                Text("Yanıt yaz...", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.comment_reply_placeholder), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
             BasicTextField(
                 value = text,
@@ -488,7 +491,7 @@ fun ReplyInputBox(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Spacer(Modifier.weight(1f))
             Text(
-                "Vazgeç",
+                stringResource(R.string.common_cancel),
                 color = TextSecondary,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.clickable { onCancel() }.padding(end = 14.dp),
@@ -506,7 +509,7 @@ fun ReplyInputBox(
                     .clickable(enabled = text.isNotBlank()) { onSubmit(text.trim()) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
-                Text("Yanıtla", color = OnPrimary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.comment_reply), color = OnPrimary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -529,20 +532,20 @@ fun MovieDetailStickyBar(
             .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        StickyBarItem(icon = Icons.Filled.Home, label = "Ana Sayfa", tint = TextSecondary, onClick = onHomeClick)
+        StickyBarItem(icon = Icons.Filled.Home, label = stringResource(R.string.movie_detail_sticky_home), tint = TextSecondary, onClick = onHomeClick)
         StickyBarItem(
             icon = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-            label = "Favori",
+            label = stringResource(R.string.movie_detail_sticky_favorite),
             tint = if (isFavorite) ErrorColor else TextSecondary,
             onClick = onFavoriteClick,
         )
         StickyBarItem(
             icon = if (isSaved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-            label = "Kaydet",
+            label = stringResource(R.string.movie_detail_sticky_save),
             tint = if (isSaved) Primary else TextSecondary,
             onClick = onSaveClick,
         )
-        StickyBarItem(icon = Icons.Filled.Star, label = "Puan Ver", tint = StarColor, onClick = onRateClick)
+        StickyBarItem(icon = Icons.Filled.Star, label = stringResource(R.string.movie_detail_sticky_rate), tint = StarColor, onClick = onRateClick)
     }
 }
 
