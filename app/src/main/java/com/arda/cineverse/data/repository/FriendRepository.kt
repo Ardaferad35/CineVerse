@@ -45,10 +45,10 @@ class UsernameTakenException : Exception("Bu kullanıcı adı zaten alınmış")
  * bu yüzden sadece push'un başarısızlığı sessizce yutulur (runCatching).
  */
 class FriendRepository @Inject constructor(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val friendDao: FriendDao = AppGraph.friendDao,
-    private val connectivityObserver: ConnectivityObserver = AppGraph.connectivityObserver,
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth,
+    private val friendDao: FriendDao,
+    private val connectivityObserver: ConnectivityObserver,
 ) {
     private fun requireUid(): String = auth.currentUser?.uid ?: error("Giriş yapmalısınız")
 
@@ -438,6 +438,14 @@ class FriendRepository @Inject constructor(
 
     companion object {
         val USERNAME_REGEX = Regex("^[a-z0-9_]{3,20}$")
+
+        // bkz. MovieRepository.Companion.default() — aynı gerekçe.
+        fun default(): FriendRepository = FriendRepository(
+            firestore = FirebaseFirestore.getInstance(),
+            auth = FirebaseAuth.getInstance(),
+            friendDao = AppGraph.friendDao,
+            connectivityObserver = AppGraph.connectivityObserver,
+        )
     }
 }
 

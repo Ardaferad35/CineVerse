@@ -54,7 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.arda.cineverse.data.model.Friend
 import com.arda.cineverse.data.model.FriendActivity
@@ -84,7 +84,7 @@ fun FriendsScreen(
     onBack: () -> Unit = {},
     onMovieClick: (Int) -> Unit = {},
     onTvShowClick: (Int) -> Unit = {},
-    viewModel: FriendsViewModel = viewModel(),
+    viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     Box(modifier = Modifier.fillMaxSize().background(Background)) {
         FriendsContent(
@@ -161,7 +161,7 @@ private fun FriendsContent(
     onClose: () -> Unit,
     onMovieClick: (Int) -> Unit = {},
     onTvShowClick: (Int) -> Unit = {},
-    viewModel: FriendsViewModel = viewModel(),
+    viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 

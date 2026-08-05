@@ -10,10 +10,12 @@ import com.arda.cineverse.data.model.UserChatMessage
 import com.arda.cineverse.data.repository.AiChatException
 import com.arda.cineverse.data.repository.AiChatRepository
 import com.arda.cineverse.data.repository.RecommendationRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class AiChatUiState(
     /** Ana sayfadaki Filmler/Diziler seçimiyle geliyor; asistanın kimliğini bu belirliyor. */
@@ -24,9 +26,10 @@ data class AiChatUiState(
     val isThinking: Boolean = false,
 )
 
-class AiChatViewModel(
-    private val chatRepository: AiChatRepository = AiChatRepository(),
-    private val recommendationRepository: RecommendationRepository = RecommendationRepository.default(),
+@HiltViewModel
+class AiChatViewModel @Inject constructor(
+    private val chatRepository: AiChatRepository,
+    private val recommendationRepository: RecommendationRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AiChatUiState())

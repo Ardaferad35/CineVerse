@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.arda.cineverse.data.model.AiChatMessage
 import com.arda.cineverse.data.model.AiMovieSuggestion
 import com.arda.cineverse.data.model.ChatErrorMessage
@@ -59,7 +59,7 @@ fun AiChatScreen(
     onMovieClick: (movieId: Int) -> Unit = {},
     onTvShowClick: (tvId: Int) -> Unit = {},
     onNavigateTab: (Int) -> Unit = {},
-    viewModel: AiChatViewModel = viewModel(),
+    viewModel: AiChatViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()

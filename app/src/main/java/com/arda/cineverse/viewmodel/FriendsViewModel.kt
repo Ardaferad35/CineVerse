@@ -6,11 +6,13 @@ import com.arda.cineverse.data.model.Friend
 import com.arda.cineverse.data.model.FriendRequest
 import com.arda.cineverse.data.model.FriendSearchResult
 import com.arda.cineverse.data.repository.FriendRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 enum class FriendsTab { FRIENDS, REQUESTS }
 
@@ -45,8 +47,9 @@ data class FriendsUiState(
         get() = searchResult != null && searchResult.uid in sentRequestUids
 }
 
-class FriendsViewModel(
-    private val repository: FriendRepository = FriendRepository(),
+@HiltViewModel
+class FriendsViewModel @Inject constructor(
+    private val repository: FriendRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FriendsUiState())

@@ -8,10 +8,12 @@ import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.repository.CommentRepository
 import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.UserListRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.round
+import javax.inject.Inject
 
 enum class MyListTab { FAVORITES, WATCHLIST }
 
@@ -96,11 +98,14 @@ data class MyListUiState(
         }
 }
 
-class MyListViewModel(
-    private val repository: UserListRepository = UserListRepository.default(),
-    private val recommendationRepository: RecommendationRepository = RecommendationRepository.default(),
-    private val commentRepository: CommentRepository = CommentRepository(),
+@HiltViewModel
+class MyListViewModel @Inject constructor(
+    private val repository: UserListRepository,
+    private val recommendationRepository: RecommendationRepository,
 ) : ViewModel() {
+    // CommentRepository, Hilt'e taşınmadı — bkz. CommentRepository dosyasındaki
+    // gerekçe (ekrana göre değişen koleksiyon adı, DI bağımlılığı değil config).
+    private val commentRepository: CommentRepository = CommentRepository()
 
     private val _uiState = MutableStateFlow(MyListUiState())
     val uiState: StateFlow<MyListUiState> = _uiState

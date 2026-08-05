@@ -1,7 +1,7 @@
 package com.arda.cineverse.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.arda.cineverse.data.common.GENERIC_WRITE_FAILURE_MESSAGE
 import com.arda.cineverse.data.common.OfflineWriteException
@@ -11,9 +11,11 @@ import com.arda.cineverse.data.model.TvShowDetail
 import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.TvRepository
 import com.arda.cineverse.data.repository.UserListRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class TvShowDetailUiState(
     val isLoading: Boolean = true,
@@ -58,12 +60,18 @@ private fun TvShowDetail.toSavedMovie() = SavedMovie(
     mediaType = "tv",
 )
 
-class TvShowDetailViewModel(
-    private val tvId: Int,
-    private val tvRepository: TvRepository = TvRepository.default(),
-    private val userListRepository: UserListRepository = UserListRepository.default(),
-    private val recommendationRepository: RecommendationRepository = RecommendationRepository.default(),
+@HiltViewModel
+class TvShowDetailViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val tvRepository: TvRepository,
+    private val userListRepository: UserListRepository,
+    private val recommendationRepository: RecommendationRepository,
 ) : ViewModel() {
+
+    // "tvId", CineVerseNavGraph'taki TV_DETAIL rotasının nav argument adıyla
+    // birebir aynı olmalı — Hilt bu SavedStateHandle'ı o backstack kaydının
+    // argümanlarından otomatik dolduruyor.
+    private val tvId: Int = checkNotNull(savedStateHandle["tvId"]) { "tvId eksik" }
 
     private val _uiState = MutableStateFlow(TvShowDetailUiState())
     val uiState: StateFlow<TvShowDetailUiState> = _uiState
@@ -166,12 +174,5 @@ class TvShowDetailViewModel(
 
     fun clearOfflineMessage() {
         _uiState.value = _uiState.value.copy(offlineMessage = null)
-    }
-}
-
-class TvShowDetailViewModelFactory(private val tvId: Int) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return TvShowDetailViewModel(tvId) as T
     }
 }

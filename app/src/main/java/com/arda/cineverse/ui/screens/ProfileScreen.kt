@@ -51,7 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.arda.cineverse.ui.components.avatarPresetById
 import com.arda.cineverse.ui.components.avatarPresets
 import com.arda.cineverse.ui.theme.Background
@@ -76,7 +76,7 @@ fun ProfileScreen(
     onBack: () -> Unit = {},
     onSignedOut: () -> Unit = {},
     onNavigateToFriends: () -> Unit = {},
-    viewModel: ProfileViewModel = viewModel(),
+    viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val userPreferencesRepository = remember { UserPreferencesRepository(context) }

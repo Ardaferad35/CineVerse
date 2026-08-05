@@ -3,7 +3,7 @@ package com.arda.cineverse.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -81,13 +81,13 @@ fun CineVerseNavGraph(
     // bir örnek olurdu — Bildirimler ekranında hepsini okundu işaretlemek,
     // Home'daki tamamen farklı objeye ait rozeti hiç etkilemezdi (rozet eski
     // değerde donup kalırdı, tam da bu bug).
-    val notificationViewModel: NotificationViewModel = viewModel()
+    val notificationViewModel: NotificationViewModel = hiltViewModel()
 
     // Sohbet geçmişi oturum boyunca korunsun diye ViewModel burada, NavHost'un
     // dışında oluşturuluyor: composable(AI_CHAT) { } içinde yaratılsaydı örnek
     // o backstack kaydına bağlı olurdu ve sekmeden çıkıp dönen kullanıcı her
     // seferinde bomboş bir sohbete düşerdi.
-    val aiChatViewModel: AiChatViewModel = viewModel()
+    val aiChatViewModel: AiChatViewModel = hiltViewModel()
 
     // Bildirime dokunularak açılışta (soğuk başlangıç) veya uygulama zaten
     // açıkken (onNewIntent) tetiklenir. Giriş yapılmamışsa hedefe gitmenin

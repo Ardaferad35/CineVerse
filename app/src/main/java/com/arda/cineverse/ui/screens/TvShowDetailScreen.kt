@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import androidx.compose.runtime.LaunchedEffect
@@ -98,7 +99,6 @@ import com.arda.cineverse.viewmodel.CommentViewModel
 import com.arda.cineverse.viewmodel.CommentViewModelFactory
 import com.arda.cineverse.viewmodel.RecommendShareViewModel
 import com.arda.cineverse.viewmodel.TvShowDetailViewModel
-import com.arda.cineverse.viewmodel.TvShowDetailViewModelFactory
 import kotlinx.coroutines.launch
 
 private val StarColorTvDetail = Color(0xFFFFC857)
@@ -117,7 +117,7 @@ fun TvShowDetailScreen(
     onBack: () -> Unit = {},
     onGoHome: () -> Unit = {},
     onTvShowClick: (Int) -> Unit = {},
-    tvShowDetailViewModel: TvShowDetailViewModel = viewModel(factory = TvShowDetailViewModelFactory(tvId)),
+    tvShowDetailViewModel: TvShowDetailViewModel = hiltViewModel(),
     commentViewModel: CommentViewModel = viewModel(
         factory = CommentViewModelFactory(
             movieId = tvId,
@@ -181,7 +181,7 @@ fun TvShowDetailScreen(
     var selectedCast by remember { mutableStateOf<com.arda.cineverse.data.model.CastMember?>(null) }
     val commentBoxRequester = remember { BringIntoViewRequester() }
 
-    val recommendShareViewModel: RecommendShareViewModel = viewModel()
+    val recommendShareViewModel: RecommendShareViewModel = hiltViewModel()
     val shareState by recommendShareViewModel.uiState.collectAsState()
     var showShareSheet by remember { mutableStateOf(false) }
     var shareSentMessage by remember { mutableStateOf<String?>(null) }
