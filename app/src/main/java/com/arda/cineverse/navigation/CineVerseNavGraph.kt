@@ -180,6 +180,7 @@ fun CineVerseNavGraph(
                 },
                 onProfileClick = { navController.navigate(CVRoutes.PROFILE) },
                 onNotificationsClick = { navController.navigate(CVRoutes.NOTIFICATIONS) },
+                onFriendsClick = { navController.navigate(CVRoutes.FRIENDS) },
             )
         }
         composable(
