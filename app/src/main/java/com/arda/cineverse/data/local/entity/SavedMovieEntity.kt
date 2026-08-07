@@ -1,6 +1,7 @@
 package com.arda.cineverse.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 
 /**
  * Firestore'daki "users/{uid}/favorites" ve "users/{uid}/watchlist"
@@ -8,7 +9,14 @@ import androidx.room.Entity
  * doğrudan Firestore'a gider; bu tablo sadece internet olmadan da
  * favoriler/izleme listesinin görüntülenebilmesi için var.
  */
-@Entity(tableName = "saved_movies", primaryKeys = ["mediaId", "mediaType", "listType"])
+@Entity(
+    tableName = "saved_movies",
+    primaryKeys = ["mediaId", "mediaType", "listType"],
+    indices = [
+        Index(value = ["listType"]),
+        Index(value = ["listType", "addedAt"]),
+    ],
+)
 data class SavedMovieEntity(
     val mediaId: Int,
     val mediaType: String,
