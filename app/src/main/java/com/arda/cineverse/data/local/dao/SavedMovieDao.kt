@@ -30,6 +30,9 @@ interface SavedMovieDao {
     @Query("SELECT EXISTS(SELECT 1 FROM saved_movies WHERE mediaId = :mediaId AND mediaType = :mediaType AND listType = :listType)")
     suspend fun exists(mediaId: Int, mediaType: String, listType: String): Boolean
 
+    @Query("SELECT COUNT(*) FROM saved_movies WHERE listType = :listType")
+    suspend fun countByListType(listType: String): Int
+
     @Query("DELETE FROM saved_movies WHERE listType = :listType")
     suspend fun clear(listType: String)
 

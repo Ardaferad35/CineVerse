@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+
 private val Context.dataStore by preferencesDataStore(name = "cineverse_preferences")
 
 /**
@@ -29,6 +32,10 @@ class UserPreferencesRepository @Inject constructor(
         val IS_DARK_THEME = booleanPreferencesKey("is_dark_theme")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val HOME_LAST_SYNCED_AT = longPreferencesKey("home_last_synced_at")
+        val CACHED_USERNAME = stringPreferencesKey("cached_username")
+        val CACHED_AVATAR_ID = stringPreferencesKey("cached_avatar_id")
+        val CACHED_RATING_SUM = longPreferencesKey("cached_rating_sum")
+        val CACHED_RATING_COUNT = intPreferencesKey("cached_rating_count")
     }
 
     val userPreferences: Flow<UserPreferences> = context.dataStore.data.map { prefs ->
@@ -36,6 +43,10 @@ class UserPreferencesRepository @Inject constructor(
             isDarkTheme = prefs[Keys.IS_DARK_THEME] ?: true,
             notificationsEnabled = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
             homeLastSyncedAt = prefs[Keys.HOME_LAST_SYNCED_AT],
+            cachedUsername = prefs[Keys.CACHED_USERNAME] ?: "",
+            cachedAvatarId = prefs[Keys.CACHED_AVATAR_ID] ?: "default",
+            cachedRatingSum = prefs[Keys.CACHED_RATING_SUM] ?: 0L,
+            cachedRatingCount = prefs[Keys.CACHED_RATING_COUNT] ?: 0,
         )
     }
 
@@ -49,5 +60,14 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setHomeLastSyncedAt(timestamp: Long) {
         context.dataStore.edit { it[Keys.HOME_LAST_SYNCED_AT] = timestamp }
+    }
+
+    suspend fun saveCachedProfile(username: String, avatarId: String, ratingSum: Long, ratingCount: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.CACHED_USERNAME] = username
+            prefs[Keys.CACHED_AVATAR_ID] = avatarId
+            prefs[Keys.CACHED_RATING_SUM] = ratingSum
+            prefs[Keys.CACHED_RATING_COUNT] = ratingCount
+        }
     }
 }

@@ -8,6 +8,8 @@ import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
+import com.google.firebase.firestore.Source
+
 class NotificationRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
@@ -23,13 +25,17 @@ class NotificationRepository @Inject constructor(
 
     suspend fun getNotifications(): Result<List<AppNotification>> = runCatching {
         val uid = auth.currentUser?.uid ?: return@runCatching emptyList()
-        notificationsCollection(uid)
+        val query = notificationsCollection(uid)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(50)
-            .get()
-            .await()
-            .documents
-            .mapNotNull { doc -> doc.toObject(AppNotification::class.java)?.copy(id = doc.id) }
+
+        val snapshot = try {
+            query.get(Source.DEFAULT).await()
+        } catch (e: Exception) {
+            query.get(Source.CACHE).await()
+        }
+
+        snapshot.documents.mapNotNull { doc -> doc.toObject(AppNotification::class.java)?.copy(id = doc.id) }
     }
 
     // count() aggregate sorgusu: belgelerin kendisini indirmeden sunucuda
@@ -37,13 +43,12 @@ class NotificationRepository @Inject constructor(
     // (hem gereksiz bant genişliği hem belge başına okuma maliyeti).
     suspend fun getUnreadCount(): Result<Int> = runCatching {
         val uid = auth.currentUser?.uid ?: return@runCatching 0
-        notificationsCollection(uid)
-            .whereEqualTo("isRead", false)
-            .count()
-            .get(AggregateSource.SERVER)
-            .await()
-            .count
-            .toInt()
+        val query = notificationsCollection(uid).whereEqualTo("isRead", false)
+        try {
+            query.count().get(AggregateSource.SERVER).await().count.toInt()
+        } catch (e: Exception) {
+            query.get(Source.CACHE).await().size()
+        }
     }
 
     suspend fun markAsRead(notificationId: String): Result<Unit> = runCatching {
@@ -58,11 +63,16 @@ class NotificationRepository @Inject constructor(
      */
     suspend fun markAllAsRead(): Result<Unit> = runCatching {
         val uid = auth.currentUser?.uid ?: return@runCatching
-        val unread = notificationsCollection(uid).whereEqualTo("isRead", false).get().await()
+        val unread = try {
+            notificationsCollection(uid).whereEqualTo("isRead", false).get(Source.DEFAULT).await()
+        } catch (e: Exception) {
+            notificationsCollection(uid).whereEqualTo("isRead", false).get(Source.CACHE).await()
+        }
+        if (unread.documents.isEmpty()) return@runCatching
         unread.documents.chunked(500).forEach { chunk ->
             val batch = firestore.batch()
             chunk.forEach { doc -> batch.update(doc.reference, "isRead", true) }
-            batch.commit().await()
+            runCatching { batch.commit().await() }
         }
     }
 

@@ -12,6 +12,10 @@ import com.arda.cineverse.data.repository.UserListRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.round
 import javax.inject.Inject
@@ -112,30 +116,30 @@ class MyListViewModel @Inject constructor(
     val uiState: StateFlow<MyListUiState> = _uiState
 
     init {
+        observeSavedMovies()
         loadAll()
+    }
+
+    private fun observeSavedMovies() {
+        combine(repository.observeFavorites(), repository.observeWatchlist()) { favorites, watchlist ->
+            favorites to watchlist
+        }.onEach { (favorites, watchlist) ->
+            _uiState.update { state ->
+                state.copy(
+                    isLoading = false,
+                    favorites = favorites,
+                    watchlist = watchlist,
+                    errorMessage = null,
+                )
+            }
+            fetchAppRatings(favorites + watchlist)
+        }.launchIn(viewModelScope)
     }
 
     fun loadAll() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            val favResult = repository.getFavorites()
-            val watchResult = repository.getWatchlist()
-            val favorites = favResult.getOrNull()
-            val watchlist = watchResult.getOrNull()
-
-            if (favorites != null && watchlist != null) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    favorites = favorites,
-                    watchlist = watchlist,
-                )
-                fetchAppRatings(favorites + watchlist)
-            } else {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = "Liste yüklenemedi. İnternet bağlantınızı kontrol edin.",
-                )
-            }
+            repository.syncFavoritesAndWatchlist()
+            repository.processPendingActions()
         }
     }
 
