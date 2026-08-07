@@ -18,6 +18,11 @@ import kotlinx.coroutines.tasks.await
 import kotlin.math.round
 import javax.inject.Inject
 
+import com.arda.cineverse.data.local.dao.SavedMovieDao
+import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
+
 data class ProfileUiState(
     val isLoading: Boolean = true,
     val username: String = "",
@@ -34,6 +39,8 @@ class ProfileViewModel @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
     private val friendRepository: FriendRepository,
+    private val savedMovieDao: SavedMovieDao,
+    private val userPreferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -51,52 +58,78 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            // Üç bağımsız Firestore çağrısı paralel (eskiden sırayla bekleniyordu);
-            // sayımlar count() aggregate ile sunucuda yapılıyor — tüm favori/izleme
-            // belgelerini indirip .size almaya gerek yok.
-            val userDocDeferred = uid?.let { id ->
-                async { runCatching { firestore.collection("users").document(id).get().await() }.getOrNull() }
-            }
-            val favoritesCountDeferred = uid?.let { id ->
-                async {
-                    runCatching {
-                        firestore.collection("users").document(id).collection("favorites")
-                            .count().get(AggregateSource.SERVER).await().count.toInt()
-                    }.getOrNull()
-                }
-            }
-            val watchlistCountDeferred = uid?.let { id ->
-                async {
-                    runCatching {
-                        firestore.collection("users").document(id).collection("watchlist")
-                            .count().get(AggregateSource.SERVER).await().count.toInt()
-                    }.getOrNull()
-                }
-            }
+            // 1. Önce DataStore ve Room'daki yerel önbellek verisini yükleyelim (çevrimdışı anında açılış için)
+            val prefs = runCatching { userPreferencesRepository.userPreferences.first() }.getOrNull()
+            val localFavCount = runCatching { savedMovieDao.countByListType("FAVORITE") }.getOrDefault(0)
+            val localWatchCount = runCatching { savedMovieDao.countByListType("WATCHLIST") }.getOrDefault(0)
 
-            val userDoc = userDocDeferred?.await()
-            val username = userDoc?.getString("username") ?: ""
-            val avatarId = userDoc?.getString("avatarId") ?: "default"
-            val favoritesCount = favoritesCountDeferred?.await() ?: 0
-            val watchlistCount = watchlistCountDeferred?.await() ?: 0
-
-            // ratingSum/ratingCount, her yorum eklendikçe/düzenlendikçe/silindikçe
-            // CommentRepository tarafından anlık güncellenen alanlar — burada sadece
-            // okuyup ortalamayı hesaplıyoruz, hiçbir tarama sorgusu gerekmiyor.
-            val ratingSum = userDoc?.getLong("ratingSum") ?: 0L
-            val ratingsCount = userDoc?.getLong("ratingCount")?.toInt() ?: 0
-            val avgRating = if (ratingsCount > 0) round((ratingSum.toDouble() / ratingsCount) * 10) / 10.0 else 0.0
+            val fallbackUsername = prefs?.cachedUsername?.takeIf { it.isNotBlank() }
+                ?: user?.displayName?.takeIf { it.isNotBlank() }
+                ?: email.substringBefore("@").ifBlank { "Kullanıcı" }
+            val fallbackAvatarId = prefs?.cachedAvatarId?.takeIf { it.isNotBlank() } ?: "default"
+            val fallbackRatingSum = prefs?.cachedRatingSum ?: 0L
+            val fallbackRatingsCount = prefs?.cachedRatingCount ?: 0
+            val fallbackAvgRating = if (fallbackRatingsCount > 0) round((fallbackRatingSum.toDouble() / fallbackRatingsCount) * 10) / 10.0 else 0.0
 
             _uiState.value = ProfileUiState(
                 isLoading = false,
-                username = username,
+                username = fallbackUsername,
                 email = email,
-                avatarId = avatarId,
-                favoritesCount = favoritesCount,
-                watchlistCount = watchlistCount,
-                averageRatingGiven = avgRating,
-                ratingsGivenCount = ratingsCount,
+                avatarId = fallbackAvatarId,
+                favoritesCount = localFavCount,
+                watchlistCount = localWatchCount,
+                averageRatingGiven = fallbackAvgRating,
+                ratingsGivenCount = fallbackRatingsCount,
             )
+
+            // 2. İnternet varsa Firestore'dan güncel veriyi paralel çek ve DataStore'a kaydet
+            if (uid != null) {
+                runCatching {
+                    coroutineScope {
+                        val userDocDeferred = async { runCatching { firestore.collection("users").document(uid).get().await() }.getOrNull() }
+                        val favoritesCountDeferred = async {
+                            runCatching {
+                                firestore.collection("users").document(uid).collection("favorites")
+                                    .count().get(AggregateSource.SERVER).await().count.toInt()
+                            }.getOrNull()
+                        }
+                        val watchlistCountDeferred = async {
+                            runCatching {
+                                firestore.collection("users").document(uid).collection("watchlist")
+                                    .count().get(AggregateSource.SERVER).await().count.toInt()
+                            }.getOrNull()
+                        }
+
+                        val userDoc = userDocDeferred.await()
+                        val remoteFavs = favoritesCountDeferred.await()
+                        val remoteWatch = watchlistCountDeferred.await()
+
+                        if (userDoc != null) {
+                            val username = userDoc.getString("username")?.takeIf { it.isNotBlank() } ?: fallbackUsername
+                            val avatarId = userDoc.getString("avatarId")?.takeIf { it.isNotBlank() } ?: fallbackAvatarId
+                            val ratingSum = userDoc.getLong("ratingSum") ?: fallbackRatingSum
+                            val ratingsCount = userDoc.getLong("ratingCount")?.toInt() ?: fallbackRatingsCount
+                            val avgRating = if (ratingsCount > 0) round((ratingSum.toDouble() / ratingsCount) * 10) / 10.0 else 0.0
+
+                            val finalFavCount = remoteFavs ?: localFavCount
+                            val finalWatchCount = remoteWatch ?: localWatchCount
+
+                            _uiState.value = ProfileUiState(
+                                isLoading = false,
+                                username = username,
+                                email = email,
+                                avatarId = avatarId,
+                                favoritesCount = finalFavCount,
+                                watchlistCount = finalWatchCount,
+                                averageRatingGiven = avgRating,
+                                ratingsGivenCount = ratingsCount,
+                            )
+
+                            userPreferencesRepository.saveCachedProfile(username, avatarId, ratingSum, ratingsCount)
+                        }
+                    }
+                }
+            }
         }
     }
 

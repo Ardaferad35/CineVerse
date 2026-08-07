@@ -5,4 +5,8 @@ data class UserPreferences(
     val isDarkTheme: Boolean = true,
     val notificationsEnabled: Boolean = true,
     val homeLastSyncedAt: Long? = null,
+    val cachedUsername: String = "",
+    val cachedAvatarId: String = "default",
+    val cachedRatingSum: Long = 0L,
+    val cachedRatingCount: Int = 0,
 )
