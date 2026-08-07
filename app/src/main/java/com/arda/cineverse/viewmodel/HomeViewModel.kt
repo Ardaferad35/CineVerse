@@ -2,6 +2,8 @@ package com.arda.cineverse.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.data.common.GENERIC_WRITE_FAILURE_MESSAGE
+import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.data.common.SyncResult
 import com.arda.cineverse.data.connectivity.ConnectivityObserver
 import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
@@ -9,12 +11,14 @@ import com.arda.cineverse.data.model.Category
 import com.arda.cineverse.data.model.FeaturedMovie
 import com.arda.cineverse.data.model.FeaturedTvShow
 import com.arda.cineverse.data.model.Movie
+import com.arda.cineverse.data.model.SavedMovie
 import com.arda.cineverse.data.model.SearchSuggestion
 import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.remote.toHomeMovie
 import com.arda.cineverse.data.repository.MovieRepository
 import com.arda.cineverse.data.repository.RecommendationRepository
 import com.arda.cineverse.data.repository.TvRepository
+import com.arda.cineverse.data.repository.UserListRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -54,6 +58,16 @@ data class HomeUiState(
     val searchQuery: String = "",
     val isSearching: Boolean = false,
     val searchSuggestions: List<SearchSuggestion> = emptyList(),
+    // Favoriler/İzleme Listesi Room'dan gözlemlenir (offline-first); toggle'lar
+    // önce bu set'leri iyimser günceller, yazma başarısız olursa geri alınır.
+    val favoriteMovieIds: Set<Int> = emptySet(),
+    val favoriteTvIds: Set<Int> = emptySet(),
+    val watchlistMovieIds: Set<Int> = emptySet(),
+    val watchlistTvIds: Set<Int> = emptySet(),
+    // Room'da cache'lenmeyen tek Home bölümü: TV moduna girişte ağdan çekilir,
+    // offline'ken boş kalabilir.
+    val upcomingTvShows: List<UpcomingMovie> = emptyList(),
+    val offlineActionMessage: String? = null,
 )
 
 private data class MovieCache(
@@ -84,6 +98,7 @@ class HomeViewModel @Inject constructor(
     private val repository: MovieRepository,
     private val tvRepository: TvRepository,
     private val recommendationRepository: RecommendationRepository,
+    private val userListRepository: UserListRepository,
     private val connectivityObserver: ConnectivityObserver,
     private val userPreferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
@@ -92,18 +107,23 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState
 
     private var searchJob: Job? = null
+    private var offlineMessageJob: Job? = null
     private val isTvModeFlow = MutableStateFlow(false)
 
     init {
         observeCache()
         observeLastSyncedAt()
         observeTvShowsForDice()
+        observeSavedLists()
         // İlk açılışta (ve her yeniden bağlantı kurulduğunda) taze veri çek.
         // Offline'ken observeCache() zaten Room'daki son senkronize veriyi
         // anında gösteriyor, bu yüzden burada beklemeye gerek yok.
         viewModelScope.launch {
             connectivityObserver.isOnline.distinctUntilChanged().collect { online ->
-                if (online) refreshCurrentMode()
+                if (online) {
+                    launch { userListRepository.syncFavoritesAndWatchlist() }
+                    refreshCurrentMode()
+                }
             }
         }
     }
@@ -179,6 +199,132 @@ class HomeViewModel @Inject constructor(
         }.launchIn(viewModelScope)
     }
 
+    private fun observeSavedLists() {
+        userListRepository.observeFavorites().onEach { favorites ->
+            _uiState.value = _uiState.value.copy(
+                favoriteMovieIds = favorites.filter { it.mediaType == "movie" }.map { it.id }.toSet(),
+                favoriteTvIds = favorites.filter { it.mediaType == "tv" }.map { it.id }.toSet(),
+            )
+        }.launchIn(viewModelScope)
+        userListRepository.observeWatchlist().onEach { watchlist ->
+            _uiState.value = _uiState.value.copy(
+                watchlistMovieIds = watchlist.filter { it.mediaType == "movie" }.map { it.id }.toSet(),
+                watchlistTvIds = watchlist.filter { it.mediaType == "tv" }.map { it.id }.toSet(),
+            )
+        }.launchIn(viewModelScope)
+    }
+
+    fun toggleFavorite(movie: Movie, mediaType: String = "movie") {
+        val isTv = mediaType == "tv"
+        val currentIds = if (isTv) _uiState.value.favoriteTvIds else _uiState.value.favoriteMovieIds
+        val isFav = movie.id in currentIds
+        updateFavoriteIds(isTv) { ids -> if (isFav) ids - movie.id else ids + movie.id }
+        viewModelScope.launch {
+            val result = if (isFav) {
+                userListRepository.removeFavorite(movie.id, mediaType = mediaType)
+            } else {
+                userListRepository.addFavorite(
+                    SavedMovie(
+                        id = movie.id,
+                        title = movie.title,
+                        posterUrl = movie.posterUrl,
+                        rating = movie.rating,
+                        year = movie.year,
+                        genreIds = movie.genreIds,
+                        mediaType = mediaType,
+                    ),
+                )
+            }
+            result.onFailure { error ->
+                updateFavoriteIds(isTv) { ids -> if (isFav) ids + movie.id else ids - movie.id }
+                showWriteFailure(error)
+            }
+            if (result.isSuccess) {
+                if (isFav) {
+                    if (isTv) recommendationRepository.removeTvFavoriteSignal(movie.id) else recommendationRepository.removeFavoriteSignal(movie.id)
+                } else {
+                    if (isTv) recommendationRepository.recordTvFavorite(movie.id, movie.genreIds) else recommendationRepository.recordFavorite(movie.id, movie.genreIds)
+                }
+            }
+        }
+    }
+
+    fun toggleFeaturedWatchlist(featured: FeaturedMovie) {
+        val isSaved = featured.id in _uiState.value.watchlistMovieIds
+        updateWatchlistIds(isTv = false) { ids -> if (isSaved) ids - featured.id else ids + featured.id }
+        viewModelScope.launch {
+            val result = if (isSaved) {
+                userListRepository.removeFromWatchlist(featured.id)
+            } else {
+                userListRepository.addToWatchlist(
+                    SavedMovie(id = featured.id, title = featured.title, posterUrl = featured.posterUrl, rating = featured.rating, year = featured.year),
+                )
+            }
+            result.onFailure { error ->
+                updateWatchlistIds(isTv = false) { ids -> if (isSaved) ids + featured.id else ids - featured.id }
+                showWriteFailure(error)
+            }
+        }
+    }
+
+    fun toggleFeaturedTvWatchlist(featured: FeaturedTvShow) {
+        val isSaved = featured.id in _uiState.value.watchlistTvIds
+        updateWatchlistIds(isTv = true) { ids -> if (isSaved) ids - featured.id else ids + featured.id }
+        viewModelScope.launch {
+            val result = if (isSaved) {
+                userListRepository.removeFromWatchlist(featured.id, mediaType = "tv")
+            } else {
+                userListRepository.addToWatchlist(
+                    SavedMovie(
+                        id = featured.id,
+                        title = featured.title,
+                        posterUrl = featured.posterUrl,
+                        rating = featured.rating,
+                        year = featured.year,
+                        mediaType = "tv",
+                    ),
+                )
+            }
+            result.onFailure { error ->
+                updateWatchlistIds(isTv = true) { ids -> if (isSaved) ids + featured.id else ids - featured.id }
+                showWriteFailure(error)
+            }
+        }
+    }
+
+    private fun updateFavoriteIds(isTv: Boolean, transform: (Set<Int>) -> Set<Int>) {
+        _uiState.value = if (isTv) {
+            _uiState.value.copy(favoriteTvIds = transform(_uiState.value.favoriteTvIds))
+        } else {
+            _uiState.value.copy(favoriteMovieIds = transform(_uiState.value.favoriteMovieIds))
+        }
+    }
+
+    private fun updateWatchlistIds(isTv: Boolean, transform: (Set<Int>) -> Set<Int>) {
+        _uiState.value = if (isTv) {
+            _uiState.value.copy(watchlistTvIds = transform(_uiState.value.watchlistTvIds))
+        } else {
+            _uiState.value.copy(watchlistMovieIds = transform(_uiState.value.watchlistMovieIds))
+        }
+    }
+
+    /**
+     * Yazma hatasında iyimser UI değişikliği geri alınır ve kullanıcıya bilgi
+     * verilir. Offline hatasıyla sınırlı DEĞİL: Firestore başka bir sebeple de
+     * reddedebilir — geri alınmazsa ikon "kaydedildi" gösterip yazma
+     * gerçekleşmemiş olurdu. Mesaj 2.5 sn sonra otomatik temizlenir.
+     */
+    private fun showWriteFailure(error: Throwable) {
+        _uiState.value = _uiState.value.copy(
+            offlineActionMessage = if (error is OfflineWriteException) error.message else GENERIC_WRITE_FAILURE_MESSAGE,
+        )
+        offlineMessageJob?.cancel()
+        offlineMessageJob = viewModelScope.launch {
+            delay(2500)
+            _uiState.value = _uiState.value.copy(offlineActionMessage = null)
+        }
+    }
+
     private fun movieCacheFlow(): kotlinx.coroutines.flow.Flow<HomeCacheSnapshot> {
         val core = combine(
             repository.observePopularMovies(),
@@ -230,6 +376,13 @@ class HomeViewModel @Inject constructor(
         val results = if (isTvModeFlow.value) {
             coroutineScope {
                 launch { repository.refreshPopularMovies() }
+                // "Yakında Yayınlanacak Diziler" Room'da cache'lenmiyor; TV modu
+                // her yenilendiğinde (mod değişimi + yeniden bağlanma) ağdan çekilir.
+                launch {
+                    _uiState.value = _uiState.value.copy(
+                        upcomingTvShows = tvRepository.getUpcomingTvShows().getOrDefault(emptyList()),
+                    )
+                }
                 listOf(
                     async { tvRepository.refreshPopularTvShows() },
                     async { tvRepository.refreshOnAirTvShows() },
