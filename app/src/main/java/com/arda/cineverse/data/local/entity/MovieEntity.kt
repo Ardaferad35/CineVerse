@@ -1,6 +1,7 @@
 package com.arda.cineverse.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /** Kanonik film verisi — bir film, birden fazla section'da görünse bile tek satır olarak tutulur. */
@@ -19,7 +20,14 @@ data class MovieEntity(
     val cachedAt: Long,
 )
 
-@Entity(tableName = "movie_section_cross_ref", primaryKeys = ["section", "movieId"])
+@Entity(
+    tableName = "movie_section_cross_ref",
+    primaryKeys = ["section", "movieId"],
+    indices = [
+        Index(value = ["section"]),
+        Index(value = ["movieId"]),
+    ],
+)
 data class MovieSectionCrossRefEntity(
     val section: SectionType,
     val movieId: Int,

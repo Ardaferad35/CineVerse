@@ -1,6 +1,7 @@
 package com.arda.cineverse.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "tv_shows")
@@ -17,7 +18,14 @@ data class TvShowEntity(
     val cachedAt: Long,
 )
 
-@Entity(tableName = "tv_section_cross_ref", primaryKeys = ["section", "tvId"])
+@Entity(
+    tableName = "tv_section_cross_ref",
+    primaryKeys = ["section", "tvId"],
+    indices = [
+        Index(value = ["section"]),
+        Index(value = ["tvId"]),
+    ],
+)
 data class TvSectionCrossRefEntity(
     val section: SectionType,
     val tvId: Int,
