@@ -18,17 +18,17 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
+import com.google.gson.Gson
+
 private const val LIST_FAVORITE = "FAVORITE"
 private const val LIST_WATCHLIST = "WATCHLIST"
 
 /**
- * Favoriler/İzleme Listesi hâlâ Firestore'da tutuluyor (hesaba bağlı,
- * çok cihazlı senkronizasyon). Room ("saved_movies") bunun SALT-OKUNUR
- * bir aynası: internet olmadan da bu listelerin görüntülenebilmesini
- * sağlar. Yazma (ekle/çıkar) işlemleri hâlâ internet gerektiriyor —
- * offline'ken [OfflineWriteException] fırlatılır, UI bunu yakalayıp
- * kullanıcıya "çevrimdışısınız, bağlanınca tekrar deneyin" mesajı
- * gösterebilir.
+ * Favoriler/İzleme Listesi Firestore'da tutuluyor (hesaba bağlı, çok cihazlı senkronizasyon).
+ * Room ("saved_movies") çevrimdışı önbellektir: kullanıcı internet olmadan da ekleme/çıkarma
+ * yapabilir, değişiklikler Room'a yansır ve [PendingActionEntity] ile çevrimdışı işlem
+ * kuyruğuna yazılır. İnternet bağlantısı geldiğinde [processPendingActions] tüm alanlarıyla
+ * (başlık, afiş, puan, türler vb.) verileri Firestore'a aktarır.
  */
 class UserListRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -37,6 +37,8 @@ class UserListRepository @Inject constructor(
     private val pendingActionDao: PendingActionDao,
     private val connectivityObserver: ConnectivityObserver,
 ) {
+    private val gson = Gson()
+
     // bkz. MovieRepository.Companion.default() — aynı gerekçe.
     companion object {
         fun default(): UserListRepository = UserListRepository(
@@ -112,7 +114,8 @@ class UserListRepository @Inject constructor(
 
     suspend fun addFavorite(movie: SavedMovie): Result<Unit> {
         val now = System.currentTimeMillis()
-        savedMovieDao.upsert(movie.copy(addedAt = now).toEntity(LIST_FAVORITE))
+        val movieWithTime = movie.copy(addedAt = now)
+        savedMovieDao.upsert(movieWithTime.toEntity(LIST_FAVORITE))
 
         if (!connectivityObserver.isCurrentlyOnline()) {
             pendingActionDao.insert(
@@ -120,6 +123,7 @@ class UserListRepository @Inject constructor(
                     actionType = "ADD_FAVORITE",
                     mediaId = movie.id,
                     mediaType = movie.mediaType,
+                    payloadJson = gson.toJson(movieWithTime),
                 ),
             )
             return Result.success(Unit)
@@ -127,7 +131,7 @@ class UserListRepository @Inject constructor(
 
         return runCatching {
             favoritesCollection().document(documentId(movie.id, movie.mediaType))
-                .set(movie.copy(addedAt = now)).await()
+                .set(movieWithTime).await()
 
             runCatching {
                 val actId = "fav_${movie.mediaType}_${movie.id}"
@@ -173,7 +177,8 @@ class UserListRepository @Inject constructor(
 
     suspend fun addToWatchlist(movie: SavedMovie): Result<Unit> {
         val now = System.currentTimeMillis()
-        savedMovieDao.upsert(movie.copy(addedAt = now).toEntity(LIST_WATCHLIST))
+        val movieWithTime = movie.copy(addedAt = now)
+        savedMovieDao.upsert(movieWithTime.toEntity(LIST_WATCHLIST))
 
         if (!connectivityObserver.isCurrentlyOnline()) {
             pendingActionDao.insert(
@@ -181,6 +186,7 @@ class UserListRepository @Inject constructor(
                     actionType = "ADD_WATCHLIST",
                     mediaId = movie.id,
                     mediaType = movie.mediaType,
+                    payloadJson = gson.toJson(movieWithTime),
                 ),
             )
             return Result.success(Unit)
@@ -188,7 +194,7 @@ class UserListRepository @Inject constructor(
 
         return runCatching {
             watchlistCollection().document(documentId(movie.id, movie.mediaType))
-                .set(movie.copy(addedAt = now)).await()
+                .set(movieWithTime).await()
 
             runCatching {
                 val actId = "watch_${movie.mediaType}_${movie.id}"
@@ -241,20 +247,70 @@ class UserListRepository @Inject constructor(
             val res = runCatching {
                 when (action.actionType) {
                     "ADD_FAVORITE" -> {
-                        val now = System.currentTimeMillis()
-                        favoritesCollection().document(documentId(action.mediaId, action.mediaType))
-                            .set(mapOf("id" to action.mediaId, "mediaType" to action.mediaType, "addedAt" to now)).await()
+                        val savedMovie = action.payloadJson?.let {
+                            runCatching { gson.fromJson(it, SavedMovie::class.java) }.getOrNull()
+                        } ?: savedMovieDao.getById(action.mediaId, action.mediaType)?.toDomain()
+
+                        if (savedMovie != null) {
+                            favoritesCollection().document(documentId(savedMovie.id, savedMovie.mediaType))
+                                .set(savedMovie).await()
+                            runCatching {
+                                val actId = "fav_${savedMovie.mediaType}_${savedMovie.id}"
+                                activitiesCollection().document(actId).set(
+                                    hashMapOf(
+                                        "id" to actId,
+                                        "type" to "FAVORITE",
+                                        "mediaId" to savedMovie.id,
+                                        "mediaTitle" to savedMovie.title,
+                                        "mediaType" to savedMovie.mediaType,
+                                        "posterUrl" to savedMovie.posterUrl,
+                                        "timestamp" to savedMovie.addedAt,
+                                        "rating" to savedMovie.rating,
+                                    ),
+                                ).await()
+                            }
+                        } else {
+                            val now = System.currentTimeMillis()
+                            favoritesCollection().document(documentId(action.mediaId, action.mediaType))
+                                .set(mapOf("id" to action.mediaId, "mediaType" to action.mediaType, "addedAt" to now)).await()
+                        }
                     }
                     "REMOVE_FAVORITE" -> {
                         favoritesCollection().document(documentId(action.mediaId, action.mediaType)).delete().await()
+                        runCatching { activitiesCollection().document("fav_${action.mediaType}_${action.mediaId}").delete().await() }
                     }
                     "ADD_WATCHLIST" -> {
-                        val now = System.currentTimeMillis()
-                        watchlistCollection().document(documentId(action.mediaId, action.mediaType))
-                            .set(mapOf("id" to action.mediaId, "mediaType" to action.mediaType, "addedAt" to now)).await()
+                        val savedMovie = action.payloadJson?.let {
+                            runCatching { gson.fromJson(it, SavedMovie::class.java) }.getOrNull()
+                        } ?: savedMovieDao.getById(action.mediaId, action.mediaType)?.toDomain()
+
+                        if (savedMovie != null) {
+                            watchlistCollection().document(documentId(savedMovie.id, savedMovie.mediaType))
+                                .set(savedMovie).await()
+                            runCatching {
+                                val actId = "watch_${savedMovie.mediaType}_${savedMovie.id}"
+                                activitiesCollection().document(actId).set(
+                                    hashMapOf(
+                                        "id" to actId,
+                                        "type" to "WATCHLIST",
+                                        "mediaId" to savedMovie.id,
+                                        "mediaTitle" to savedMovie.title,
+                                        "mediaType" to savedMovie.mediaType,
+                                        "posterUrl" to savedMovie.posterUrl,
+                                        "timestamp" to savedMovie.addedAt,
+                                        "rating" to savedMovie.rating,
+                                    ),
+                                ).await()
+                            }
+                        } else {
+                            val now = System.currentTimeMillis()
+                            watchlistCollection().document(documentId(action.mediaId, action.mediaType))
+                                .set(mapOf("id" to action.mediaId, "mediaType" to action.mediaType, "addedAt" to now)).await()
+                        }
                     }
                     "REMOVE_WATCHLIST" -> {
                         watchlistCollection().document(documentId(action.mediaId, action.mediaType)).delete().await()
+                        runCatching { activitiesCollection().document("watch_${action.mediaType}_${action.mediaId}").delete().await() }
                     }
                 }
             }
