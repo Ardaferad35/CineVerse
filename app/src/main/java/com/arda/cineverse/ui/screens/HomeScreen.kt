@@ -42,7 +42,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,15 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.arda.cineverse.R
 import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.data.model.Category
-import com.arda.cineverse.data.model.FeaturedMovie
-import com.arda.cineverse.data.model.FeaturedTvShow
-import com.arda.cineverse.data.model.Movie
-import com.arda.cineverse.data.model.SavedMovie
-import com.arda.cineverse.data.model.UpcomingMovie
 import com.arda.cineverse.data.remote.toFeaturedMovie
-import com.arda.cineverse.data.repository.RecommendationRepository
-import com.arda.cineverse.data.repository.TvRepository
-import com.arda.cineverse.data.repository.UserListRepository
 import com.arda.cineverse.ui.components.CVBottomNavBar
 import com.arda.cineverse.ui.components.CVGradientButton
 import com.arda.cineverse.ui.components.CategoryChip
@@ -85,11 +76,7 @@ import com.arda.cineverse.ui.theme.Primary
 import com.arda.cineverse.ui.theme.Surface
 import com.arda.cineverse.ui.theme.TextSecondary
 import com.arda.cineverse.viewmodel.HomeViewModel
-import com.arda.cineverse.data.common.GENERIC_WRITE_FAILURE_MESSAGE
-import com.arda.cineverse.data.common.OfflineWriteException
 import com.arda.cineverse.viewmodel.NotificationViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -135,156 +122,19 @@ fun HomeScreen(
     val recommendShareViewModel: com.arda.cineverse.viewmodel.RecommendShareViewModel = hiltViewModel()
     val shareState by recommendShareViewModel.uiState.collectAsState()
 
-    val userListRepository = remember { UserListRepository.default() }
-    val recommendationRepository = remember { RecommendationRepository.default() }
-    val tvRepository = remember { TvRepository.default() }
-    val scope = rememberCoroutineScope()
-
-    var favoriteMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var favoriteTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var watchlistMovieIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var watchlistTvIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
-    var offlineActionMessage by remember { mutableStateOf<String?>(null) }
-    var upcomingTvShows by remember { mutableStateOf<List<UpcomingMovie>>(emptyList()) }
-
-    LaunchedEffect(offlineActionMessage) {
-        if (offlineActionMessage != null) {
-            delay(2500)
-            offlineActionMessage = null
-        }
-    }
-
-    // "Yakında Yayınlanacak Diziler": Popüler Diziler/Şu An Yayında'nın aksine
-    // Room'da offline-cache'lenmiş kalıcı bir bölüm değil — TV moduna her
-    // girildiğinde tek seferlik ağ çağrısıyla dolduruluyor, bu yüzden offline'ken
-    // boş kalabilir.
-    LaunchedEffect(uiState.isTvMode) {
-        if (uiState.isTvMode) {
-            upcomingTvShows = tvRepository.getUpcomingTvShows().getOrDefault(emptyList())
-        }
-    }
-
-    // Favoriler/İzleme Listesi Room'dan (offline-first) gözlemleniyor; ayrıca
-    // her Home açılışında çevrimiçiyse Firestore'dan taze veriyle senkronize
-    // edilir (bkz. UserListRepository.syncFavoritesAndWatchlist).
-    LaunchedEffect(Unit) {
-        scope.launch { userListRepository.syncFavoritesAndWatchlist() }
-    }
-    LaunchedEffect(Unit) {
-        userListRepository.observeFavorites().collect { favorites ->
-            favoriteMovieIds = favorites.filter { it.mediaType == "movie" }.map { it.id }.toSet()
-            favoriteTvIds = favorites.filter { it.mediaType == "tv" }.map { it.id }.toSet()
-        }
-    }
-    LaunchedEffect(Unit) {
-        userListRepository.observeWatchlist().collect { watchlist ->
-            watchlistMovieIds = watchlist.filter { it.mediaType == "movie" }.map { it.id }.toSet()
-            watchlistTvIds = watchlist.filter { it.mediaType == "tv" }.map { it.id }.toSet()
-        }
-    }
+    // Favoriler/İzleme Listesi/çevrimdışı mesajı ve TV "Yakında" bölümü artık
+    // tamamen HomeViewModel'de yönetiliyor (Room gözlemi + iyimser toggle +
+    // Firestore senkronu); ekran sadece state okuyup event yolluyor.
+    val favoriteMovieIds = uiState.favoriteMovieIds
+    val favoriteTvIds = uiState.favoriteTvIds
+    val watchlistMovieIds = uiState.watchlistMovieIds
+    val watchlistTvIds = uiState.watchlistTvIds
+    val upcomingTvShows = uiState.upcomingTvShows
+    val offlineActionMessage = uiState.offlineActionMessage
 
     LaunchedEffect(uiState.categories, selectedHomeMode) {
         if (uiState.categories.isNotEmpty() && uiState.categories.none { it.id == selectedCategoryId }) {
             selectedCategoryId = uiState.categories.first().id
-        }
-    }
-
-    /**
-     * Yazma hatasında iyimser UI değişikliği geri alınır ve kullanıcıya bilgi
-     * verilir. Offline hatasıyla sınırlı DEĞİL: Firestore başka bir sebeple de
-     * reddedebilir — geri alınmazsa ikon "kaydedildi" gösterip yazma
-     * gerçekleşmemiş olurdu.
-     */
-    fun handleWriteFailure(error: Throwable, revert: () -> Unit) {
-        revert()
-        offlineActionMessage = if (error is OfflineWriteException) error.message else GENERIC_WRITE_FAILURE_MESSAGE
-    }
-
-    fun toggleFavorite(movie: Movie, mediaType: String = "movie") {
-        val isTv = mediaType == "tv"
-        val currentIds = if (isTv) favoriteTvIds else favoriteMovieIds
-        val isFav = movie.id in currentIds
-        if (isTv) {
-            favoriteTvIds = if (isFav) favoriteTvIds - movie.id else favoriteTvIds + movie.id
-        } else {
-            favoriteMovieIds = if (isFav) favoriteMovieIds - movie.id else favoriteMovieIds + movie.id
-        }
-        fun revert() {
-            if (isTv) {
-                favoriteTvIds = if (isFav) favoriteTvIds + movie.id else favoriteTvIds - movie.id
-            } else {
-                favoriteMovieIds = if (isFav) favoriteMovieIds + movie.id else favoriteMovieIds - movie.id
-            }
-        }
-        scope.launch {
-            val result = if (isFav) {
-                userListRepository.removeFavorite(movie.id, mediaType = mediaType)
-            } else {
-                userListRepository.addFavorite(
-                    SavedMovie(
-                        id = movie.id,
-                        title = movie.title,
-                        posterUrl = movie.posterUrl,
-                        rating = movie.rating,
-                        year = movie.year,
-                        genreIds = movie.genreIds,
-                        mediaType = mediaType,
-                    ),
-                )
-            }
-            result.onFailure { error -> handleWriteFailure(error) { revert() } }
-            if (result.isSuccess) {
-                if (isFav) {
-                    if (isTv) recommendationRepository.removeTvFavoriteSignal(movie.id) else recommendationRepository.removeFavoriteSignal(movie.id)
-                } else {
-                    if (isTv) recommendationRepository.recordTvFavorite(movie.id, movie.genreIds) else recommendationRepository.recordFavorite(movie.id, movie.genreIds)
-                }
-            }
-        }
-    }
-
-    fun toggleFeaturedWatchlist(featured: FeaturedMovie) {
-        val isSaved = featured.id in watchlistMovieIds
-        watchlistMovieIds = if (isSaved) watchlistMovieIds - featured.id else watchlistMovieIds + featured.id
-        scope.launch {
-            val result = if (isSaved) {
-                userListRepository.removeFromWatchlist(featured.id)
-            } else {
-                userListRepository.addToWatchlist(
-                    SavedMovie(id = featured.id, title = featured.title, posterUrl = featured.posterUrl, rating = featured.rating, year = featured.year),
-                )
-            }
-            result.onFailure { error ->
-                handleWriteFailure(error) {
-                    watchlistMovieIds = if (isSaved) watchlistMovieIds + featured.id else watchlistMovieIds - featured.id
-                }
-            }
-        }
-    }
-
-    fun toggleFeaturedTvWatchlist(featured: FeaturedTvShow) {
-        val isSaved = featured.id in watchlistTvIds
-        watchlistTvIds = if (isSaved) watchlistTvIds - featured.id else watchlistTvIds + featured.id
-        scope.launch {
-            val result = if (isSaved) {
-                userListRepository.removeFromWatchlist(featured.id, mediaType = "tv")
-            } else {
-                userListRepository.addToWatchlist(
-                    SavedMovie(
-                        id = featured.id,
-                        title = featured.title,
-                        posterUrl = featured.posterUrl,
-                        rating = featured.rating,
-                        year = featured.year,
-                        mediaType = "tv",
-                    ),
-                )
-            }
-            result.onFailure { error ->
-                handleWriteFailure(error) {
-                    watchlistTvIds = if (isSaved) watchlistTvIds + featured.id else watchlistTvIds - featured.id
-                }
-            }
         }
     }
 
@@ -414,7 +264,7 @@ fun HomeScreen(
                                         movie = featuredTv.toFeaturedMovie(),
                                         label = stringResource(R.string.home_tv_of_the_day),
                                         onDetailsClick = { onTvShowClick(featuredTv.id) },
-                                        onAddToListClick = { toggleFeaturedTvWatchlist(featuredTv) },
+                                        onAddToListClick = { homeViewModel.toggleFeaturedTvWatchlist(featuredTv) },
                                         onLongClick = {
                                             quickPreviewData = QuickPreviewData(
                                                 id = featuredTv.id,
@@ -440,7 +290,7 @@ fun HomeScreen(
                                     FeaturedMovieBanner(
                                         movie = featured,
                                         onDetailsClick = { onMovieClick(featured.id) },
-                                        onAddToListClick = { toggleFeaturedWatchlist(featured) },
+                                        onAddToListClick = { homeViewModel.toggleFeaturedWatchlist(featured) },
                                         onLongClick = {
                                             quickPreviewData = QuickPreviewData(
                                                 id = featured.id,
@@ -496,7 +346,7 @@ fun HomeScreen(
                                                     )
                                                 },
                                                 onFavoriteClick = {
-                                                    toggleFavorite(movie, mediaType = if (uiState.isTvMode) "tv" else "movie")
+                                                    homeViewModel.toggleFavorite(movie, mediaType = if (uiState.isTvMode) "tv" else "movie")
                                                 },
                                             )
                                         }
@@ -540,7 +390,7 @@ fun HomeScreen(
                                                 )
                                             },
                                             onFavoriteClick = {
-                                                toggleFavorite(movie, mediaType = if (uiState.isTvMode) "tv" else "movie")
+                                                homeViewModel.toggleFavorite(movie, mediaType = if (uiState.isTvMode) "tv" else "movie")
                                             },
                                         )
                                     }
@@ -578,7 +428,7 @@ fun HomeScreen(
                                                         isFavorite = movie.id in favoriteMovieIds,
                                                     )
                                                 },
-                                                onFavoriteClick = { toggleFavorite(movie, mediaType = "movie") },
+                                                onFavoriteClick = { homeViewModel.toggleFavorite(movie, mediaType = "movie") },
                                             )
                                         }
                                     }
@@ -617,7 +467,7 @@ fun HomeScreen(
                                                         isFavorite = tvShow.id in favoriteTvIds,
                                                     )
                                                 },
-                                                onFavoriteClick = { toggleFavorite(tvShow, mediaType = "tv") },
+                                                onFavoriteClick = { homeViewModel.toggleFavorite(tvShow, mediaType = "tv") },
                                             )
                                         }
                                     }
