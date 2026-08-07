@@ -113,7 +113,7 @@ Ekran görüntüleri `docs/screenshots/` dizininden çekilmektedir. Kendi ekran 
 
 ## 👤 9. Profil & Ayarlar Ekranı (Profile Screen)
 
-![Profil Ekranı](screenshots/09_profile.png)
+![Profil Ekranı](screenshots/09_paint.png)
 
 ### İşlevler ve Teknik Detaylar
 * **Kullanıcı İstatistikleri:** Verilen ortalama puan, eklenen favori ve izleme listesi sayıları.
