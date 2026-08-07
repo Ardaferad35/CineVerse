@@ -49,6 +49,7 @@ fun MyListScreen(
     onNavigateTab: (Int) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
+    onFriendsClick: () -> Unit = {},
     viewModel: MyListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -60,7 +61,11 @@ fun MyListScreen(
                 .statusBarsPadding(),
         ) {
             Spacer(Modifier.height(12.dp))
-            HomeTopBar(onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick)
+            HomeTopBar(
+                onProfileClick = onProfileClick,
+                onNotificationsClick = onNotificationsClick,
+                onFriendsClick = onFriendsClick,
+            )
             Spacer(Modifier.height(16.dp))
 
             Row(
