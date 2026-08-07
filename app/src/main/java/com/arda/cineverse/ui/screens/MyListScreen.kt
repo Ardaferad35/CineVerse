@@ -39,6 +39,10 @@ import com.arda.cineverse.ui.components.*
 import com.arda.cineverse.ui.theme.*
 import com.arda.cineverse.viewmodel.*
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyListScreen(
@@ -49,10 +53,10 @@ fun MyListScreen(
     onNavigateTab: (Int) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
-    onFriendsClick: () -> Unit = {},
     viewModel: MyListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showFriendsPanel by rememberSaveable { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize().background(Background)) {
         Column(
@@ -64,7 +68,7 @@ fun MyListScreen(
             HomeTopBar(
                 onProfileClick = onProfileClick,
                 onNotificationsClick = onNotificationsClick,
-                onFriendsClick = onFriendsClick,
+                onFriendsClick = { showFriendsPanel = true },
             )
             Spacer(Modifier.height(16.dp))
 
@@ -319,6 +323,13 @@ fun MyListScreen(
                     .fillMaxWidth(),
             )
         }
+
+        FriendsPanel(
+            visible = showFriendsPanel,
+            onDismiss = { showFriendsPanel = false },
+            onMovieClick = onMovieClick,
+            onTvShowClick = onTvShowClick,
+        )
     }
 }
 
