@@ -33,35 +33,47 @@ fun CVGradientButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    loading: Boolean = false,
     icon: ImageVector? = null,
 ) {
+    // Yüklenirken gradient zemin korunur; sadece gerçekten devre dışıyken
+    // (ör. şartlar kabul edilmemişken) soluk zemine geçilir.
+    val showGradient = enabled || loading
+    val contentColor = if (showGradient) OnPrimary else TextSecondary
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(52.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(
-                brush = Brush.horizontalGradient(if (enabled) PrimaryGradient else listOf(SurfaceVariant, SurfaceVariant)),
+                brush = Brush.horizontalGradient(if (showGradient) PrimaryGradient else listOf(SurfaceVariant, SurfaceVariant)),
             )
-            .clickable(enabled = enabled) { onClick() },
+            .clickable(enabled = enabled && !loading) { onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            if (icon != null) {
+            if (loading) {
+                CircularProgressIndicator(
+                    color = contentColor,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+            } else if (icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = OnPrimary,
+                    tint = contentColor,
                     modifier = Modifier.size(20.dp),
                 )
                 Spacer(Modifier.width(8.dp))
             }
             Text(
                 text = text,
-                color = OnPrimary,
+                color = contentColor,
                 fontSize = 18.sp,
                 lineHeight = 18.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -186,8 +198,10 @@ fun CVSocialButton(label: String, glyph: String, onClick: () -> Unit, modifier: 
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(glyph, color = OnSurface, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.width(8.dp))
+        if (glyph.isNotBlank()) {
+            Text(glyph, color = OnSurface, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.width(8.dp))
+        }
         Text(label, color = OnSurface, style = MaterialTheme.typography.bodyMedium)
     }
 }
