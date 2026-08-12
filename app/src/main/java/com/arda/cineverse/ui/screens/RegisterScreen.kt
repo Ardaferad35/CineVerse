@@ -1,10 +1,13 @@
 package com.arda.cineverse.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -12,9 +15,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.arda.cineverse.R
@@ -121,13 +128,27 @@ fun RegisterScreen(
                 }
                 Spacer(Modifier.height(12.dp))
 
-                Text(stringResource(R.string.register_title), color = OnSurface, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    stringResource(R.string.register_subtitle),
-                    color = TextSecondary,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Accent, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.app_name),
+                        style = TextStyle(
+                            brush = Brush.horizontalGradient(PrimaryGradient),
+                            fontSize = MaterialTheme.typography.headlineLarge.fontSize,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    Text(stringResource(R.string.register_title), color = OnSurface, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        stringResource(R.string.register_subtitle),
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                }
 
                 Spacer(Modifier.height(28.dp))
             }
@@ -207,11 +228,19 @@ fun RegisterScreen(
 
                 if (authState is AuthState.Error) {
                     Spacer(Modifier.height(8.dp))
-                    Text(
-                        (authState as AuthState.Error).message,
-                        color = ErrorColor,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(ErrorColor.copy(alpha = 0.12f))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            (authState as AuthState.Error).message,
+                            color = ErrorColor,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -219,6 +248,7 @@ fun RegisterScreen(
                     text = if (isLoading) stringResource(R.string.register_creating_account) else stringResource(R.string.auth_register_link),
                     onClick = ::validateAndSubmit,
                     enabled = agreedToTerms && !isLoading,
+                    loading = isLoading,
                 )
             }
 
