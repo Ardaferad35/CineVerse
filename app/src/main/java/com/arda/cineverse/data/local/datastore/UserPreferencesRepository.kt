@@ -30,6 +30,7 @@ class UserPreferencesRepository @Inject constructor(
 ) {
     private object Keys {
         val IS_DARK_THEME = booleanPreferencesKey("is_dark_theme")
+        val REMEMBER_ME = booleanPreferencesKey("remember_me")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val HOME_LAST_SYNCED_AT = longPreferencesKey("home_last_synced_at")
         val CACHED_USERNAME = stringPreferencesKey("cached_username")
@@ -41,6 +42,7 @@ class UserPreferencesRepository @Inject constructor(
     val userPreferences: Flow<UserPreferences> = context.dataStore.data.map { prefs ->
         UserPreferences(
             isDarkTheme = prefs[Keys.IS_DARK_THEME] ?: true,
+            rememberMe = prefs[Keys.REMEMBER_ME] ?: true,
             notificationsEnabled = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
             homeLastSyncedAt = prefs[Keys.HOME_LAST_SYNCED_AT],
             cachedUsername = prefs[Keys.CACHED_USERNAME] ?: "",
@@ -52,6 +54,15 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setDarkTheme(isDark: Boolean) {
         context.dataStore.edit { it[Keys.IS_DARK_THEME] = isDark }
+    }
+
+    /**
+     * Login ekranındaki "Beni hatırla" tercihi. false ise MainActivity bir
+     * sonraki soğuk başlangıçta Firebase oturumunu kapatır (oturum cihazda
+     * varsayılan olarak kalıcı olduğu için bunu kendimiz yapmak zorundayız).
+     */
+    suspend fun setRememberMe(remember: Boolean) {
+        context.dataStore.edit { it[Keys.REMEMBER_ME] = remember }
     }
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {

@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
+import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
+import com.arda.cineverse.di.AppGraph
 import com.arda.cineverse.navigation.CineVerseNavGraph
 import com.arda.cineverse.notifications.CineVerseMessagingService
 import com.arda.cineverse.notifications.LocalNotificationHelper
@@ -26,10 +28,16 @@ import com.arda.cineverse.ui.theme.CineVerseTheme
 import com.arda.cineverse.ui.theme.ThemeState
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var userPreferencesRepository: UserPreferencesRepository
 
     private val requestNotificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -59,6 +67,22 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         
         super.onCreate(savedInstanceState)
+
+        // "Beni hatırla" işaretlenmeden giriş yapıldıysa Firebase oturumu yine
+        // de cihazda kalıcıdır — bu yüzden oturumu bir SONRAKİ açılışta burada,
+        // navigasyon başlangıç ekranı seçilmeden (CineVerseNavGraph currentUser'a
+        // bakıyor) ÖNCE senkron olarak kapatıyoruz. DataStore, ThemeState.init()
+        // ile zaten belleğe alındığından bu okuma pratikte anlıktır.
+        val firebaseAuth = FirebaseAuth.getInstance()
+        if (firebaseAuth.currentUser != null) {
+            val rememberMe = runBlocking { userPreferencesRepository.userPreferences.first().rememberMe }
+            if (!rememberMe) {
+                firebaseAuth.signOut()
+                // Hesaba özel Room cache'i arkada temizle — AuthViewModel.signOut()
+                // ile aynı sebep: sonraki farklı hesaba önceki hesabın verisi sızmasın.
+                lifecycleScope.launch { runCatching { AppGraph.clearUserScopedCache() } }
+            }
+        }
 
         // Splash ekranını Compose içeriği hazır olana kadar ekranda tut.
         // Bu, bazı cihazlarda/emülatörlerde siyah ekran parlamasını önler.
