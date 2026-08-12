@@ -2,6 +2,7 @@ package com.arda.cineverse.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
 import com.arda.cineverse.data.repository.FriendRepository
 import com.arda.cineverse.data.repository.UsernameTakenException
 import com.arda.cineverse.di.AppGraph
@@ -27,17 +28,29 @@ sealed class AuthState {
 class AuthViewModel @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
+    private val userPreferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    fun login(email: String, password: String) {
+    /**
+     * [rememberMe] false ise tercih DataStore'a yazılır ve MainActivity bir
+     * SONRAKİ soğuk başlangıçta oturumu kapatır (Firebase Auth oturumu cihazda
+     * varsayılan olarak kalıcı). FCM token'ı bu durumda Firestore'a hiç
+     * yazılmıyor: oturum nasılsa kapatılacağı için token geride kalıp çıkış
+     * yapılmış hesaba push gitmesine yol açardı — token'ı sonradan silmek de
+     * mümkün değil çünkü firestore.rules silme için aktif oturum istiyor.
+     */
+    fun login(email: String, password: String, rememberMe: Boolean = true) {
         _authState.value = AuthState.Loading
         viewModelScope.launch {
             try {
                 auth.signInWithEmailAndPassword(email, password).await()
-                runCatching { CineVerseMessagingService.registerCurrentToken() }
+                runCatching { userPreferencesRepository.setRememberMe(rememberMe) }
+                if (rememberMe) {
+                    runCatching { CineVerseMessagingService.registerCurrentToken() }
+                }
                 _authState.value = AuthState.Success(email)
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(mapFirebaseError(e))
@@ -98,6 +111,9 @@ class AuthViewModel @Inject constructor(
                     )
                 }.await()
 
+                // Önceki bir oturumdan kalan "hatırlama" tercihi false ise yeni
+                // kaydolan hesap ilk açılışta dışarı atılırdı — sıfırlıyoruz.
+                runCatching { userPreferencesRepository.setRememberMe(true) }
                 runCatching { CineVerseMessagingService.registerCurrentToken() }
                 _authState.value = AuthState.Success(email)
             } catch (e: Exception) {

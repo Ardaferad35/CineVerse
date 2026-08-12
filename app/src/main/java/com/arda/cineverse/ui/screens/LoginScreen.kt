@@ -1,6 +1,7 @@
 package com.arda.cineverse.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,7 +76,7 @@ fun LoginScreen(
         }
         passwordError = if (password.isBlank()) passwordRequiredMessage else null
         if (emailError == null && passwordError == null) {
-            authViewModel.login(email, password)
+            authViewModel.login(email, password, rememberMe)
         }
     }
 
@@ -172,11 +173,19 @@ fun LoginScreen(
 
                 if (authState is AuthState.Error) {
                     Spacer(Modifier.height(8.dp))
-                    Text(
-                        (authState as AuthState.Error).message,
-                        color = ErrorColor,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(ErrorColor.copy(alpha = 0.12f))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            (authState as AuthState.Error).message,
+                            color = ErrorColor,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -184,6 +193,7 @@ fun LoginScreen(
                     text = if (isLoading) stringResource(R.string.login_signing_in) else stringResource(R.string.login_sign_in),
                     onClick = ::validateAndSubmit,
                     enabled = !isLoading,
+                    loading = isLoading,
                 )
             }
 

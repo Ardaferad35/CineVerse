@@ -2,6 +2,7 @@
 
 package com.arda.cineverse.viewmodel
 
+import com.arda.cineverse.data.local.datastore.UserPreferencesRepository
 import com.arda.cineverse.util.MainDispatcherRule
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.AuthResult
@@ -9,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -39,12 +41,13 @@ class AuthViewModelTest {
 
     private val auth: FirebaseAuth = mockk()
     private val firestore: FirebaseFirestore = mockk()
+    private val userPreferencesRepository: UserPreferencesRepository = mockk(relaxed = true)
     private lateinit var viewModel: AuthViewModel
 
     @Before
     fun setUp() {
         mockkStatic("kotlinx.coroutines.tasks.TasksKt")
-        viewModel = AuthViewModel(auth, firestore)
+        viewModel = AuthViewModel(auth, firestore, userPreferencesRepository)
     }
 
     @After
@@ -78,6 +81,29 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         assertEquals(AuthState.Success("a@b.com"), viewModel.authState.value)
+    }
+
+    @Test
+    fun `login rememberMe tercihini DataStore'a yaziyor`() = runTest {
+        val authResult = mockk<AuthResult>()
+        every { auth.signInWithEmailAndPassword(any(), any()) } returns taskReturning(authResult)
+
+        viewModel.login("a@b.com", "pw", rememberMe = false)
+        advanceUntilIdle()
+
+        assertEquals(AuthState.Success("a@b.com"), viewModel.authState.value)
+        coVerify { userPreferencesRepository.setRememberMe(false) }
+    }
+
+    @Test
+    fun `login basarisiz olunca rememberMe tercihi yazilmiyor`() = runTest {
+        every { auth.signInWithEmailAndPassword(any(), any()) } returns
+            taskFailingWith<AuthResult>("password is invalid")
+
+        viewModel.login("a@b.com", "pw", rememberMe = false)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { userPreferencesRepository.setRememberMe(any()) }
     }
 
     @Test
