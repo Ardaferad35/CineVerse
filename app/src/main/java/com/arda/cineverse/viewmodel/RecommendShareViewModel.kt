@@ -87,7 +87,14 @@ class RecommendShareViewModel @Inject constructor(
                 note = state.note.trim(),
             ).fold(
                 onSuccess = {
-                    _uiState.update { it.copy(isSending = false, sentCount = state.selectedUids.size) }
+                    _uiState.update {
+                        it.copy(
+                            isSending = false,
+                            sentCount = state.selectedUids.size,
+                            remainingQuota = (it.remainingQuota - state.selectedUids.size).coerceAtLeast(0),
+                        )
+                    }
+                    viewModelScope.launch { refreshQuota() }
                 },
                 onFailure = { error ->
                     // Kota sunucuda dolmuşsa istemcideki sayaç eskimiş demektir;
@@ -98,7 +105,7 @@ class RecommendShareViewModel @Inject constructor(
                             isSending = false,
                             errorMessage = when (error) {
                                 is RecommendationQuotaException -> "Günlük öneri hakkın doldu, yarın tekrar dene."
-                                else -> "Gönderilemedi, tekrar dene."
+                                else -> error.message ?: "Gönderilemedi, tekrar dene."
                             },
                         )
                     }

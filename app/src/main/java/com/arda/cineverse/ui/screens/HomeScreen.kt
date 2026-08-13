@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -121,6 +122,18 @@ fun HomeScreen(
 
     val recommendShareViewModel: com.arda.cineverse.viewmodel.RecommendShareViewModel = hiltViewModel()
     val shareState by recommendShareViewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(shareState.sentCount) {
+        val count = shareState.sentCount ?: return@LaunchedEffect
+        showShareSheet = false
+        val message = if (count == 1) {
+            context.getString(R.string.share_sent_one)
+        } else {
+            context.getString(R.string.share_sent_many, count)
+        }
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+    }
 
     // Favoriler/İzleme Listesi/çevrimdışı mesajı ve TV "Yakında" bölümü artık
     // tamamen HomeViewModel'de yönetiliyor (Room gözlemi + iyimser toggle +
@@ -676,6 +689,7 @@ fun HomeScreen(
                     if (isTv) onTvShowClick(targetId) else onMovieClick(targetId)
                 },
                 onShareWithFriends = {
+                    recommendShareViewModel.reset()
                     shareMediaId = data.id
                     shareMediaType = data.mediaType
                     shareMediaTitle = data.title

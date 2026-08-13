@@ -81,6 +81,17 @@ fun ReelsScreen(
     var shareMediaItem by remember { mutableStateOf<ReelItem?>(null) }
     var showShareSheet by remember { mutableStateOf(false) }
 
+    LaunchedEffect(shareState.sentCount) {
+        val count = shareState.sentCount ?: return@LaunchedEffect
+        showShareSheet = false
+        val message = if (count == 1) {
+            context.getString(R.string.share_sent_one)
+        } else {
+            context.getString(R.string.share_sent_many, count)
+        }
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -165,6 +176,7 @@ fun ReelsScreen(
                         onToggleWatchlist = { viewModel.toggleWatchlist(reel) },
                         onSwipeRightBothSaved = { viewModel.addBothToFavoritesAndWatchlist(reel) },
                         onShare = {
+                            recommendShareViewModel.reset()
                             shareMediaItem = reel
                             showShareSheet = true
                         },
