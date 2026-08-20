@@ -17,9 +17,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.arda.cineverse.data.local.entity.TvEpisodeProgressEntity
 import com.arda.cineverse.data.model.TvEpisode
 import com.arda.cineverse.data.model.TvEpisodeProgress
 import com.arda.cineverse.data.model.TvSeasonDetail
+import com.arda.cineverse.data.model.TvSeasonSummary
 
 data class TvShowDetailUiState(
     val isLoading: Boolean = true,
@@ -93,8 +95,10 @@ class TvShowDetailViewModel @Inject constructor(
                 onSuccess = { tvShow ->
                     _uiState.value = _uiState.value.copy(isLoading = false, tvShow = tvShow, isOfflineFallback = false)
                     recommendationRepository.recordTvView(tvShow.id, tvShow.genreIds)
-                    val firstSeason = tvShow.seasons.firstOrNull()?.seasonNumber ?: 1
-                    selectSeason(firstSeason)
+                    
+                    val progressList = tvRepository.getEpisodeProgress(tvId)
+                    val targetSeason = determineTargetSeason(tvShow.seasons, progressList)
+                    selectSeason(targetSeason)
                 },
                 onFailure = {
                     val cachedTvShow = tvRepository.getCachedTvShow(tvId)
@@ -113,6 +117,34 @@ class TvShowDetailViewModel @Inject constructor(
                 },
             )
         }
+    }
+
+    private fun determineTargetSeason(
+        seasons: List<TvSeasonSummary>,
+        progressList: List<TvEpisodeProgressEntity>,
+    ): Int {
+        val mainSeasons = seasons.filter { it.seasonNumber > 0 }
+        if (mainSeasons.isEmpty()) return seasons.firstOrNull()?.seasonNumber ?: 1
+        if (progressList.isEmpty()) return mainSeasons.first().seasonNumber
+
+        val watchedBySeason = progressList.filter { it.isWatched }.groupBy { it.seasonNumber }
+        if (watchedBySeason.isEmpty()) return mainSeasons.first().seasonNumber
+
+        val maxWatchedSeasonNumber = watchedBySeason.keys.maxOrNull() ?: mainSeasons.first().seasonNumber
+        val currentSeasonSummary = mainSeasons.find { it.seasonNumber == maxWatchedSeasonNumber }
+
+        if (currentSeasonSummary != null) {
+            val watchedCountInSeason = watchedBySeason[maxWatchedSeasonNumber]?.size ?: 0
+            // Eğer en son izlenen sezon tam olarak tamamlanmışsa ve bir sonraki sezon varsa, doğrudan sonraki sezona geç
+            if (currentSeasonSummary.episodeCount > 0 && watchedCountInSeason >= currentSeasonSummary.episodeCount) {
+                val nextSeason = mainSeasons.find { it.seasonNumber > maxWatchedSeasonNumber }
+                if (nextSeason != null) {
+                    return nextSeason.seasonNumber
+                }
+            }
+        }
+
+        return maxWatchedSeasonNumber
     }
 
     private fun observeEpisodeProgress() {

@@ -273,6 +273,9 @@ class TvRepository @Inject constructor(
             }
         }
 
+    suspend fun getEpisodeProgress(tvId: Int): List<TvEpisodeProgressEntity> =
+        tvEpisodeProgressDao.getProgressForTv(tvId)
+
     suspend fun toggleEpisodeWatched(tvId: Int, seasonNumber: Int, episodeNumber: Int, isWatched: Boolean) {
         if (isWatched) {
             tvEpisodeProgressDao.insertOrUpdate(
