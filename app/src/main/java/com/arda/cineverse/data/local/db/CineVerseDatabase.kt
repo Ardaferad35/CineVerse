@@ -40,7 +40,7 @@ import com.arda.cineverse.data.local.entity.WatchHistoryEntity
         TvEpisodeProgressEntity::class,
         PendingActionEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

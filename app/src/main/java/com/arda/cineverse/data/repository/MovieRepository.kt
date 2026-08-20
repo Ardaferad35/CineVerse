@@ -103,10 +103,11 @@ class MovieRepository @Inject constructor(
     suspend fun refreshUpcomingMovies(page: Int = 1): SyncResult {
         if (!connectivityObserver.isCurrentlyOnline()) return SyncResult.Offline
         return runCatching {
-            val currentYear = LocalDate.now().year
-            val upcoming = api.getUpcomingMovies(page = page).results
+            val todayStr = LocalDate.now().toString()
+            val upcoming = api.discoverMovies(page = page, sortBy = "popularity.desc", primaryReleaseDateGte = todayStr)
+                .results
+                .filter { dto -> dto.release_date != null && dto.release_date >= todayStr }
                 .map { it.toUpcomingMovie() }
-                .filter { movie -> movie.year != null && movie.year >= currentYear }
             val syncedAt = System.currentTimeMillis()
             movieDao.replaceSection(SectionType.UPCOMING, upcoming.map { it.toEntity(syncedAt) }, syncedAt)
         }.fold(onSuccess = { SyncResult.Success }, onFailure = { SyncResult.Error(it) })

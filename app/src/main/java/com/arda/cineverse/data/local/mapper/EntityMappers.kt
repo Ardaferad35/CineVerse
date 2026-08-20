@@ -51,6 +51,7 @@ fun UpcomingMovie.toEntity(cachedAt: Long): MovieEntity = MovieEntity(
     posterUrl = posterUrl,
     overview = "",
     releaseDateLabel = releaseDateLabel,
+    releaseDateStr = releaseDateStr,
     cachedAt = cachedAt,
 )
 
@@ -58,6 +59,7 @@ fun MovieEntity.toUpcomingMovie(): UpcomingMovie = UpcomingMovie(
     id = id,
     title = title,
     releaseDateLabel = releaseDateLabel ?: "",
+    releaseDateStr = releaseDateStr ?: "",
     year = year,
     posterUrl = posterUrl,
 )

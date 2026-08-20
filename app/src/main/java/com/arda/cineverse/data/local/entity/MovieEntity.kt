@@ -17,6 +17,7 @@ data class MovieEntity(
     val posterUrl: String?,
     val overview: String,
     val releaseDateLabel: String? = null,
+    val releaseDateStr: String? = null,
     val cachedAt: Long,
 )
 

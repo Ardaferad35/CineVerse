@@ -148,6 +148,7 @@ class HomeViewModel @Inject constructor(
                     is HomeCacheSnapshot.MovieSnapshot -> {
                         val data = snapshot.data
                         val hasContent = data.popular.isNotEmpty()
+                        val todayStr = java.time.LocalDate.now().toString()
                         _uiState.value.copy(
                             isTvMode = false,
                             isLoading = _uiState.value.isLoading && !hasContent,
@@ -156,7 +157,9 @@ class HomeViewModel @Inject constructor(
                             featuredTvShow = null,
                             popularMovies = data.popular,
                             topRatedMovies = data.topRated,
-                            upcomingMovies = data.upcoming.map { it.copy(isReminderSet = it.id in _uiState.value.reminderMovieIds) },
+                            upcomingMovies = data.upcoming
+                                .filter { it.releaseDateStr.isEmpty() || it.releaseDateStr >= todayStr }
+                                .map { it.copy(isReminderSet = it.id in _uiState.value.reminderMovieIds) },
                             onAirTvShows = emptyList(),
                             recommendedMovies = data.recommended,
                             categories = data.categories,
