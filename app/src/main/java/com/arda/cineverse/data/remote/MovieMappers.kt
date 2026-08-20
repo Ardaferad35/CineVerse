@@ -77,6 +77,7 @@ fun MovieDto.toUpcomingMovie(): UpcomingMovie = UpcomingMovie(
     id = id,
     title = title,
     releaseDateLabel = formatTmdbDateLabel(release_date),
+    releaseDateStr = release_date ?: "",
     year = release_date.extractYear(),
     posterUrl = TmdbNetworkModule.posterUrl(poster_path),
 )

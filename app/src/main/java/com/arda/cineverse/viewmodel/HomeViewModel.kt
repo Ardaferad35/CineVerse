@@ -68,6 +68,7 @@ data class HomeUiState(
     // offline'ken boş kalabilir.
     val upcomingTvShows: List<UpcomingMovie> = emptyList(),
     val offlineActionMessage: String? = null,
+    val reminderMovieIds: Set<Int> = emptySet(),
 )
 
 private data class MovieCache(
@@ -155,7 +156,7 @@ class HomeViewModel @Inject constructor(
                             featuredTvShow = null,
                             popularMovies = data.popular,
                             topRatedMovies = data.topRated,
-                            upcomingMovies = data.upcoming,
+                            upcomingMovies = data.upcoming.map { it.copy(isReminderSet = it.id in _uiState.value.reminderMovieIds) },
                             onAirTvShows = emptyList(),
                             recommendedMovies = data.recommended,
                             categories = data.categories,
@@ -457,6 +458,37 @@ class HomeViewModel @Inject constructor(
     fun clearSearch() {
         searchJob?.cancel()
         _uiState.value = _uiState.value.copy(searchQuery = "", searchSuggestions = emptyList(), isSearching = false)
+    }
+
+    fun loadReminderState(context: android.content.Context) {
+        val reminderIds = com.arda.cineverse.notifications.UpcomingReminderManager.getReminderMovieIds(context)
+        _uiState.value = _uiState.value.copy(
+            reminderMovieIds = reminderIds,
+            upcomingMovies = _uiState.value.upcomingMovies.map { it.copy(isReminderSet = it.id in reminderIds) },
+            upcomingTvShows = _uiState.value.upcomingTvShows.map { it.copy(isReminderSet = it.id in reminderIds) },
+        )
+    }
+
+    fun toggleUpcomingReminder(context: android.content.Context, movie: UpcomingMovie): Boolean {
+        val isSet = com.arda.cineverse.notifications.UpcomingReminderManager.toggleReminder(
+            context,
+            movie.id,
+            movie.title,
+            movie.releaseDateStr,
+        )
+        val currentReminders = _uiState.value.reminderMovieIds.toMutableSet()
+        if (isSet) currentReminders.add(movie.id) else currentReminders.remove(movie.id)
+
+        _uiState.value = _uiState.value.copy(
+            reminderMovieIds = currentReminders,
+            upcomingMovies = _uiState.value.upcomingMovies.map {
+                if (it.id == movie.id) it.copy(isReminderSet = isSet) else it
+            },
+            upcomingTvShows = _uiState.value.upcomingTvShows.map {
+                if (it.id == movie.id) it.copy(isReminderSet = isSet) else it
+            },
+        )
+        return isSet
     }
 }
 

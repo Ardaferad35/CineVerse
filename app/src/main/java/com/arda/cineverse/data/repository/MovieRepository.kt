@@ -164,16 +164,19 @@ class MovieRepository @Inject constructor(
     }
 
     suspend fun getUpcomingMovies(page: Int = 1): Result<List<UpcomingMovie>> = runCatching {
-        val currentYear = LocalDate.now().year
+        val todayStr = LocalDate.now().toString()
         api.getUpcomingMovies(page = page).results
+            .filter { dto -> dto.release_date != null && dto.release_date >= todayStr }
             .map { it.toUpcomingMovie() }
-            .filter { movie -> movie.year != null && movie.year >= currentYear }
     }
 
     /** "Yakında Vizyona Girecekler" için En Yüksek Puan sekmesi: bugünden itibaren vizyona girecek filmler, puana göre sıralı. */
     suspend fun getUpcomingMoviesTopRated(page: Int = 1): Result<List<UpcomingMovie>> = runCatching {
-        api.discoverMovies(page = page, sortBy = "vote_average.desc", primaryReleaseDateGte = LocalDate.now().toString())
-            .results.map { it.toUpcomingMovie() }
+        val todayStr = LocalDate.now().toString()
+        api.discoverMovies(page = page, sortBy = "vote_average.desc", primaryReleaseDateGte = todayStr)
+            .results
+            .filter { dto -> dto.release_date != null && dto.release_date >= todayStr }
+            .map { it.toUpcomingMovie() }
     }
 
     suspend fun searchMovies(query: String): Result<List<Movie>> = runCatching {

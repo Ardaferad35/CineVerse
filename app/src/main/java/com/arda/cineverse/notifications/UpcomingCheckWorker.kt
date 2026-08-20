@@ -35,6 +35,7 @@ class UpcomingCheckWorker(
 
         checkUpcomingMovies()
         checkUnreadNotifications()
+        UpcomingReminderManager.checkAndSend3DayReminders(applicationContext)
 
         return Result.success()
     }

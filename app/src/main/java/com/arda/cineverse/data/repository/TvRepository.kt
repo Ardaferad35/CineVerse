@@ -176,14 +176,20 @@ class TvRepository @Inject constructor(
      * dizileri discover ile buluyoruz.
      */
     suspend fun getUpcomingTvShows(page: Int = 1): Result<List<UpcomingMovie>> = runCatching {
-        api.discoverTvShows(page = page, sortBy = "popularity.desc", firstAirDateGte = LocalDate.now().toString())
-            .results.map { it.toUpcomingTvShow() }
+        val todayStr = LocalDate.now().toString()
+        api.discoverTvShows(page = page, sortBy = "popularity.desc", firstAirDateGte = todayStr)
+            .results
+            .filter { dto -> dto.first_air_date != null && dto.first_air_date >= todayStr }
+            .map { it.toUpcomingTvShow() }
     }
 
     /** "Yakında Yayınlanacak Diziler" için En Yüksek Puan sekmesi. */
     suspend fun getUpcomingTvShowsTopRated(page: Int = 1): Result<List<UpcomingMovie>> = runCatching {
-        api.discoverTvShows(page = page, sortBy = "vote_average.desc", firstAirDateGte = LocalDate.now().toString())
-            .results.map { it.toUpcomingTvShow() }
+        val todayStr = LocalDate.now().toString()
+        api.discoverTvShows(page = page, sortBy = "vote_average.desc", firstAirDateGte = todayStr)
+            .results
+            .filter { dto -> dto.first_air_date != null && dto.first_air_date >= todayStr }
+            .map { it.toUpcomingTvShow() }
     }
 
     suspend fun getAllTvGenres(): Result<List<Category>> = runCatching {

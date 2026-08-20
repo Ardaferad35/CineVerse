@@ -401,6 +401,8 @@ private fun UpcomingGrid(isTv: Boolean, onMovieClick: (Int) -> Unit, onTvShowCli
             }
         }
         else -> {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            var reminderIds by remember { mutableStateOf(com.arda.cineverse.notifications.UpcomingReminderManager.getReminderMovieIds(context)) }
             val gridState = rememberLazyGridState()
 
             LazyVerticalGrid(
@@ -412,7 +414,22 @@ private fun UpcomingGrid(isTv: Boolean, onMovieClick: (Int) -> Unit, onTvShowCli
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(uiState.items, key = { it.id }) { movie ->
-                    UpcomingMovieCard(movie = movie, onClick = { if (isTv) onTvShowClick(movie.id) else onMovieClick(movie.id) })
+                    val isSet = movie.id in reminderIds
+                    UpcomingMovieCard(
+                        movie = movie.copy(isReminderSet = isSet),
+                        onClick = { if (isTv) onTvShowClick(movie.id) else onMovieClick(movie.id) },
+                        onReminderClick = {
+                            val newlySet = com.arda.cineverse.notifications.UpcomingReminderManager.toggleReminder(
+                                context,
+                                movie.id,
+                                movie.title,
+                                movie.releaseDateStr,
+                            )
+                            reminderIds = com.arda.cineverse.notifications.UpcomingReminderManager.getReminderMovieIds(context)
+                            val msg = if (newlySet) "🔔 ${movie.title} için vizyona 3 gün kala bildirim kuruldu!" else "Hatırlatıcı kaldırıldı."
+                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                    )
                 }
                 if (uiState.isLoadingMore) {
                     item(span = { GridItemSpan(maxLineSpan) }) {

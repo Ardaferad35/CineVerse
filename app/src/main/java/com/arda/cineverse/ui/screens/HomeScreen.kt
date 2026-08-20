@@ -145,6 +145,10 @@ fun HomeScreen(
     val upcomingTvShows = uiState.upcomingTvShows
     val offlineActionMessage = uiState.offlineActionMessage
 
+    LaunchedEffect(Unit) {
+        homeViewModel.loadReminderState(context)
+    }
+
     LaunchedEffect(uiState.categories, selectedHomeMode) {
         if (uiState.categories.isNotEmpty() && uiState.categories.none { it.id == selectedCategoryId }) {
             selectedCategoryId = uiState.categories.first().id
@@ -512,6 +516,11 @@ fun HomeScreen(
                                                             mediaType = "tv",
                                                         )
                                                     },
+                                                    onReminderClick = {
+                                                        val isSet = homeViewModel.toggleUpcomingReminder(context, tvShow)
+                                                        val msg = if (isSet) "🔔 ${tvShow.title} için vizyona 3 gün kala bildirim kuruldu!" else "Hatırlatıcı kaldırıldı."
+                                                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                                    },
                                                 )
                                             }
                                         }
@@ -543,6 +552,11 @@ fun HomeScreen(
                                                         year = movie.year,
                                                         mediaType = "movie",
                                                     )
+                                                },
+                                                onReminderClick = {
+                                                    val isSet = homeViewModel.toggleUpcomingReminder(context, movie)
+                                                    val msg = if (isSet) "🔔 ${movie.title} için vizyona 3 gün kala bildirim kuruldu!" else "Hatırlatıcı kaldırıldı."
+                                                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
                                                 },
                                             )
                                         }

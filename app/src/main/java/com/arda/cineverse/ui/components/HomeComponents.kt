@@ -644,6 +644,7 @@ fun UpcomingMovieCard(
     movie: UpcomingMovie,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    onReminderClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.width(140.dp)) {
@@ -692,6 +693,29 @@ fun UpcomingMovieCard(
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     Text(movie.releaseDateLabel, color = OnPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (onReminderClick != null) {
+                IconButton(
+                    onClick = onReminderClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(32.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (movie.isReminderSet) Primary else Color.Black.copy(alpha = 0.65f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = if (movie.isReminderSet) Icons.Filled.NotificationsActive else Icons.Filled.NotificationsNone,
+                            contentDescription = "3 Gün Kala Hatırlat",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
         }

@@ -18,8 +18,10 @@ data class UpcomingMovie(
     val id: Int,
     val title: String,
     val releaseDateLabel: String,
+    val releaseDateStr: String = "",
     val year: Int?,
     val posterUrl: String? = null,
+    val isReminderSet: Boolean = false,
 )
 
 data class Category(
