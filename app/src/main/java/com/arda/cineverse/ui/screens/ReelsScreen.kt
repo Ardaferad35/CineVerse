@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.arda.cineverse.ui.components.InAppYouTubePlayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +83,7 @@ fun ReelsScreen(
     val shareState by recommendShareViewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    var isFeedMuted by remember { mutableStateOf(true) }
     var shareMediaItem by remember { mutableStateOf<ReelItem?>(null) }
     var showShareSheet by remember { mutableStateOf(false) }
 
@@ -163,12 +167,15 @@ fun ReelsScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
                     val reel = uiState.reels[page]
+                    val isSelected = pagerState.currentPage == page
                     val key = "${reel.mediaType}_${reel.id}"
                     val isFavorite = key in uiState.favoriteKeys
                     val isInWatchlist = key in uiState.watchlistKeys
 
                     HeroDiscoveryCardItem(
                         reel = reel,
+                        isSelected = isSelected,
+                        isMuted = isFeedMuted,
                         isFavorite = isFavorite,
                         isInWatchlist = isInWatchlist,
                         onOpenDetail = {
@@ -177,6 +184,7 @@ fun ReelsScreen(
                         onToggleFavorite = { viewModel.toggleFavorite(reel) },
                         onToggleWatchlist = { viewModel.toggleWatchlist(reel) },
                         onSwipeRightBothSaved = { viewModel.addBothToFavoritesAndWatchlist(reel) },
+                        onToggleMute = { isFeedMuted = !isFeedMuted },
                         onShare = {
                             recommendShareViewModel.reset()
                             shareMediaItem = reel
@@ -230,21 +238,43 @@ fun ReelsScreen(
                 )
             }
 
-            // Akışı Yenile / Karıştır Butonu
-            IconButton(
-                onClick = { viewModel.loadReels() },
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.65f))
-                    .border(1.dp, Primary.copy(alpha = 0.4f), CircleShape),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Refresh,
-                    contentDescription = "Akışı Yenile",
-                    tint = Primary,
-                    modifier = Modifier.size(20.dp),
-                )
+                // Ses Aç/Kapat Butonu (Mute/Unmute Reel Feed)
+                IconButton(
+                    onClick = { isFeedMuted = !isFeedMuted },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.65f))
+                        .border(1.dp, if (isFeedMuted) Color.White.copy(alpha = 0.25f) else Primary, CircleShape),
+                ) {
+                    Icon(
+                        imageVector = if (isFeedMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = if (isFeedMuted) "Sesi Aç" else "Sesi Kapat",
+                        tint = if (isFeedMuted) Color.White.copy(alpha = 0.7f) else Primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+
+                // Akışı Yenile / Karıştır Butonu
+                IconButton(
+                    onClick = { viewModel.loadReels() },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.65f))
+                        .border(1.dp, Primary.copy(alpha = 0.4f), CircleShape),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = "Akışı Yenile",
+                        tint = Primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
 
@@ -275,12 +305,15 @@ fun ReelsScreen(
 @Composable
 private fun HeroDiscoveryCardItem(
     reel: ReelItem,
+    isSelected: Boolean,
+    isMuted: Boolean,
     isFavorite: Boolean,
     isInWatchlist: Boolean,
     onOpenDetail: () -> Unit,
     onToggleFavorite: () -> Unit,
     onToggleWatchlist: () -> Unit,
     onSwipeRightBothSaved: () -> Unit,
+    onToggleMute: () -> Unit,
     onShare: () -> Unit,
     trailerPlayerViewModel: TrailerPlayerViewModel = hiltViewModel(),
 ) {
@@ -290,8 +323,10 @@ private fun HeroDiscoveryCardItem(
     var showSwipeFeedback by remember { mutableStateOf(false) }
     var totalDragX by remember { mutableFloatStateOf(0f) }
 
+    val hasValidTrailer = reel.trailerKey.isNotBlank() && reel.trailerKey != "trailer_demo"
+
     fun playYouTubeTrailer() {
-        if (reel.trailerKey.isBlank() || reel.trailerKey == "trailer_demo") return
+        if (!hasValidTrailer) return
         trailerPlayerViewModel.playTrailer(reel.trailerKey, reel.title)
     }
 
@@ -322,7 +357,7 @@ private fun HeroDiscoveryCardItem(
                 )
             },
     ) {
-        // Tam Ekran Arka Plan Posteri/Backdrop
+        // Tam Ekran Arka Plan Posteri / Yükleme Yer Tutucusu
         if (reel.backdropUrl != null || reel.posterUrl != null) {
             AsyncImage(
                 model = reel.backdropUrl ?: reel.posterUrl,
@@ -332,6 +367,22 @@ private fun HeroDiscoveryCardItem(
             )
         } else {
             Box(Modifier.fillMaxSize().background(SurfaceVariant))
+        }
+
+        // Otomatik Fragman Oynatıcı (Sadece aktif dikey sayfada ve geçerli fragman varsa)
+        if (isSelected && hasValidTrailer) {
+            InAppYouTubePlayer(
+                videoKey = reel.trailerKey,
+                isMuted = isMuted,
+                showControls = false,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // Dokunma/Kaydırma jestlerinin WebView tarafından yutulmasını önlemek için şeffaf overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(enabled = false) {}
+            )
         }
 
         // Sinematik Karartma Gradienti

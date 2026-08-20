@@ -59,11 +59,15 @@ import kotlin.math.roundToInt
 @Composable
 fun InAppYouTubePlayer(
     videoKey: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isMuted: Boolean = false,
+    showControls: Boolean = true,
 ) {
     val context = LocalContext.current
 
-    val htmlContent = remember(videoKey) {
+    val htmlContent = remember(videoKey, isMuted, showControls) {
+        val muteParam = if (isMuted) 1 else 0
+        val controlsParam = if (showControls) 1 else 0
         """
         <!DOCTYPE html>
         <html>
@@ -79,7 +83,7 @@ fun InAppYouTubePlayer(
         <body>
             <div class="embed-container">
                 <iframe 
-                    src="https://www.youtube-nocookie.com/embed/$videoKey?autoplay=1&playsinline=1&enablejsapi=1&rel=0&modestbranding=1" 
+                    src="https://www.youtube-nocookie.com/embed/$videoKey?autoplay=1&mute=$muteParam&playsinline=1&enablejsapi=1&rel=0&controls=$controlsParam&modestbranding=1&loop=1&playlist=$videoKey" 
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                     allowfullscreen>
                 </iframe>
@@ -89,7 +93,7 @@ fun InAppYouTubePlayer(
         """.trimIndent()
     }
 
-    val webView = remember(videoKey) {
+    val webView = remember(videoKey, isMuted, showControls) {
         WebView(context).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -118,7 +122,7 @@ fun InAppYouTubePlayer(
         }
     }
 
-    DisposableEffect(videoKey) {
+    DisposableEffect(videoKey, isMuted, showControls) {
         onDispose {
             webView.stopLoading()
             webView.destroy()
