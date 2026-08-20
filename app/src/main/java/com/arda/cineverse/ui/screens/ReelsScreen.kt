@@ -60,6 +60,7 @@ import com.arda.cineverse.ui.components.RecommendShareSheet
 import com.arda.cineverse.ui.theme.*
 import com.arda.cineverse.viewmodel.MovieReelsViewModel
 import com.arda.cineverse.viewmodel.RecommendShareViewModel
+import com.arda.cineverse.viewmodel.TrailerPlayerViewModel
 import kotlinx.coroutines.delay
 
 private val YouTubeRedGradient = listOf(Color(0xFFFF0000), Color(0xFFC40000))
@@ -73,6 +74,7 @@ fun ReelsScreen(
     onTvShowClick: (Int) -> Unit,
     viewModel: MovieReelsViewModel = hiltViewModel(),
     recommendShareViewModel: RecommendShareViewModel = hiltViewModel(),
+    trailerPlayerViewModel: TrailerPlayerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val shareState by recommendShareViewModel.uiState.collectAsState()
@@ -180,6 +182,7 @@ fun ReelsScreen(
                             shareMediaItem = reel
                             showShareSheet = true
                         },
+                        trailerPlayerViewModel = trailerPlayerViewModel,
                     )
                 }
             }
@@ -279,6 +282,7 @@ private fun HeroDiscoveryCardItem(
     onToggleWatchlist: () -> Unit,
     onSwipeRightBothSaved: () -> Unit,
     onShare: () -> Unit,
+    trailerPlayerViewModel: TrailerPlayerViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -288,13 +292,7 @@ private fun HeroDiscoveryCardItem(
 
     fun playYouTubeTrailer() {
         if (reel.trailerKey.isBlank() || reel.trailerKey == "trailer_demo") return
-        val uri = Uri.parse("https://www.youtube.com/watch?v=${reel.trailerKey}")
-        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        try {
-            context.startActivity(intent)
-        } catch (_: Exception) {}
+        trailerPlayerViewModel.playTrailer(reel.trailerKey, reel.title)
     }
 
     LaunchedEffect(showSwipeFeedback) {

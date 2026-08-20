@@ -25,8 +25,15 @@ import com.arda.cineverse.ui.screens.ProfileScreen
 import com.arda.cineverse.ui.screens.ReelsScreen
 import com.arda.cineverse.ui.screens.RegisterScreen
 import com.arda.cineverse.ui.screens.TvShowDetailScreen
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.arda.cineverse.ui.components.FloatingTrailerPlayer
 import com.arda.cineverse.viewmodel.AiChatViewModel
 import com.arda.cineverse.viewmodel.NotificationViewModel
+import com.arda.cineverse.viewmodel.TrailerPlayerViewModel
 import com.google.firebase.auth.FirebaseAuth
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -91,6 +98,10 @@ fun CineVerseNavGraph(
     // seferinde bomboş bir sohbete düşerdi.
     val aiChatViewModel: AiChatViewModel = hiltViewModel()
 
+    // Uygulama İçi Yüzen Fragman Oynatıcı (In-App PiP) State
+    val trailerPlayerViewModel: TrailerPlayerViewModel = hiltViewModel()
+    val trailerUiState by trailerPlayerViewModel.uiState.collectAsStateWithLifecycle()
+
     // Bildirime dokunularak açılışta (soğuk başlangıç) veya uygulama zaten
     // açıkken (onNewIntent) tetiklenir. Giriş yapılmamışsa hedefe gitmenin
     // anlamı yok — kullanıcı normal şekilde Login ekranında kalır.
@@ -101,7 +112,8 @@ fun CineVerseNavGraph(
         onDeepLinkHandled()
     }
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(navController = navController, startDestination = startDestination) {
         composable(CVRoutes.LOGIN) {
             LoginScreen(
                 onBack = { /* no-op: entry screen */ },
@@ -327,6 +339,7 @@ fun CineVerseNavGraph(
                 onBack = { navController.popBackStack() },
                 onGoHome = { navController.popBackStack(CVRoutes.HOME, inclusive = false) },
                 onMovieClick = { relatedMovieId -> navController.navigate(CVRoutes.movieDetail(relatedMovieId)) },
+                trailerPlayerViewModel = trailerPlayerViewModel,
             )
         }
         composable(
@@ -339,6 +352,7 @@ fun CineVerseNavGraph(
                 onBack = { navController.popBackStack() },
                 onGoHome = { navController.popBackStack(CVRoutes.HOME, inclusive = false) },
                 onTvShowClick = { relatedTvId -> navController.navigate(CVRoutes.tvDetail(relatedTvId)) },
+                trailerPlayerViewModel = trailerPlayerViewModel,
             )
         }
         composable(route = CVRoutes.REELS) {
@@ -346,7 +360,16 @@ fun CineVerseNavGraph(
                 onBack = { navController.popBackStack() },
                 onMovieClick = { movieId -> navController.navigate(CVRoutes.movieDetail(movieId)) },
                 onTvShowClick = { tvId -> navController.navigate(CVRoutes.tvDetail(tvId)) },
+                trailerPlayerViewModel = trailerPlayerViewModel,
             )
         }
+    }
+
+    FloatingTrailerPlayer(
+        uiState = trailerUiState,
+        onMinimize = { trailerPlayerViewModel.minimize() },
+        onExpand = { trailerPlayerViewModel.expand() },
+        onClose = { trailerPlayerViewModel.close() },
+    )
     }
 }

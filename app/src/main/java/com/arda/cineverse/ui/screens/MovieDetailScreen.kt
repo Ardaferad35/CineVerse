@@ -70,6 +70,7 @@ import com.arda.cineverse.viewmodel.CommentViewModel
 import com.arda.cineverse.viewmodel.CommentViewModelFactory
 import com.arda.cineverse.viewmodel.MovieDetailViewModel
 import com.arda.cineverse.viewmodel.RecommendShareViewModel
+import com.arda.cineverse.viewmodel.TrailerPlayerViewModel
 import kotlinx.coroutines.launch
 
 import androidx.compose.runtime.LaunchedEffect
@@ -96,6 +97,7 @@ fun MovieDetailScreen(
     onMovieClick: (Int) -> Unit = {},
     movieDetailViewModel: MovieDetailViewModel = hiltViewModel(),
     commentViewModel: CommentViewModel = viewModel(factory = CommentViewModelFactory(movieId)),
+    trailerPlayerViewModel: TrailerPlayerViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -169,15 +171,7 @@ fun MovieDetailScreen(
 
     fun playTrailer(key: String?) {
         if (key.isNullOrBlank()) return
-        val uri = "https://www.youtube.com/watch?v=$key".toUri()
-        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        try {
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            Log.e("MovieDetailScreen", "Could not launch trailer intent", e)
-        }
+        trailerPlayerViewModel.playTrailer(key, detailState.movie?.title)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {

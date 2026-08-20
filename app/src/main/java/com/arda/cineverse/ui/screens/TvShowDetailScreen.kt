@@ -101,6 +101,7 @@ import com.arda.cineverse.ui.theme.*
 import com.arda.cineverse.viewmodel.CommentViewModel
 import com.arda.cineverse.viewmodel.CommentViewModelFactory
 import com.arda.cineverse.viewmodel.RecommendShareViewModel
+import com.arda.cineverse.viewmodel.TrailerPlayerViewModel
 import com.arda.cineverse.viewmodel.TvShowDetailViewModel
 import kotlinx.coroutines.launch
 
@@ -130,6 +131,7 @@ fun TvShowDetailScreen(
             ),
         ),
     ),
+    trailerPlayerViewModel: TrailerPlayerViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -203,15 +205,7 @@ fun TvShowDetailScreen(
 
     fun playTrailer(key: String?) {
         if (key.isNullOrBlank()) return
-        val uri = "https://www.youtube.com/watch?v=$key".toUri()
-        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        try {
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            Log.e("TvShowDetailScreen", "Could not launch trailer intent", e)
-        }
+        trailerPlayerViewModel.playTrailer(key, detailState.tvShow?.name)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Background)) {

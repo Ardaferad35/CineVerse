@@ -118,6 +118,7 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.activity.compose)
     implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.browser:browser:1.8.0")
 
     // Firebase
     implementation(platform(libs.firebase.bom))
